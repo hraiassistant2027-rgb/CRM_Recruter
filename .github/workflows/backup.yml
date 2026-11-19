@@ -1,0 +1,76 @@
+# Щоночі: зашифрований дамп БД + синхронізація файлів резюме в Cloudflare R2.
+# Це другий, незалежний від Supabase контур резервного копіювання.
+#
+# Потрібні секрети (GitHub → Settings → Secrets and variables → Actions, середовище production):
+#   SUPABASE_ACCESS_TOKEN, SUPABASE_DB_PASSWORD
+#   R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ENDPOINT  (https://<account>.r2.cloudflarestorage.com)
+#   STORAGE_S3_ACCESS_KEY_ID, STORAGE_S3_SECRET_ACCESS_KEY, STORAGE_S3_ENDPOINT  (S3-доступ Supabase Storage)
+# Змінні: SUPABASE_PROJECT_REF, R2_BUCKET, AGE_PUBLIC_KEY (публічний ключ шифрування; приватний зберігається офлайн)
+
+name: backup
+
+on:
+  schedule:
+    - cron: '17 1 * * *'   # 01:17 UTC щодня
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Інструменти
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq age rclone
+
+      - name: Дамп бази даних
+        run: |
+          supabase link --project-ref "${{ vars.SUPABASE_PROJECT_REF }}"
+          mkdir -p dump
+          supabase db dump --linked --role-only -f dump/roles.sql
+          supabase db dump --linked -f dump/schema.sql
+          supabase db dump --linked --data-only --use-copy -f dump/data.sql
+          tar -czf db.tar.gz dump
+          age -r "${{ vars.AGE_PUBLIC_KEY }}" -o db.tar.gz.age db.tar.gz
+          rm -rf dump db.tar.gz
+
+      - name: Вивантаження дампу в R2
+        run: |
+          DAY=$(date -u +%Y-%m-%d)
+          aws s3 cp db.tar.gz.age "s3://${{ vars.R2_BUCKET }}/db/daily/$DAY.tar.gz.age" --endpoint-url "${{ secrets.R2_ENDPOINT }}"
+          if [ "$(date -u +%d)" = "01" ]; then
+            aws s3 cp db.tar.gz.age "s3://${{ vars.R2_BUCKET }}/db/monthly/$DAY.tar.gz.age" --endpoint-url "${{ secrets.R2_ENDPOINT }}"
+          fi
+
+      - name: Синхронізація файлів резюме
+        env:
+          RCLONE_CONFIG_SRC_TYPE: s3
+          RCLONE_CONFIG_SRC_PROVIDER: Other
+          RCLONE_CONFIG_SRC_ACCESS_KEY_ID: ${{ secrets.STORAGE_S3_ACCESS_KEY_ID }}
+          RCLONE_CONFIG_SRC_SECRET_ACCESS_KEY: ${{ secrets.STORAGE_S3_SECRET_ACCESS_KEY }}
+          RCLONE_CONFIG_SRC_ENDPOINT: ${{ secrets.STORAGE_S3_ENDPOINT }}
+          RCLONE_CONFIG_DST_TYPE: s3
+          RCLONE_CONFIG_DST_PROVIDER: Cloudflare
+          RCLONE_CONFIG_DST_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          RCLONE_CONFIG_DST_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          RCLONE_CONFIG_DST_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+        run: |
+          # Змінені та видалені файли не зникають: переносяться в датовану папку deleted/
+          rclone sync src:resumes "dst:${{ vars.R2_BUCKET }}/files/current" \
+            --backup-dir "dst:${{ vars.R2_BUCKET }}/files/deleted/$(date -u +%Y-%m-%d)" \
+            --checksum --transfers 8 --stats-one-line -v
+
+      - name: Очищення старих щоденних дампів (зберігаємо 30)
+        run: |
+          aws s3 ls "s3://${{ vars.R2_BUCKET }}/db/daily/" --endpoint-url "${{ secrets.R2_ENDPOINT }}" \
+            | awk '{print $4}' | sort | head -n -30 \
+            | xargs -r -I{} aws s3 rm "s3://${{ vars.R2_BUCKET }}/db/daily/{}" --endpoint-url "${{ secrets.R2_ENDPOINT }}"

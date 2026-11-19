@@ -1,0 +1,14 @@
+# Мінімальна конфігурація Supabase CLI. Ідентифікатор віддаленого проєкту
+# задається командою `supabase link --project-ref ...` (у CI — зі змінної SUPABASE_PROJECT_REF).
+project_id = "hr-crm"
+
+[db]
+major_version = 17
+
+[auth]
+# Вхід лише за запрошенням адміністратора
+enable_signup = false
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
