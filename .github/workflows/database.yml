@@ -59,10 +59,19 @@ jobs:
           fi
           ./.github/scripts/check_token.sh staging
           echo "ready=true" >> "$GITHUB_OUTPUT"
+      - name: Версія Supabase CLI
+        id: cli
+        if: steps.cfg.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V=$(gh release view --repo supabase/cli --json tagName -q .tagName | sed 's/^v//')
+          echo "Supabase CLI: $V"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
       - uses: supabase/setup-cli@v1
         if: steps.cfg.outputs.ready == 'true'
         with:
-          version: latest
+          version: ${{ steps.cli.outputs.version }}
       - if: steps.cfg.outputs.ready == 'true'
         run: supabase link --project-ref "$PROJECT_REF"
       - if: steps.cfg.outputs.ready == 'true'
@@ -91,9 +100,17 @@ jobs:
             exit 1
           fi
           ./.github/scripts/check_token.sh production
+      - name: Версія Supabase CLI
+        id: cli
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V=$(gh release view --repo supabase/cli --json tagName -q .tagName | sed 's/^v//')
+          echo "Supabase CLI: $V"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: ${{ steps.cli.outputs.version }}
       - run: supabase link --project-ref "$PROJECT_REF"
       - name: Резервна копія схеми перед змінами
         run: supabase db dump --linked -f pre_deploy_schema.sql

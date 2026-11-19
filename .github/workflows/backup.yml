@@ -41,10 +41,19 @@ jobs:
           fi
       - uses: actions/checkout@v5
         if: steps.cfg.outputs.ready == 'true'
+      - name: Версія Supabase CLI
+        id: cli
+        if: steps.cfg.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V=$(gh release view --repo supabase/cli --json tagName -q .tagName | sed 's/^v//')
+          echo "Supabase CLI: $V"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
       - uses: supabase/setup-cli@v1
         if: steps.cfg.outputs.ready == 'true'
         with:
-          version: latest
+          version: ${{ steps.cli.outputs.version }}
       - name: Інструменти
         if: steps.cfg.outputs.ready == 'true'
         run: sudo apt-get update -qq && sudo apt-get install -y -qq age rclone
