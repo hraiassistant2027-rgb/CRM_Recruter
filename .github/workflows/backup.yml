@@ -25,14 +25,32 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: auto
     steps:
-      - uses: actions/checkout@v4
+      - name: Перевірка налаштувань
+        id: cfg
+        env:
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          AGE_KEY: ${{ vars.AGE_PUBLIC_KEY }}
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ] || [ -z "$SUPABASE_DB_PASSWORD" ] || [ -z "$AWS_ACCESS_KEY_ID" ] \
+             || [ -z "$R2_ENDPOINT" ] || [ -z "$PROJECT_REF" ] || [ -z "$AGE_KEY" ]; then
+            echo "::warning title=Бекап пропущено::Ключі для резервного копіювання ще не введено (див. інструкцію, крок 4)."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v5
+        if: steps.cfg.outputs.ready == 'true'
       - uses: supabase/setup-cli@v1
+        if: steps.cfg.outputs.ready == 'true'
         with:
           version: latest
       - name: Інструменти
+        if: steps.cfg.outputs.ready == 'true'
         run: sudo apt-get update -qq && sudo apt-get install -y -qq age rclone
 
       - name: Дамп бази даних
+        if: steps.cfg.outputs.ready == 'true'
         run: |
           supabase link --project-ref "${{ vars.SUPABASE_PROJECT_REF }}"
           mkdir -p dump
@@ -44,6 +62,7 @@ jobs:
           rm -rf dump db.tar.gz
 
       - name: Вивантаження дампу в R2
+        if: steps.cfg.outputs.ready == 'true'
         run: |
           DAY=$(date -u +%Y-%m-%d)
           aws s3 cp db.tar.gz.age "s3://${{ vars.R2_BUCKET }}/db/daily/$DAY.tar.gz.age" --endpoint-url "${{ secrets.R2_ENDPOINT }}"
@@ -52,6 +71,7 @@ jobs:
           fi
 
       - name: Синхронізація файлів резюме
+        if: steps.cfg.outputs.ready == 'true'
         env:
           RCLONE_CONFIG_SRC_TYPE: s3
           RCLONE_CONFIG_SRC_PROVIDER: Other
@@ -70,6 +90,7 @@ jobs:
             --checksum --transfers 8 --stats-one-line -v
 
       - name: Очищення старих щоденних дампів (зберігаємо 30)
+        if: steps.cfg.outputs.ready == 'true'
         run: |
           aws s3 ls "s3://${{ vars.R2_BUCKET }}/db/daily/" --endpoint-url "${{ secrets.R2_ENDPOINT }}" \
             | awk '{print $4}' | sort | head -n -30 \
