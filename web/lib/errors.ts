@@ -1,6 +1,6 @@
 // Переклад помилок Supabase Auth і бази для користувача (без технічних подробиць)
 
-type ErrorLike = { code?: string | null; message?: string | null } | null | undefined;
+type ErrorLike = { code?: string | null; message?: string | null; status?: number | null; name?: string | null } | null | undefined;
 
 const RULES: { test: (code: string, msg: string) => boolean; text: string }[] = [
   { test: (c, m) => c === 'invalid_credentials' || m.includes('invalid login credentials'), text: 'Невірний email або пароль' },
@@ -15,6 +15,9 @@ const RULES: { test: (code: string, msg: string) => boolean; text: string }[] = 
   { test: (c, m) => c === 'insufficient_aal' || m.includes('aal2'), text: 'Підтвердьте вхід кодом із застосунку-автентифікатора' },
   { test: (c, m) => c === 'email_exists' || c === 'user_already_exists' || m.includes('already been registered'), text: 'Користувач із таким email вже існує' },
   { test: (c, m) => c === '42501' || m.includes('permission denied') || m.includes('row-level security') || m.includes('немає права'), text: 'Недостатньо прав для цієї дії' },
+  { test: (c, m) => m.includes('invalid api key') || m.includes('no api key') || c === 'invalid_api_key', text: 'Сайт неправильно налаштований: невірний ключ Supabase (змінні на Render)' },
+  { test: (_c, m) => m.includes('fetch failed') || m.includes('enotfound') || m.includes('failed to fetch'), text: 'Не вдалося з\'єднатися з базою: перевірте адресу Supabase (змінні на Render)' },
+  { test: (_c, m) => m.includes('database error'), text: 'Помилка бази під час входу. Зверніться до адміністратора' },
   { test: (_c, m) => m.includes('останнього super admin'), text: 'Не можна заблокувати або позбавити ролі останнього SUPER ADMIN' },
 ];
 
@@ -22,5 +25,10 @@ export function translateError(err: ErrorLike): string {
   if (!err) return 'Сталася помилка. Спробуйте ще раз';
   const code = (err.code ?? '').toLowerCase();
   const msg = (err.message ?? '').toLowerCase();
-  return RULES.find((r) => r.test(code, msg))?.text ?? 'Сталася помилка. Спробуйте ще раз або зверніться до адміністратора';
+  const known = RULES.find((r) => r.test(code, msg))?.text;
+  // Повний текст — лише в журнал сервера (Render → Logs); користувачу — короткий код для діагностики
+  console.error('[crm-error]', { code: err.code, status: err.status, name: err.name, message: err.message });
+  if (known) return known;
+  const ref = [err.status, err.code || err.name].filter(Boolean).join(' / ');
+  return `Сталася помилка. Спробуйте ще раз або зверніться до адміністратора${ref ? ` (код: ${ref})` : ''}`;
 }
