@@ -59,6 +59,22 @@ select tst.ok((select matched_on from public.describe_duplicates(null, null, nul
 select tst.login('00000000-0000-0000-0000-0000000000a7');
 select tst.ok((select not accessible and full_name is null from public.describe_duplicates('0931112233')),
               'керівник бачить лише факт дубліката, без даних кандидата');
+
+\echo '--- 13. Завантаження резюме'
+select tst.login('00000000-0000-0000-0000-0000000000a2');
+select tst.ok(tst.rows($$insert into public.documents (id, candidate_id, storage_path, original_name, sha256)
+                         values ('32000000-0000-0000-0000-000000000001', '31000000-0000-0000-0000-000000000001',
+                                 'candidates/x/cv.pdf', 'cv.pdf', repeat('b', 64))$$) = 1,
+              'рекрутер додає резюме до картки (як це робить застосунок)');
+select tst.ok((select count(*) from public.documents where candidate_id = '31000000-0000-0000-0000-000000000001') = 1,
+              'після збереження файл видно в картці');
+select tst.blocked($$insert into public.documents (candidate_id, storage_path, original_name, sha256)
+                     values ('31000000-0000-0000-0000-000000000001', 'candidates/x/cv2.pdf', 'cv2.pdf', repeat('b', 64))$$,
+                   'той самий файл (однаковий відбиток) удруге не зберігається');
+select tst.login('00000000-0000-0000-0000-0000000000a7');
+select tst.blocked($$insert into public.documents (candidate_id, storage_path, original_name, sha256)
+                     values ('31000000-0000-0000-0000-000000000001', 'candidates/x/cv3.pdf', 'cv3.pdf', repeat('c', 64))$$,
+                   'керівник не може завантажувати резюме');
 reset role;
 
 \echo '=== Тести кандидатів пройдено ==='

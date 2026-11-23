@@ -91,18 +91,20 @@ async function storeResume(supabase: Supa, candidateId: string, file: File): Pro
   const mime = RESUME_TYPES[ext];
   const path = `candidates/${candidateId}/${randomUUID()}-${safeFileName(file.name)}`;
 
-  const { data: doc, error } = await supabase
+  // Ідентифікатор задаємо самі і не просимо базу повернути рядок: правило читання файлів
+  // перевіряє запис, який у межах цієї ж команди ще не видно, і відхилило б вставку
+  const docId = randomUUID();
+  const { error } = await supabase
     .from('documents')
     .insert({
+      id: docId,
       candidate_id: candidateId,
       storage_path: path,
       original_name: file.name.slice(0, 250),
       mime_type: mime,
       size_bytes: file.size,
       sha256,
-    })
-    .select('id')
-    .single();
+    });
 
   if (error) {
     if (error.code === '23505') {
@@ -132,7 +134,7 @@ async function storeResume(supabase: Supa, candidateId: string, file: File): Pro
     upsert: false,
   });
   if (uploadError) {
-    await admin.from('documents').delete().eq('id', doc.id);
+    await admin.from('documents').delete().eq('id', docId);
     return `Файл не збережено: ${translateError(uploadError)}`;
   }
   return null;
