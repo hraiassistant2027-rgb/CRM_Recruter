@@ -6,7 +6,14 @@ export function publicEnv() {
   if (!url || !key) {
     throw new Error('Не задано NEXT_PUBLIC_SUPABASE_URL або NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY');
   }
-  return { url, key };
+  // Лише адреса проєкту, без шляхів на зразок /rest/v1/ (їх додає бібліотека Supabase сама)
+  let origin = url.trim();
+  try {
+    origin = new URL(origin).origin;
+  } catch {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL має бути адресою на зразок https://xxxx.supabase.co');
+  }
+  return { url: origin, key: key.trim() };
 }
 
 export function appUrl(): string {
