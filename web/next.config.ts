@@ -12,6 +12,8 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  // Резюме до 20 МБ завантажуються через серверні дії
+  experimental: { serverActions: { bodySizeLimit: '21mb' }, middlewareClientMaxBodySize: '21mb' },
   async headers() {
     return [{ source: '/(.*)', headers: securityHeaders }];
   },
