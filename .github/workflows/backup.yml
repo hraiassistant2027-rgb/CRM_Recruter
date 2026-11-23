@@ -87,11 +87,14 @@ jobs:
           RCLONE_CONFIG_SRC_ACCESS_KEY_ID: ${{ secrets.STORAGE_S3_ACCESS_KEY_ID }}
           RCLONE_CONFIG_SRC_SECRET_ACCESS_KEY: ${{ secrets.STORAGE_S3_SECRET_ACCESS_KEY }}
           RCLONE_CONFIG_SRC_ENDPOINT: ${{ secrets.STORAGE_S3_ENDPOINT }}
+          RCLONE_CONFIG_SRC_REGION: ${{ vars.STORAGE_S3_REGION || 'eu-west-1' }}
+          RCLONE_CONFIG_SRC_FORCE_PATH_STYLE: 'true'
           RCLONE_CONFIG_DST_TYPE: s3
           RCLONE_CONFIG_DST_PROVIDER: Cloudflare
           RCLONE_CONFIG_DST_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           RCLONE_CONFIG_DST_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           RCLONE_CONFIG_DST_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          RCLONE_CONFIG_DST_NO_CHECK_BUCKET: 'true'
         run: |
           # Змінені та видалені файли не зникають: переносяться в датовану папку deleted/
           rclone sync src:resumes "dst:${{ vars.R2_BUCKET }}/files/current" \
