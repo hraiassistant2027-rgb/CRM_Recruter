@@ -1,7 +1,8 @@
 # Перевірка і розгортання бази даних.
 # - На кожен pull request: чиста БД → усі міграції → тести прав доступу.
-# - Після злиття в main: міграції застосовуються до staging, потім до production
-#   (production чекає підтвердження в GitHub → Environments → production → Required reviewers).
+# - Після злиття в main: тести → staging (автоматично).
+# - Production — ЛИШЕ вручну: Actions → database → Run workflow → галочка «Розгорнути в production».
+#   Автоматично в production не потрапляє нічого.
 # Секрети вводяться в GitHub (Settings → Secrets and variables → Actions), у коді їх немає.
 # Поки ключі не введено, розгортання пропускається з попередженням, а не падає.
 
@@ -14,6 +15,15 @@ on:
     branches: [main]
     paths: ['supabase/**', '.github/workflows/database.yml']
   workflow_dispatch:
+    inputs:
+      deploy_production:
+        description: 'Розгорнути в production (після успішного staging)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: database-deploy
+  cancel-in-progress: false
 
 jobs:
   test:
@@ -84,7 +94,7 @@ jobs:
 
   deploy-production:
     needs: deploy-staging
-    if: needs.deploy-staging.outputs.ready == 'true'
+    if: needs.deploy-staging.outputs.ready == 'true' && github.event_name == 'workflow_dispatch' && inputs.deploy_production
     runs-on: ubuntu-latest
     environment: production
     env:
