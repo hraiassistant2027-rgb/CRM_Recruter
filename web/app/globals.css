@@ -1,0 +1,33 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-accent: #f5b700;
+  --color-accent-strong: #d89f00;
+  --color-accent-soft: #fff6d6;
+  --color-ink: #2b2f36;
+  --color-ink-soft: #5b6270;
+  --color-surface: #f5f6f8;
+  --color-line: #e3e6ea;
+  --color-danger: #c62828;
+  --color-danger-soft: #fdecec;
+  --color-ok: #1f7a3a;
+  --color-ok-soft: #e7f5ec;
+  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Видима рамка фокуса для роботи з клавіатури */
+:focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 2px;
+}
