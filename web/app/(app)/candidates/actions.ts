@@ -17,7 +17,7 @@ import {
 import { translateError } from '@/lib/errors';
 import type { DuplicateRow } from '@/lib/candidates';
 import { extractResumeText } from '@/lib/resume-text';
-import { FIELD_LABELS, parseResumeText, type ResumeFields } from '@/lib/resume-parse';
+import { FIELD_LABELS, firstLines, parseResumeText, type ResumeFields } from '@/lib/resume-parse';
 import type { FormState } from '@/lib/form-state';
 
 type Supa = Awaited<ReturnType<typeof createClient>>;
@@ -155,7 +155,9 @@ async function storeResumeInner(supabase: Supa, candidateId: string, file: File)
 }
 
 // Розпізнати дані з резюме до створення картки (файл ще не зберігається)
-export async function extractResumeFields(formData: FormData): Promise<{ fields: ResumeFields; error?: string }> {
+export async function extractResumeFields(
+  formData: FormData,
+): Promise<{ fields: ResumeFields; error?: string; preview?: string[] }> {
   const file = formData.get('resume');
   if (!(file instanceof File) || file.size === 0) return { fields: {} };
   const issue = resumeFileIssue(file.name, file.size);
@@ -174,7 +176,9 @@ export async function extractResumeFields(formData: FormData): Promise<{ fields:
         : 'Не вдалося прочитати текст (можливо, це скан). Заповніть поля вручну.',
     };
   }
-  return { fields: parseResumeText(text) };
+  const fields = parseResumeText(text);
+  // Якщо ПІБ не знайдено — показуємо (лише цьому користувачу) початок тексту, щоб зрозуміти причину
+  return fields.full_name ? { fields } : { fields, preview: firstLines(text) };
 }
 
 // ---------------------------------------------------------------------

@@ -18,7 +18,7 @@ export function CandidateForm({ sources, candidate }: { sources: Source[]; candi
   const formRef = useRef<HTMLFormElement>(null);
   const [pending, startTransition] = useTransition();
   const [parsing, startParsing] = useTransition();
-  const [parseNote, setParseNote] = useState<{ kind: 'success' | 'info'; text: string } | null>(null);
+  const [parseNote, setParseNote] = useState<{ kind: 'success' | 'info'; text: string; preview?: string[] } | null>(null);
 
   // Після вибору файлу резюме — розпізнаємо дані і заповнюємо лише порожні поля
   function onResumeChosen(input: HTMLInputElement) {
@@ -48,11 +48,11 @@ export function CandidateForm({ sources, candidate }: { sources: Source[]; candi
           filled.push(FIELD_LABELS[key]);
         }
       }
-      setParseNote(
-        filled.length
-          ? { kind: 'success', text: `З резюме заповнено: ${filled.join(', ')}. Перевірте дані перед збереженням.` }
-          : { kind: 'info', text: 'Нових даних у резюме не знайдено — заповніть поля вручну.' },
-      );
+      const noName = !result.fields.full_name;
+      const base = filled.length
+        ? `З резюме заповнено: ${filled.join(', ')}.${noName ? ' ПІБ не розпізнано — впишіть вручну.' : ''} Перевірте дані перед збереженням.`
+        : 'Нових даних у резюме не знайдено — заповніть поля вручну.';
+      setParseNote({ kind: filled.length && !noName ? 'success' : 'info', text: base, preview: result.preview });
     });
   }
   const fe = state.fieldErrors ?? {};
@@ -134,6 +134,16 @@ export function CandidateForm({ sources, candidate }: { sources: Source[]; candi
           </Field>
           {parsing && <p className="text-sm text-ink-soft">Читаємо резюме…</p>}
           {parseNote && <Alert kind={parseNote.kind}>{parseNote.text}</Alert>}
+          {parseNote?.preview && parseNote.preview.length > 0 && (
+            <details className="text-xs text-ink-soft">
+              <summary className="cursor-pointer">Що система прочитала на початку резюме</summary>
+              <ol className="mt-2 list-decimal space-y-0.5 pl-5 font-mono">
+                {parseNote.preview.map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
+              </ol>
+            </details>
+          )}
         </section>
       )}
 

@@ -143,7 +143,7 @@ export function findLinkedIn(text: string): string | undefined {
 }
 
 export function findName(text: string): string | undefined {
-  const lines = cleanLines(text).slice(0, 15);
+  const lines = cleanLines(text).slice(0, 30);
   // Підписане поле має пріоритет
   for (const line of lines) {
     const labeled = line.match(/^(?:ПІБ|ПІП|ФІО|ФИО|Ім'я|Имя|Name|Full name)\s*[:—-]\s*(.+)$/i);
@@ -169,7 +169,11 @@ export function findName(text: string): string | undefined {
 }
 
 function nameFromLine(line: string): string | undefined {
-  const cleaned = line.replace(/[,.;|•·]+$/g, '').trim();
+  // «Іваненко Петро, 35 років», «Іваненко Петро | Прораб», «Іваненко Петро — інженер»
+  const cleaned = line
+    .split(/\s*[,;|•·–—(]\s*|\s+-\s+|\s+\d/)[0]
+    .replace(/[.:]+$/g, '')
+    .trim();
   const words = cleaned.split(' ');
   if (words.length < 2 || words.length > 3) return undefined;
   const word = new RegExp(`^[${UP}][${UP}${LOW}]{1,30}$`);
@@ -226,6 +230,13 @@ export function findPosition(text: string): string | undefined {
     if (m) return m[1].replace(/,?\s*\d[\d\s]*\s*(грн|uah|\$|usd|eur|€).*$/i, '').trim();
   }
   return undefined;
+}
+
+// Перші рядки тексту — щоб показати рекрутеру, що «бачить» система, коли ПІБ не знайдено
+export function firstLines(text: string, count = 6): string[] {
+  return cleanLines(text)
+    .slice(0, count)
+    .map((l) => (l.length > 90 ? `${l.slice(0, 90)}…` : l));
 }
 
 export function parseResumeText(text: string): ResumeFields {
