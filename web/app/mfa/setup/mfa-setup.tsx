@@ -30,7 +30,7 @@ export function MfaSetup({ next }: { next: string }) {
       }
       const { data, error: enrollError } = await supabase.auth.mfa.enroll({
         factorType: 'totp',
-        friendlyName: `HR CRM ${new Date().toISOString().slice(0, 16)}`,
+        friendlyName: `KAN Talent ${new Date().toISOString().slice(0, 16)}`,
       });
       if (enrollError || !data) {
         setError(translateError(enrollError));

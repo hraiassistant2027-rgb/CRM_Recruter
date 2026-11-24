@@ -3,7 +3,11 @@ import Link from 'next/link';
 import { requireSession } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { can } from '@/lib/permissions';
-import { Card, PageHeader } from '@/components/ui';
+import { Badge, Card, PageHeader } from '@/components/ui';
+import { firstNameOf } from '@/lib/email';
+import { loadAgenda } from '@/lib/interviews-load';
+import { KIND_LABELS } from '@/lib/interviews';
+import { addDays, dateToKyiv, formatTime, kyivToDate, todayKyiv } from '@/lib/time';
 
 export const metadata: Metadata = { title: 'Dashboard' };
 
@@ -26,6 +30,11 @@ export default async function DashboardPage() {
     can(p, 'applications.read') ? countOf('applications', (q) => q.is('closed_at', null)) : Promise.resolve(null),
   ]);
 
+  const today = todayKyiv();
+  const agenda = can(p, 'applications.read')
+    ? await loadAgenda(await createClient(), kyivToDate(today, '00:00')!.toISOString(), kyivToDate(addDays(today, 2), '00:00')!.toISOString(), session.userId)
+    : [];
+
   const stats = [
     { label: 'Кандидатів у базі', value: candidates, href: '/candidates' },
     { label: 'Відкритих вакансій', value: openVacancies, href: '/vacancies' },
@@ -34,7 +43,7 @@ export default async function DashboardPage() {
 
   return (
     <>
-      <PageHeader title={`Вітаємо, ${session.profile.full_name.split(' ')[0]}!`} description="Короткий огляд рекрутингу" />
+      <PageHeader title={`Вітаємо, ${firstNameOf(session.profile.full_name)}!`} description="Короткий огляд рекрутингу" />
       {stats.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {stats.map((s) => (
@@ -47,11 +56,46 @@ export default async function DashboardPage() {
           ))}
         </div>
       )}
+      {can(p, 'applications.read') && (
+        <Card className="mt-6">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="font-medium">Мої співбесіди сьогодні і завтра</h2>
+            <Link href="/calendar" className="text-sm underline">
+              Календар →
+            </Link>
+          </div>
+          {agenda.length === 0 ? (
+            <p className="text-sm text-ink-soft">Співбесід немає.</p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {agenda.map((i) => (
+                <li key={i.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
+                  <Badge tone={dateToKyiv(i.starts_at).date === today ? 'warn' : 'neutral'}>
+                    {dateToKyiv(i.starts_at).date === today ? 'сьогодні' : 'завтра'} {formatTime(i.starts_at)}
+                  </Badge>
+                  {i.candidate_id ? (
+                    <Link href={`/candidates/${i.candidate_id}`} className="font-medium hover:underline">
+                      {i.candidate_name}
+                    </Link>
+                  ) : (
+                    <span className="font-medium">{i.candidate_name}</span>
+                  )}
+                  <span className="text-xs text-ink-soft">
+                    {KIND_LABELS[i.kind] ?? i.kind} · {i.vacancy_title}
+                  </span>
+                  {i.meet_link && (
+                    <a href={i.meet_link} target="_blank" rel="noopener noreferrer" className="text-xs underline">
+                      Google Meet
+                    </a>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      )}
       <Card className="mt-6">
-        <p className="text-sm text-ink-soft">
-          Повний дашборд із конверсією воронки, термінами закриття вакансій і ефективністю рекрутерів з'явиться на етапі 7.
-          Зараз база порожня: кандидати й вакансії додаватимуться на етапах 3–4.
-        </p>
+        <p className="text-sm text-ink-soft">Повний дашборд із конверсією воронки, термінами закриття вакансій і ефективністю рекрутерів з'явиться на етапі 7.</p>
       </Card>
     </>
   );

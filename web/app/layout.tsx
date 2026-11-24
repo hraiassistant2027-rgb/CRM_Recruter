@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: { default: 'HR CRM', template: '%s · HR CRM' },
+  title: { default: 'KAN Talent', template: '%s · KAN Talent' },
   description: 'Система рекрутингу',
   robots: { index: false, follow: false },
 };

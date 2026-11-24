@@ -45,14 +45,14 @@ export async function sendSystemEmail(input: {
   const session = await senderSession(input.preferredSenderId);
   if (!session) return { sent: false, error: 'Немає підключеної скриньки Google для службових листів' };
 
-  const text = `${input.paragraphs.join('\n\n')}\n\n${input.link.label}: ${input.link.url}\n\nЯкщо ви не очікували цього листа, просто проігноруйте його.\n\nHR CRM KAN`;
+  const text = `${input.paragraphs.join('\n\n')}\n\n${input.link.label}: ${input.link.url}\n\nЯкщо ви не очікували цього листа, просто проігноруйте його.\n\nKAN Talent`;
   const html =
     input.paragraphs.map((p) => `<p>${escapeHtml(p)}</p>`).join('') +
     `<p><a href="${escapeHtml(input.link.url)}" style="display:inline-block;padding:10px 18px;background:#f5b700;color:#2b2b2b;border-radius:8px;text-decoration:none;font-weight:600">${escapeHtml(input.link.label)}</a></p>` +
     `<p style="color:#777;font-size:12px">Якщо кнопка не працює, скопіюйте посилання в браузер:<br>${escapeHtml(input.link.url)}</p>` +
-    `<p style="color:#777;font-size:12px">Якщо ви не очікували цього листа, просто проігноруйте його.<br>HR CRM KAN</p>`;
+    `<p style="color:#777;font-size:12px">Якщо ви не очікували цього листа, просто проігноруйте його.<br>KAN Talent</p>`;
   try {
-    const raw = buildRawEmail({ fromEmail: session.email, fromName: 'HR CRM KAN', to: input.to, subject: input.subject, text, html });
+    const raw = buildRawEmail({ fromEmail: session.email, fromName: 'KAN Talent', to: input.to, subject: input.subject, text, html });
     await googleFetch(session, 'https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

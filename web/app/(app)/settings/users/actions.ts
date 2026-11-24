@@ -47,10 +47,10 @@ export async function inviteUser(_prev: FormState, formData: FormData): Promise<
   const link = confirmLink(data.properties.hashed_token, 'invite');
   const sent = await sendSystemEmail({
     to: parsed.data.email,
-    subject: 'Запрошення до HR CRM KAN',
+    subject: 'Запрошення до KAN Talent',
     paragraphs: [
       `Добрий день, ${parsed.data.full_name}!`,
-      'Вас запрошено до HR CRM KAN — системи рекрутингу компанії. Натисніть кнопку, щоб встановити пароль. Після цього система попросить налаштувати двофакторну перевірку в застосунку Google Authenticator.',
+      'Вас запрошено до KAN Talent — системи рекрутингу компанії. Натисніть кнопку, щоб встановити пароль. Після цього система попросить налаштувати двофакторну перевірку в застосунку Google Authenticator.',
     ],
     link: { url: link, label: 'Прийняти запрошення' },
     preferredSenderId: me ?? undefined,

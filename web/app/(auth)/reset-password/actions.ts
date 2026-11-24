@@ -31,8 +31,8 @@ export async function requestPasswordReset(_prev: FormState, formData: FormData)
   }
   const sent = await sendSystemEmail({
     to: email,
-    subject: 'Відновлення пароля HR CRM',
-    paragraphs: ['Добрий день!', 'Ви (або хтось інший) попросили змінити пароль до HR CRM KAN. Посилання діє обмежений час і спрацьовує один раз.'],
+    subject: 'Відновлення пароля KAN Talent',
+    paragraphs: ['Добрий день!', 'Ви (або хтось інший) попросили змінити пароль до KAN Talent. Посилання діє обмежений час і спрацьовує один раз.'],
     link: { url: confirmLink(data.properties.hashed_token, 'recovery'), label: 'Встановити новий пароль' },
   });
   if (!sent.sent) console.error('[reset-password] send', sent.error);

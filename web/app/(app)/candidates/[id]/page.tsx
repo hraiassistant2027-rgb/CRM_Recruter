@@ -31,6 +31,9 @@ import {
 } from './card-actions';
 import { AddToVacancyForm } from './add-to-vacancy';
 import { EmailComposer } from '@/components/email-composer';
+import { InterviewActions, ScheduleInterview } from '@/components/interviews';
+import { INTERVIEW_COLUMNS, KIND_LABELS, RESPONSE_LABELS, STATUS_LABELS, type InterviewRow } from '@/lib/interviews';
+import { dateToKyiv, formatInterviewDate, formatTime } from '@/lib/time';
 import { SyncEmailsButton } from '@/components/email-thread';
 import { Mail, MailOpen } from 'lucide-react';
 
@@ -128,6 +131,31 @@ export default async function CandidatePage({
   );
   const account = accountRes.data as { google_email: string; status: string } | null;
   const mailReady = account?.status === 'active';
+
+  // Співбесіди (етап 6)
+  type Participant = { id: string; interview_id: string; display_name: string | null; email: string | null; response_status: string };
+  const [ivRes, usersRes] = apps.length
+    ? await Promise.all([
+        supabase.from('interviews').select(INTERVIEW_COLUMNS).in('application_id', apps.map((a) => a.id)).order('starts_at', { ascending: false }),
+        supabase.from('profiles').select('id, full_name').eq('is_active', true).order('full_name'),
+      ])
+    : [{ data: [] }, { data: [] }];
+  const interviews = (ivRes.data ?? []) as InterviewRow[];
+  const { data: partData } = interviews.length
+    ? await supabase.from('interview_participants').select('id, interview_id, display_name, email, response_status').in('interview_id', interviews.map((i) => i.id))
+    : { data: [] };
+  const participants = (partData ?? []) as Participant[];
+  const vacancyOf = new Map(allVacancies.map((v) => [v.id, v]));
+  const schedulable = apps.filter((a) => {
+    const v = vacancyOf.get(a.vacancy_id);
+    const kind = stageById.get(a.stage_id)?.kind;
+    return (
+      v && kind !== 'rejected' && kind !== 'withdrawn' && kind !== 'hired' &&
+      canOn(session.permissions, 'interviews.manage', v.recruiter_id === session.userId || v.hiring_manager_id === session.userId)
+    );
+  });
+  const inviteTemplate = ((tplRes.data ?? []) as { id: string; name: string }[]).find((t) => /запрошення на співбесіду/i.test(t.name));
+  const appVacancy = new Map(apps.map((a) => [a.id, vacancyTitle.get(a.vacancy_id) ?? 'Вакансія']));
 
   const p = session.permissions;
   const deleted = Boolean(c.deleted_at);
@@ -459,6 +487,98 @@ export default async function CandidatePage({
               </details>
             )}
           </Card>
+
+          {canApps && (interviews.length > 0 || schedulable.length > 0) && (
+            <Card>
+              <h2 className="mb-3 font-medium">Співбесіди</h2>
+              <ul className="mb-4 space-y-3">
+                {interviews.map((iv) => {
+                  const st = STATUS_LABELS[iv.status] ?? { label: iv.status, tone: 'neutral' as const };
+                  const local = dateToKyiv(iv.starts_at);
+                  const duration = Math.round((new Date(iv.ends_at).getTime() - new Date(iv.starts_at).getTime()) / 60000);
+                  const past = new Date(iv.ends_at).getTime() < Date.now();
+                  return (
+                    <li key={iv.id} className="rounded-lg border border-line p-3 text-sm">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium">
+                          {formatInterviewDate(iv.starts_at)}, {formatTime(iv.starts_at)}–{formatTime(iv.ends_at)}
+                        </span>
+                        <Badge tone={st.tone}>{st.label}</Badge>
+                      </div>
+                      <div className="mt-1 text-xs text-ink-soft">
+                        {KIND_LABELS[iv.kind] ?? iv.kind} · {appVacancy.get(iv.application_id)}
+                        {iv.organizer_id ? ` · організатор ${names.get(iv.organizer_id) ?? ''}` : ''}
+                      </div>
+                      {(iv.location || iv.meet_link) && (
+                        <div className="mt-1 text-xs">
+                          {iv.location}
+                          {iv.meet_link && (
+                            <>
+                              {iv.location ? ' · ' : ''}
+                              <a href={iv.meet_link} target="_blank" rel="noopener noreferrer" className="underline">
+                                Google Meet
+                              </a>
+                            </>
+                          )}
+                        </div>
+                      )}
+                      {participants.filter((p) => p.interview_id === iv.id).length > 0 && (
+                        <ul className="mt-2 space-y-0.5 text-xs text-ink-soft">
+                          {participants
+                            .filter((p) => p.interview_id === iv.id)
+                            .map((p) => (
+                              <li key={p.id}>
+                                {p.display_name ?? p.email} — {RESPONSE_LABELS[p.response_status] ?? p.response_status}
+                              </li>
+                            ))}
+                        </ul>
+                      )}
+                      {(iv.result || iv.result_comment) && (
+                        <p className="mt-2 whitespace-pre-wrap rounded bg-surface p-2 text-xs">
+                          {iv.result && <strong>{iv.result}. </strong>}
+                          {iv.result_comment}
+                        </p>
+                      )}
+                      {schedulable.some((a) => a.id === iv.application_id) && (
+                        <InterviewActions id={iv.id} status={iv.status} date={local.date} time={local.time} duration={duration} location={iv.location} past={past} />
+                      )}
+                    </li>
+                  );
+                })}
+                {interviews.length === 0 && <li className="text-sm text-ink-soft">Співбесід ще не було</li>}
+              </ul>
+              {schedulable.length > 0 && !deleted && (
+                mailReady ? (
+                  <details>
+                    <summary className="inline-flex cursor-pointer items-center rounded-lg bg-accent px-4 py-2 text-sm font-medium hover:bg-accent-strong">
+                      Призначити співбесіду
+                    </summary>
+                    <div className="mt-4">
+                      <ScheduleInterview
+                        applications={schedulable.map((a) => ({ id: a.id, name: vacancyTitle.get(a.vacancy_id) ?? 'Вакансія' }))}
+                        users={((usersRes.data ?? []) as { id: string; full_name: string }[])
+                          .filter((u) => u.id !== session.userId)
+                          .map((u) => ({ id: u.id, name: u.full_name }))}
+                        candidateId={id}
+                        candidateEmail={c.email}
+                        fromEmail={account!.google_email}
+                        templates={(tplRes.data ?? []) as { id: string; name: string }[]}
+                        inviteTemplateId={inviteTemplate?.id}
+                      />
+                    </div>
+                  </details>
+                ) : (
+                  <p className="text-sm text-ink-soft">
+                    Щоб призначати співбесіди у своєму Google Календарі, підключіть Google у{' '}
+                    <Link href="/profile" className="underline">
+                      профілі
+                    </Link>
+                    .
+                  </p>
+                )
+              )}
+            </Card>
+          )}
 
           {canApps && (
             <Card>

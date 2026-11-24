@@ -16,7 +16,7 @@ export function AuthShell({ title, subtitle, children }: { title: string; subtit
           <div className="mt-6">{children}</div>
         </div>
         <p className="mt-4 text-center text-xs text-ink-soft">
-          HR CRM KAN — внутрішня система рекрутингу ·{' '}
+          KAN Talent — внутрішня система рекрутингу ·{' '}
           <a href="/privacy" className="underline">
             Політика конфіденційності
           </a>

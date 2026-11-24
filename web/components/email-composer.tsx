@@ -1,5 +1,5 @@
 'use client';
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { prepareEmail, sendEmail } from '@/app/(app)/inbox/actions';
 import { Alert, Button, Field, Input, Select } from '@/components/ui';
 import { findPlaceholders, textToHtml } from '@/lib/email';
@@ -12,15 +12,21 @@ export function EmailComposer({
   fromEmail,
   templates,
   applications,
+  interviewId,
+  defaultTemplateId,
+  defaultApplicationId,
 }: {
   candidateId: string;
   candidateEmail: string;
   fromEmail: string;
   templates: Option[];
   applications: Option[];
+  interviewId?: string;
+  defaultTemplateId?: string;
+  defaultApplicationId?: string;
 }) {
-  const [applicationId, setApplicationId] = useState(applications[0]?.id ?? '');
-  const [templateId, setTemplateId] = useState('');
+  const [applicationId, setApplicationId] = useState(defaultApplicationId ?? applications[0]?.id ?? '');
+  const [templateId, setTemplateId] = useState(defaultTemplateId ?? '');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [step, setStep] = useState<'edit' | 'preview'>('edit');
@@ -31,7 +37,7 @@ export function EmailComposer({
   function load(nextTemplate: string, nextApplication: string) {
     setMessage(null);
     startLoading(async () => {
-      const r = await prepareEmail({ candidateId, applicationId: nextApplication || null, templateId: nextTemplate || null });
+      const r = await prepareEmail({ candidateId, applicationId: nextApplication || null, templateId: nextTemplate || null, interviewId: interviewId ?? null });
       if (r.error) setMessage({ error: r.error });
       else {
         setSubject(r.subject ?? '');
@@ -39,6 +45,15 @@ export function EmailComposer({
       }
     });
   }
+
+  const loaded = useRef(false);
+  useEffect(() => {
+    if (defaultTemplateId && !loaded.current) {
+      loaded.current = true;
+      load(defaultTemplateId, defaultApplicationId ?? applications[0]?.id ?? '');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const placeholders = findPlaceholders(`${subject}\n${body}`);
 

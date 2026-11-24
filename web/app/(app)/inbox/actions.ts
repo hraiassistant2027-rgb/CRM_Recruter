@@ -20,6 +20,7 @@ import {
   type TemplateVars,
 } from '@/lib/email';
 import type { FormState } from '@/lib/form-state';
+import { formatInterviewDate, formatTime } from '@/lib/time';
 
 type Supa = Awaited<ReturnType<typeof createClient>>;
 const GMAIL = 'https://gmail.googleapis.com/gmail/v1/users/me';
@@ -54,7 +55,13 @@ export async function disconnectGoogle(): Promise<FormState> {
 // ---------------------------------------------------------------------
 // Підготовка листа: шаблон + змінні
 // ---------------------------------------------------------------------
-async function variablesFor(supabase: Supa, userId: string, candidateId: string, applicationId: string | null): Promise<{ vars: TemplateVars; to: string | null; name: string } | null> {
+async function variablesFor(
+  supabase: Supa,
+  userId: string,
+  candidateId: string,
+  applicationId: string | null,
+  interviewId: string | null = null,
+): Promise<{ vars: TemplateVars; to: string | null; name: string } | null> {
   const [{ data: candidate }, { data: me }, { data: account }] = await Promise.all([
     supabase.from('candidates').select('full_name, email').eq('id', candidateId).maybeSingle(),
     supabase.from('profiles').select('full_name, phone, email').eq('id', userId).maybeSingle(),
@@ -69,10 +76,27 @@ async function variablesFor(supabase: Supa, userId: string, candidateId: string,
       vacancyTitle = v?.title ?? null;
     }
   }
+  let interviewVars: TemplateVars = {};
+  if (interviewId) {
+    const { data: iv } = await supabase.from('interviews').select('application_id, starts_at, location, meet_link').eq('id', interviewId).maybeSingle();
+    if (iv) {
+      interviewVars = {
+        'interview.date': formatInterviewDate(iv.starts_at),
+        'interview.time': formatTime(iv.starts_at),
+        'interview.location': iv.location || (iv.meet_link ? `онлайн, Google Meet: ${iv.meet_link}` : null),
+      };
+      if (!vacancyTitle) {
+        const { data: app } = await supabase.from('applications').select('vacancy_id').eq('id', iv.application_id).maybeSingle();
+        const { data: v } = app ? await supabase.from('vacancies').select('title').eq('id', app.vacancy_id).maybeSingle() : { data: null };
+        vacancyTitle = v?.title ?? null;
+      }
+    }
+  }
   return {
     to: candidate.email,
     name: candidate.full_name,
     vars: {
+      ...interviewVars,
       'candidate.first_name': firstNameOf(candidate.full_name),
       'candidate.full_name': candidate.full_name,
       'vacancy.title': vacancyTitle,
@@ -83,7 +107,12 @@ async function variablesFor(supabase: Supa, userId: string, candidateId: string,
   };
 }
 
-export async function prepareEmail(input: { candidateId: string; applicationId?: string | null; templateId?: string | null }): Promise<{
+export async function prepareEmail(input: {
+  candidateId: string;
+  applicationId?: string | null;
+  templateId?: string | null;
+  interviewId?: string | null;
+}): Promise<{
   error?: string;
   subject?: string;
   body?: string;
@@ -93,7 +122,13 @@ export async function prepareEmail(input: { candidateId: string; applicationId?:
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { error: 'Сесія завершилася' };
-  const ctx = await variablesFor(supabase, auth.user.id, input.candidateId, input.applicationId && uuidSchema.safeParse(input.applicationId).success ? input.applicationId : null);
+  const ctx = await variablesFor(
+    supabase,
+    auth.user.id,
+    input.candidateId,
+    input.applicationId && uuidSchema.safeParse(input.applicationId).success ? input.applicationId : null,
+    input.interviewId && uuidSchema.safeParse(input.interviewId).success ? input.interviewId : null,
+  );
   if (!ctx) return { error: 'Кандидата не знайдено' };
   if (!input.templateId) return { subject: '', body: `Добрий день, ${ctx.vars['candidate.first_name']}!\n\n\n\nЗ повагою,\n${ctx.vars['recruiter.name'] ?? ''}`, missing: [] };
   if (!uuidSchema.safeParse(input.templateId).success) return { error: 'Невірний шаблон' };

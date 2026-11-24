@@ -1,17 +1,17 @@
 import type { Metadata } from 'next';
 
-export const metadata: Metadata = { title: 'Політика конфіденційності — HR CRM KAN' };
+export const metadata: Metadata = { title: 'Політика конфіденційності — KAN Talent' };
 
 // Публічна сторінка: її перевіряє Google під час налаштування доступу до Gmail і Календаря
 export default function PrivacyPage() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-12 text-sm leading-relaxed text-ink">
-      <h1 className="mb-2 text-2xl font-semibold">Політика конфіденційності HR CRM KAN</h1>
+      <h1 className="mb-2 text-2xl font-semibold">Політика конфіденційності KAN Talent</h1>
       <p className="mb-8 text-ink-soft">Privacy Policy · Оновлено 24.11.2026</p>
 
       <section className="space-y-3">
         <p>
-          HR CRM KAN — внутрішня система рекрутингу будівельної компанії KAN. Доступ мають лише працівники відділу рекрутингу та керівники,
+          KAN Talent — внутрішня система рекрутингу будівельної компанії KAN. Доступ мають лише працівники відділу рекрутингу та керівники,
           запрошені адміністратором. Публічної реєстрації немає.
         </p>
         <h2 className="pt-4 text-lg font-semibold">Дані кандидатів</h2>
@@ -45,7 +45,7 @@ export default function PrivacyPage() {
         </p>
         <h2 className="pt-4 text-lg font-semibold">English summary</h2>
         <p>
-          HR CRM KAN is an internal recruiting system used only by invited employees of KAN. When an employee connects a Google account, the app uses
+          KAN Talent is an internal recruiting system used only by invited employees of KAN. When an employee connects a Google account, the app uses
           Gmail to send messages the employee composes and confirms, reads only correspondence with candidates stored in the system, and manages
           interview events in Google Calendar. Tokens are stored encrypted and can be revoked at any time. Google user data is not sold, shared with third
           parties, used for advertising or for training AI models. Use of information received from Google APIs adheres to the Google API Services User
