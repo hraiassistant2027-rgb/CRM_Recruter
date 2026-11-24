@@ -29,6 +29,7 @@ import {
   UploadResumeForm,
   WithdrawConsentButton,
 } from './card-actions';
+import { AddToVacancyForm } from './add-to-vacancy';
 
 export const metadata: Metadata = { title: 'Картка кандидата' };
 
@@ -79,6 +80,29 @@ export default async function CandidatePage({
     c.source_id ? supabase.from('sources').select('name').eq('id', c.source_id).maybeSingle() : Promise.resolve({ data: null }),
   ]);
   const names = new Map(((profiles.data ?? []) as { id: string; full_name: string }[]).map((p) => [p.id, p.full_name]));
+
+  // Відгуки на вакансії та історія етапів
+  type App = { id: string; vacancy_id: string; stage_id: string; stage_changed_at: string; rejection_reason_id: string | null; rejection_comment: string | null; created_at: string };
+  type Hist = { id: number; application_id: string; to_stage_id: string; changed_by: string | null; changed_at: string; comment: string | null };
+  const canApps = can(session.permissions, 'applications.read');
+  const [appsRes, stagesRes, reasonsRes, vacanciesRes] = canApps
+    ? await Promise.all([
+        supabase.from('applications').select('id, vacancy_id, stage_id, stage_changed_at, rejection_reason_id, rejection_comment, created_at').eq('candidate_id', id).order('created_at', { ascending: false }),
+        supabase.from('pipeline_stages').select('id, name, color, kind'),
+        supabase.from('rejection_reasons').select('id, name'),
+        supabase.from('vacancies').select('id, title, status').order('opened_at', { ascending: false }).limit(500),
+      ])
+    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
+  const apps = (appsRes.data ?? []) as App[];
+  const stageById = new Map(((stagesRes.data ?? []) as { id: string; name: string; color: string; kind: string }[]).map((s) => [s.id, s]));
+  const reasonById = new Map(((reasonsRes.data ?? []) as { id: string; name: string }[]).map((r) => [r.id, r.name]));
+  const allVacancies = (vacanciesRes.data ?? []) as { id: string; title: string; status: string }[];
+  const vacancyTitle = new Map(allVacancies.map((v) => [v.id, v.title]));
+  const openVacancies = allVacancies.filter((v) => ['open', 'on_hold', 'draft'].includes(v.status) && !apps.some((a) => a.vacancy_id === v.id));
+  const { data: histData } = apps.length
+    ? await supabase.from('application_stage_history').select('id, application_id, to_stage_id, changed_by, changed_at, comment').in('application_id', apps.map((a) => a.id)).order('changed_at', { ascending: false })
+    : { data: [] };
+  const history = (histData ?? []) as Hist[];
 
   const p = session.permissions;
   const deleted = Boolean(c.deleted_at);
@@ -350,10 +374,55 @@ export default async function CandidatePage({
             )}
           </Card>
 
-          <Card>
-            <h2 className="mb-1 font-medium">Відгуки на вакансії</h2>
-            <p className="text-sm text-ink-soft">З'являться на етапі 4 разом із вакансіями та воронкою.</p>
-          </Card>
+          {canApps && (
+            <Card>
+              <h2 className="mb-3 font-medium">Відгуки на вакансії</h2>
+              <ul className="mb-4 space-y-3">
+                {apps.map((a) => {
+                  const st = stageById.get(a.stage_id);
+                  const hist = history.filter((h) => h.application_id === a.id);
+                  return (
+                    <li key={a.id} className="rounded-lg border border-line p-3 text-sm">
+                      <Link href={`/vacancies/${a.vacancy_id}`} className="font-medium hover:underline">
+                        {vacancyTitle.get(a.vacancy_id) ?? 'Вакансія'}
+                      </Link>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: st?.color ?? '#9CA3AF' }} aria-hidden />
+                          {st?.name ?? '—'}
+                        </span>
+                        <span className="text-ink-soft">з {formatDate(a.stage_changed_at)}</span>
+                      </div>
+                      {a.rejection_reason_id && (
+                        <div className="mt-1 text-xs text-danger">
+                          {reasonById.get(a.rejection_reason_id)}
+                          {a.rejection_comment ? ` — ${a.rejection_comment}` : ''}
+                        </div>
+                      )}
+                      {hist.length > 0 && (
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-xs text-ink-soft">Історія етапів ({hist.length})</summary>
+                          <ol className="mt-2 space-y-1 border-l border-line pl-3 text-xs">
+                            {hist.map((h) => (
+                              <li key={h.id}>
+                                <span className="text-ink-soft">{formatDate(h.changed_at, true)}</span> · {stageById.get(h.to_stage_id)?.name ?? '—'}
+                                {h.changed_by ? <span className="text-ink-soft"> · {names.get(h.changed_by) ?? ''}</span> : null}
+                                {h.comment ? <div className="text-ink-soft">«{h.comment}»</div> : null}
+                              </li>
+                            ))}
+                          </ol>
+                        </details>
+                      )}
+                    </li>
+                  );
+                })}
+                {apps.length === 0 && <li className="text-sm text-ink-soft">Кандидат ще не бере участі у відборі</li>}
+              </ul>
+              {can(session.permissions, 'applications.create') && !deleted && (
+                <AddToVacancyForm candidateId={id} vacancies={openVacancies.map((v) => ({ id: v.id, title: v.title }))} />
+              )}
+            </Card>
+          )}
         </div>
       </div>
       {preview}

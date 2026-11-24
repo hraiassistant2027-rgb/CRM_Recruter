@@ -12,9 +12,8 @@ export default async function SettingsPage() {
 
   const sections = [
     { title: 'Користувачі та ролі', text: 'Запрошення, призначення ролей, блокування, скидання двофакторної перевірки', href: '/settings/users', allowed: can(p, 'users.manage'), stage: null },
-    { title: 'Об\'єкти та підрозділи', text: 'Довідник будівельних об\'єктів і підрозділів', href: null, allowed: true, stage: 4 },
-    { title: 'Етапи воронки', text: 'Назви, кольори, порядок і правила переходів між етапами', href: null, allowed: true, stage: 4 },
-    { title: 'Джерела та причини відмов', text: 'Довідники для карток кандидатів і відгуків', href: null, allowed: true, stage: 3 },
+    { title: 'Довідники', text: 'Об\'єкти, підрозділи, джерела кандидатів, причини відмов', href: '/settings/dictionaries', allowed: true, stage: null },
+    { title: 'Етапи воронки', text: 'Назви, кольори, норма днів на етапі, вимкнення етапів', href: '/settings/pipeline', allowed: true, stage: null },
     { title: 'Конструктор ролей', text: 'Створення нових ролей і детальні права доступу до модулів і полів', href: null, allowed: true, stage: 8 },
   ].filter((s) => s.allowed);
 

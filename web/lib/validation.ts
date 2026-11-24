@@ -155,3 +155,56 @@ export function safeFileName(name: string): string {
     .slice(0, 60);
   return `${base || 'resume'}.${ext}`;
 }
+
+// ---------------------------------------------------------------------
+// Вакансії (етап 4)
+// ---------------------------------------------------------------------
+const optionalUuid = z
+  .string()
+  .trim()
+  .transform((v) => (v === '' ? null : v))
+  .pipe(z.string().uuid('Невірне значення').nullable());
+
+const optionalMoney = z
+  .string()
+  .trim()
+  .transform((v) => (v === '' ? null : Number(v.replace(/\s/g, '').replace(',', '.'))))
+  .refine((v) => v === null || (Number.isFinite(v) && v >= 0 && v < 1e9), { message: 'Сума — додатне число' });
+
+export const VACANCY_STATUSES = ['draft', 'open', 'on_hold', 'closed', 'cancelled'] as const;
+export const VACANCY_PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const;
+
+export const vacancySchema = z
+  .object({
+    title: z.string().trim().min(2, 'Вкажіть назву вакансії').max(200, 'Задовга назва'),
+    site_id: optionalUuid,
+    department_id: optionalUuid,
+    hiring_manager_name: optionalText(200, "Задовге ім'я"),
+    hiring_manager_id: optionalUuid,
+    recruiter_id: optionalUuid,
+    headcount: z
+      .string()
+      .trim()
+      .transform((v) => (v === '' ? 1 : Number(v)))
+      .refine((v) => Number.isInteger(v) && v >= 1 && v <= 1000, { message: 'Кількість місць — ціле число від 1' }),
+    salary_min: optionalMoney,
+    salary_max: optionalMoney,
+    salary_currency: z.enum(['UAH', 'USD', 'EUR'], { message: 'Оберіть валюту' }),
+    priority: z.enum(VACANCY_PRIORITIES, { message: 'Оберіть пріоритет' }),
+    status: z.enum(VACANCY_STATUSES, { message: 'Оберіть статус' }),
+    opened_at: z
+      .string()
+      .trim()
+      .refine((v) => /^\d{4}-\d{2}-\d{2}$/.test(v), { message: 'Вкажіть дату відкриття' }),
+    requirements: optionalText(10000, 'Задовгий опис'),
+  })
+  .refine((v) => v.salary_min === null || v.salary_max === null || v.salary_max >= v.salary_min, {
+    message: 'Максимальна зарплата не може бути меншою за мінімальну',
+    path: ['salary_max'],
+  });
+export type VacancyInput = z.infer<typeof vacancySchema>;
+
+export const dictionaryItemSchema = z.object({
+  name: z.string().trim().min(2, 'Вкажіть назву').max(200, 'Задовга назва'),
+  extra: optionalText(300, 'Задовгий текст'),
+});
