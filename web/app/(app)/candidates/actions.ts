@@ -86,12 +86,12 @@ async function findDuplicates(supabase: Supa, c: CandidateInput, exclude: string
 // ---------------------------------------------------------------------
 type Stored = { issue: string | null; fields: ResumeFields };
 
-async function storeResume(supabase: Supa, candidateId: string, file: File): Promise<Stored> {
-  const result = await storeResumeInner(supabase, candidateId, file);
+async function storeResume(supabase: Supa, candidateId: string, file: File, sourceRef: string | null = null): Promise<Stored> {
+  const result = await storeResumeInner(supabase, candidateId, file, sourceRef);
   return typeof result === 'string' ? { issue: result, fields: {} } : { issue: null, fields: result };
 }
 
-async function storeResumeInner(supabase: Supa, candidateId: string, file: File): Promise<string | ResumeFields> {
+async function storeResumeInner(supabase: Supa, candidateId: string, file: File, sourceRef: string | null): Promise<string | ResumeFields> {
   const issue = resumeFileIssue(file.name, file.size);
   if (issue) return issue;
 
@@ -118,6 +118,7 @@ async function storeResumeInner(supabase: Supa, candidateId: string, file: File)
       size_bytes: file.size,
       sha256,
       extracted_text: text,
+      source_ref: sourceRef,
       parse_status: !text ? 'failed' : Object.keys(fields).length ? 'parsed' : 'indexed_only',
     });
 
@@ -435,6 +436,8 @@ export async function importResume(formData: FormData): Promise<ImportResult> {
   const vacancy = uuidSchema.safeParse(formData.get('vacancy_id'));
   const vacancyId = vacancy.success ? vacancy.data : null;
   const source = uuidSchema.safeParse(formData.get('source_id'));
+  const sourceRefRaw = String(formData.get('source_ref') ?? '');
+  const sourceRef = /^drive:[A-Za-z0-9_-]{10,}$/.test(sourceRefRaw) ? sourceRefRaw : null;
 
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
@@ -491,7 +494,7 @@ export async function importResume(formData: FormData): Promise<ImportResult> {
   // 3. Точний дублікат за телефоном, email або LinkedIn — додаємо резюме до наявної картки
   const exact = (await findDuplicates(supabase, input, null)).find((d) => d.match_type === 'exact' && d.accessible);
   if (exact) {
-    const stored = await storeResume(supabase, exact.candidate_id, file);
+    const stored = await storeResume(supabase, exact.candidate_id, file, sourceRef);
     const v = await addToVacancy(exact.candidate_id);
     return {
       status: 'existing',
@@ -511,7 +514,7 @@ export async function importResume(formData: FormData): Promise<ImportResult> {
     legal_basis: 'pre_contract',
     source: 'Резюме надіслано кандидатом (пакетне завантаження)',
   });
-  const stored = await storeResume(supabase, candidateId, file);
+  const stored = await storeResume(supabase, candidateId, file, sourceRef);
   const v = await addToVacancy(candidateId);
   revalidatePath('/candidates');
   if (vacancyId) revalidatePath(`/vacancies/${vacancyId}`);

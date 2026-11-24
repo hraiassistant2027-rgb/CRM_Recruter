@@ -13,6 +13,7 @@ export default async function SettingsPage() {
   const sections = [
     { title: 'Користувачі та ролі', text: 'Запрошення, призначення ролей, блокування, скидання двофакторної перевірки', href: '/settings/users', allowed: can(p, 'users.manage'), stage: null },
     { title: 'Довідники', text: 'Кадровики, об\'єкти, підрозділи, джерела кандидатів, причини відмов', href: '/settings/dictionaries', allowed: true, stage: null },
+    { title: 'Банк резюме', text: 'Папка архіву резюме на Google Диску для пошуку', href: '/settings/resume-bank', allowed: true, stage: null },
     { title: 'Етапи воронки', text: 'Назви, кольори, норма днів на етапі, вимкнення етапів', href: '/settings/pipeline', allowed: true, stage: null },
     { title: 'Конструктор ролей', text: 'Створення нових ролей і детальні права доступу до модулів і полів', href: null, allowed: true, stage: 8 },
   ].filter((s) => s.allowed);

@@ -39,6 +39,7 @@ export type MenuLink = { id: string; name: string; icon: string | null; href: st
 export const SYSTEM_ROUTES: Record<string, string> = {
   dashboard: '/',
   candidates: '/candidates',
+  resume_bank: '/resume-bank',
   vacancies: '/vacancies',
   pipeline: '/pipeline',
   calendar: '/calendar',

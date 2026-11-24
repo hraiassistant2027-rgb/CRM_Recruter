@@ -1,4 +1,5 @@
 import {
+  Archive,
   Blocks,
   Briefcase,
   Calendar,
@@ -27,6 +28,7 @@ const ICONS: Record<string, LucideIcon> = {
   'file-text': FileText,
   settings: Settings,
   blocks: Blocks,
+  archive: Archive,
 };
 
 export function MenuIcon({ name, className }: { name: string | null; className?: string }) {

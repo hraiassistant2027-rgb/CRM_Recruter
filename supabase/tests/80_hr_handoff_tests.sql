@@ -42,3 +42,15 @@ select tst.login('00000000-0000-0000-0000-0000000000a1');
 select tst.ok(tst.rows($$update public.hr_contacts set email = 'liza@kan.ua' where name = 'Ліза'$$) = 1, 'адміністратор змінює email кадровика');
 reset role;
 \echo '=== Тести статусів оформлення пройдено ==='
+
+\echo '--- 24. Банк резюме: налаштування'
+set role authenticated;
+select tst.login('00000000-0000-0000-0000-0000000000a1');
+select tst.ok(tst.rows($$insert into public.app_settings (key, value) values ('resume_bank', '{"folderId": "x"}')$$) = 1,
+              'адміністратор підключає папку архіву');
+select tst.login('00000000-0000-0000-0000-0000000000a2');
+select tst.ok((select value ->> 'folderId' from public.app_settings where key = 'resume_bank') = 'x', 'рекрутер бачить налаштування банку');
+select tst.ok(tst.rows($$update public.app_settings set value = '{}' where key = 'resume_bank'$$) = 0, 'рекрутер не змінює налаштування банку');
+reset role;
+select tst.ok((select count(*) from public.menu_items where target_ref = 'resume_bank') = 1, 'пункт меню «Банк резюме» додано');
+\echo '=== Тести банку резюме пройдено ==='
