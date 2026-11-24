@@ -1,6 +1,6 @@
 'use client';
 import { useActionState } from 'react';
-import { addDictionaryItem, setDictionaryItemActive, updateStage } from './actions';
+import { addDictionaryItem, moveStage, setDictionaryItemActive, updateStage } from './actions';
 import { Alert, Input } from '@/components/ui';
 import { SubmitButton } from '@/components/submit-button';
 import { initialFormState } from '@/lib/form-state';
@@ -49,6 +49,38 @@ export function StageForm({ stage }: { stage: { id: string; name: string; color:
       {(state.error || state.ok) && (
         <div className="sm:col-span-5">{state.error ? <Alert>{state.error}</Alert> : <Alert kind="success">{state.ok}</Alert>}</div>
       )}
+    </form>
+  );
+}
+
+export function StageOrderButtons({ id, first, last }: { id: string; first: boolean; last: boolean }) {
+  const [state, action] = useActionState(moveStage, initialFormState);
+  return (
+    <form action={action} className="flex flex-col items-center gap-0.5">
+      <input type="hidden" name="id" value={id} />
+      <button
+        type="submit"
+        name="dir"
+        value="up"
+        disabled={first}
+        aria-label="Підняти етап вище"
+        title="Вище"
+        className="rounded border border-line bg-white px-2 text-sm leading-5 hover:bg-surface disabled:opacity-30"
+      >
+        ↑
+      </button>
+      <button
+        type="submit"
+        name="dir"
+        value="down"
+        disabled={last}
+        aria-label="Опустити етап нижче"
+        title="Нижче"
+        className="rounded border border-line bg-white px-2 text-sm leading-5 hover:bg-surface disabled:opacity-30"
+      >
+        ↓
+      </button>
+      {state.error && <span className="text-xs text-danger">{state.error}</span>}
     </form>
   );
 }

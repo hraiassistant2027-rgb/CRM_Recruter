@@ -74,3 +74,22 @@ export async function updateStage(_prev: FormState, formData: FormData): Promise
   revalidatePath('/pipeline');
   return { ok: 'Етап збережено' };
 }
+
+export async function moveStage(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = uuidSchema.safeParse(formData.get('id'));
+  const dir = formData.get('dir') === 'up' ? 'up' : 'down';
+  if (!id.success) return { error: 'Невірний етап' };
+  const supabase = await createClient();
+  const { data: stage } = await supabase.from('pipeline_stages').select('id, pipeline_id, sort_order').eq('id', id.data).maybeSingle();
+  if (!stage) return { error: 'Етап не знайдено' };
+  let q = supabase.from('pipeline_stages').select('id').eq('pipeline_id', stage.pipeline_id);
+  q = dir === 'up' ? q.lt('sort_order', stage.sort_order).order('sort_order', { ascending: false }) : q.gt('sort_order', stage.sort_order).order('sort_order');
+  const { data: neighbour } = await q.limit(1).maybeSingle();
+  if (!neighbour) return { ok: 'Етап уже на краю списку' };
+  const { error } = await supabase.rpc('swap_stage_order', { p_a: stage.id, p_b: neighbour.id });
+  if (error) return { error: translateError(error) };
+  revalidatePath('/settings/pipeline');
+  revalidatePath('/pipeline');
+  revalidatePath('/vacancies', 'layout');
+  return { ok: 'Порядок змінено' };
+}

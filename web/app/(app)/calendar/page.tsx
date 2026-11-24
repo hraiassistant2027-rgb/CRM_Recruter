@@ -6,6 +6,7 @@ import { Card, PageHeader } from '@/components/ui';
 import { loadAgenda, type AgendaItem } from '@/lib/interviews-load';
 import { KIND_COLORS, KIND_LABELS, STATUS_LABELS } from '@/lib/interviews';
 import { addDays, dateToKyiv, formatTime, kyivToDate, todayKyiv, weekStart } from '@/lib/time';
+import { DayListButton, type DayList } from '@/components/day-list';
 
 export const metadata: Metadata = { title: 'Календар' };
 
@@ -59,7 +60,22 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const items = await loadAgenda(supabase, from.toISOString(), to.toISOString(), all ? undefined : session.userId);
   const { data: users } = await supabase.from('profiles').select('id, full_name');
   const nameOf = new Map(((users ?? []) as { id: string; full_name: string }[]).map((u) => [u.id, u.full_name]));
-  const days = Array.from({ length: 7 }, (_, i) => addDays(week, i));
+  const allDays = Array.from({ length: 7 }, (_, i) => addDays(week, i));
+  // Субота і неділя показуються лише тоді, коли на них є зустрічі
+  const days = allDays.filter((d, i) => i < 5 || items.some((it) => dateToKyiv(it.starts_at).date === d));
+
+  // Текстові списки зустрічей по днях — для керівника
+  const LIST_DAY = new Intl.DateTimeFormat('uk-UA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const dayLists: DayList[] = allDays.map((d) => {
+    const list = items.filter((it) => dateToKyiv(it.starts_at).date === d).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+    const label = LIST_DAY.format(new Date(`${d}T00:00:00Z`));
+    const lines = list.map((it) => {
+      const contact = it.meet_link ? `Google Meet: ${it.meet_link}` : it.candidate_phone ?? 'тел. не вказано';
+      const recruiter = it.recruiter_id ? nameOf.get(it.recruiter_id) ?? '' : '';
+      return `${formatTime(it.starts_at)} — ${it.candidate_name} / ${it.vacancy_title} / ${contact} / ${recruiter}`;
+    });
+    return { date: d, label, count: list.length, text: `Зустрічі на ${label}\n\n${lines.join('\n')}` };
+  });
   const href = (w: string, a = all) => `/calendar?week=${w}${a ? '&all=1' : ''}`;
 
   // Видимі години: 08–20 або ширше, якщо є події раніше/пізніше
@@ -80,7 +96,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
               ← Попередній
             </Link>
             <span className="font-medium">
-              {RANGE.format(new Date(`${week}T00:00:00Z`))} — {RANGE.format(new Date(`${addDays(week, 6)}T00:00:00Z`))}
+              {RANGE.format(new Date(`${week}T00:00:00Z`))} — {RANGE.format(new Date(`${addDays(week, 4)}T00:00:00Z`))}
             </span>
             <Link href={href(addDays(week, 7))} className="rounded-lg border border-line px-3 py-1.5 hover:bg-surface">
               Наступний →
@@ -117,9 +133,13 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
         </div>
       </Card>
 
+      <div className="mb-4">
+        <DayListButton days={dayLists} defaultDate={today} />
+      </div>
+
       <div className="overflow-x-auto rounded-xl border border-line bg-white">
-        <div className="min-w-[1050px]">
-          <div className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))] border-b border-line bg-surface text-xs">
+        <div className={days.length > 5 ? 'min-w-[1050px]' : 'min-w-[800px]'}>
+          <div className="grid border-b border-line bg-surface text-xs" style={{ gridTemplateColumns: `56px repeat(${days.length}, minmax(0, 1fr))` }}>
             <div />
             {days.map((d) => (
               <div key={d} className={`border-l border-line px-2 py-2 text-center ${d === today ? 'bg-accent-soft font-semibold' : 'font-medium'}`}>
@@ -127,7 +147,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))]" style={{ height }}>
+          <div className="grid" style={{ height, gridTemplateColumns: `56px repeat(${days.length}, minmax(0, 1fr))` }}>
             <div className="relative">
               {hours.map((h, i) => (
                 <div key={h} className="absolute right-2 -translate-y-2 text-[11px] text-ink-soft" style={{ top: i * HOUR_PX }}>
