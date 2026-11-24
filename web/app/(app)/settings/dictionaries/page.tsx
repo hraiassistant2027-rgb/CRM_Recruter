@@ -7,7 +7,7 @@ import { AddItemForm, ToggleItem } from './forms';
 
 export const metadata: Metadata = { title: 'Довідники' };
 
-type Item = { id: string; name: string; is_active: boolean; address?: string | null; side?: string };
+type Item = { id: string; name: string; is_active: boolean; address?: string | null; side?: string; email?: string };
 
 function Section({ title, hint, kind, items, extraLabel }: { title: string; hint: string; kind: string; items: Item[]; extraLabel?: string }) {
   return (
@@ -19,7 +19,7 @@ function Section({ title, hint, kind, items, extraLabel }: { title: string; hint
           <li key={i.id} className={`flex items-center justify-between gap-2 py-1.5 text-sm ${i.is_active ? '' : 'opacity-60'}`}>
             <span className="min-w-0">
               <span className="block truncate">{i.name}</span>
-              {i.address && <span className="block truncate text-xs text-ink-soft">{i.address}</span>}
+              {(i.address || i.email) && <span className="block truncate text-xs text-ink-soft">{i.address ?? i.email}</span>}
             </span>
             <span className="flex shrink-0 items-center gap-2">
               {!i.is_active && <Badge>вимкнено</Badge>}
@@ -37,11 +37,12 @@ function Section({ title, hint, kind, items, extraLabel }: { title: string; hint
 export default async function DictionariesPage() {
   await requirePermission('settings.manage');
   const supabase = await createClient();
-  const [sites, departments, sources, reasons] = await Promise.all([
+  const [sites, departments, sources, reasons, hr] = await Promise.all([
     supabase.from('sites').select('id, name, address, is_active').order('name'),
     supabase.from('departments').select('id, name, is_active').order('name'),
     supabase.from('sources').select('id, name, is_active').order('sort_order'),
     supabase.from('rejection_reasons').select('id, name, side, is_active').order('sort_order'),
+    supabase.from('hr_contacts').select('id, name, email, is_active').order('name'),
   ]);
   const r = (reasons.data ?? []) as Item[];
   return (
@@ -52,6 +53,7 @@ export default async function DictionariesPage() {
         actions={<Link href="/settings" className="text-sm text-ink-soft underline">← Налаштування</Link>}
       />
       <div className="grid gap-4 lg:grid-cols-2">
+        <Section title="Кадровики" hint="Кому передавати кандидатів на оформлення (етап «Офер»)" kind="hr_contacts" items={(hr.data ?? []) as Item[]} extraLabel="Email кадровика" />
         <Section title="Об'єкти" hint="Будівельні об'єкти для вакансій" kind="sites" items={(sites.data ?? []) as Item[]} extraLabel="Адреса (необов'язково)" />
         <Section title="Підрозділи" hint="Відділи та служби компанії" kind="departments" items={(departments.data ?? []) as Item[]} />
         <Section title="Джерела кандидатів" hint="Звідки прийшов кандидат" kind="sources" items={(sources.data ?? []) as Item[]} />

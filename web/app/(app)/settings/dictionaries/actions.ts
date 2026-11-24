@@ -11,6 +11,7 @@ const KINDS = {
   sources: { table: 'sources', extra: null },
   company_reasons: { table: 'rejection_reasons', extra: null, side: 'company' },
   candidate_reasons: { table: 'rejection_reasons', extra: null, side: 'candidate' },
+  hr_contacts: { table: 'hr_contacts', extra: 'email' },
 } as const;
 type Kind = keyof typeof KINDS;
 
@@ -24,8 +25,9 @@ export async function addDictionaryItem(_prev: FormState, formData: FormData): P
   const parsed = dictionaryItemSchema.safeParse({ name: formData.get('name'), extra: formData.get('extra') ?? '' });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Перевірте дані' };
   const cfg = KINDS[kind];
+  if (kind === 'hr_contacts' && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(parsed.data.extra ?? '')) return { error: 'Вкажіть email кадровика' };
   const row: Record<string, string | null> = { name: parsed.data.name };
-  if (cfg.extra) row[cfg.extra] = parsed.data.extra;
+  if (cfg.extra) row[cfg.extra] = cfg.extra === 'email' ? (parsed.data.extra ?? '').toLowerCase() : parsed.data.extra;
   if ('side' in cfg) row.side = cfg.side;
 
   const supabase = await createClient();

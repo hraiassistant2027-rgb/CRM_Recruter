@@ -7,7 +7,9 @@ import { Badge, Card, PageHeader } from '@/components/ui';
 import { firstNameOf } from '@/lib/email';
 import { loadAgenda } from '@/lib/interviews-load';
 import { KIND_LABELS } from '@/lib/interviews';
-import { addDays, dateToKyiv, formatTime, kyivToDate, todayKyiv } from '@/lib/time';
+import { addDays, dateToKyiv, formatInterviewDate, formatTime, kyivToDate, todayKyiv } from '@/lib/time';
+import { HrHandoffList, type HandoffRow } from '@/components/hr-handoff';
+import { formatDate } from '@/lib/candidates';
 
 export const metadata: Metadata = { title: 'Dashboard' };
 
@@ -35,6 +37,51 @@ export default async function DashboardPage() {
     ? await loadAgenda(await createClient(), kyivToDate(today, '00:00')!.toISOString(), kyivToDate(addDays(today, 2), '00:00')!.toISOString(), session.userId)
     : [];
 
+  // Передача кадровикам: кандидати на етапі «Офер»
+  let handoffRows: HandoffRow[] = [];
+  let hrContacts: { id: string; name: string; email: string }[] = [];
+  let gmailReady = false;
+  if (can(p, 'applications.read')) {
+    const sb = await createClient();
+    const { data: offerStages } = await sb.from('pipeline_stages').select('id').eq('contact_kind', 'offer');
+    const stageIds = ((offerStages ?? []) as { id: string }[]).map((s) => s.id);
+    const { data: apps } = stageIds.length
+      ? await sb
+          .from('applications')
+          .select('id, candidate_id, vacancy_id, candidates(full_name, phone), vacancies(title)')
+          .in('stage_id', stageIds)
+          .order('stage_changed_at', { ascending: false })
+          .limit(100)
+      : { data: [] };
+    type A = { id: string; candidate_id: string; candidates: { full_name: string; phone: string | null } | { full_name: string; phone: string | null }[] | null; vacancies: { title: string } | { title: string }[] | null };
+    const list = (apps ?? []) as unknown as A[];
+    const ids = list.map((a) => a.id);
+    const [{ data: offers }, { data: handoffs }, { data: contacts }, { data: account }] = await Promise.all([
+      ids.length ? sb.from('interviews').select('application_id, starts_at').in('application_id', ids).eq('kind', 'offer').neq('status', 'cancelled').order('starts_at') : Promise.resolve({ data: [] }),
+      ids.length ? sb.from('hr_handoffs').select('application_id, hr_email, sent_at').in('application_id', ids).order('sent_at') : Promise.resolve({ data: [] }),
+      sb.from('hr_contacts').select('id, name, email').eq('is_active', true).order('name'),
+      sb.from('email_accounts').select('status').eq('user_id', session.userId).maybeSingle(),
+    ]);
+    const offerAt = new Map(((offers ?? []) as { application_id: string; starts_at: string }[]).map((o) => [o.application_id, o.starts_at]));
+    const handed = new Map(((handoffs ?? []) as { application_id: string; hr_email: string; sent_at: string }[]).map((h) => [h.application_id, h]));
+    const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? v[0] ?? null : v);
+    handoffRows = list.map((a) => {
+      const at = offerAt.get(a.id);
+      const h = handed.get(a.id);
+      return {
+        applicationId: a.id,
+        candidateId: a.candidate_id,
+        candidateName: one(a.candidates)?.full_name ?? 'Кандидат',
+        phone: one(a.candidates)?.phone ?? null,
+        vacancyTitle: one(a.vacancies)?.title ?? '',
+        offerAt: at ? `${formatInterviewDate(at)}, ${formatTime(at)}` : null,
+        lastHandoff: h ? `${formatDate(h.sent_at, true)} → ${h.hr_email}` : null,
+      };
+    });
+    hrContacts = (contacts ?? []) as { id: string; name: string; email: string }[];
+    gmailReady = (account as { status: string } | null)?.status === 'active';
+  }
+
   const stats = [
     { label: 'Кандидатів у базі', value: candidates, href: '/candidates' },
     { label: 'Відкритих вакансій', value: openVacancies, href: '/vacancies' },
@@ -55,6 +102,19 @@ export default async function DashboardPage() {
             </Link>
           ))}
         </div>
+      )}
+      {can(p, 'applications.read') && (
+        <Card className="mt-6">
+          <div className="mb-1 flex items-center justify-between gap-3">
+            <h2 className="font-medium">Передати кадровикам на оформлення</h2>
+            <span className="text-xs text-ink-soft">Кандидати на етапі «Офер»</span>
+          </div>
+          {handoffRows.length === 0 ? (
+            <p className="text-sm text-ink-soft">Кандидатів на етапі «Офер» немає.</p>
+          ) : (
+            <HrHandoffList rows={handoffRows} contacts={hrContacts} canSend={can(p, 'email.send')} gmailReady={gmailReady} />
+          )}
+        </Card>
       )}
       {can(p, 'applications.read') && (
         <Card className="mt-6">

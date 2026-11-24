@@ -333,8 +333,10 @@ export function ContactDialog({
   const [date, setDate] = useState(tomorrow);
   const [time, setTime] = useState('10:00');
   const [duration, setDuration] = useState(kind === 'call' ? 15 : kind === 'phone' ? 30 : 60);
+  const defaultPlace = kind === 'call' || kind === 'phone' ? 'phone' : kind === 'start' && defaultSiteId ? 'site' : 'office';
   const [place, setPlace] = useState<LocationValue>({ mode: 'phone', location: 'Телефоном', meet: false });
   const [google, setGoogle] = useState(googleReady);
+  const dateLabel = kind === 'offer' ? 'Дата запрошення на оформлення *' : kind === 'start' ? 'Дата виходу на роботу *' : 'Дата *';
   const [invite, setInvite] = useState(INVITE_BY_DEFAULT.includes(kind));
   const [comment, setComment] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
@@ -351,7 +353,7 @@ export function ContactDialog({
         </p>
         <div className="space-y-4">
           <div className="grid grid-cols-[1fr_100px_100px] gap-2">
-            <Field label="Дата *" htmlFor="c-date">
+            <Field label={dateLabel} htmlFor="c-date">
               <Input id="c-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </Field>
             <Field label="Час *" htmlFor="c-time">
@@ -369,7 +371,7 @@ export function ContactDialog({
           </div>
           <LocationPicker
             sites={sites}
-            defaultMode={kind === 'call' || kind === 'phone' ? 'phone' : defaultSiteId ? 'site' : 'office'}
+            defaultMode={defaultPlace}
             defaultSiteId={defaultSiteId}
             googleReady={googleReady}
             idPrefix="c-loc"

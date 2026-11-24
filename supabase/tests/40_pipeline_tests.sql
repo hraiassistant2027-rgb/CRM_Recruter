@@ -56,11 +56,12 @@ select public.move_application('43000000-0000-0000-0000-000000000001',
 select tst.ok((select closed_at is not null and rejection_comment = 'Немає досвіду монолітних робіт'
                from public.applications where id = '43000000-0000-0000-0000-000000000001'), 'відмова з причиною закриває відгук');
 select tst.blocked($$select public.move_application('43000000-0000-0000-0000-000000000001',
-  (select s.id from public.pipeline_stages s join public.pipelines p on p.id = s.pipeline_id and p.is_default where s.code = 'first_contact'))$$,
-  'етап з контактом без дати і часу не приймається');
+  (select s.id from public.pipeline_stages s join public.pipelines p on p.id = s.pipeline_id and p.is_default where s.code = 'manager_interview'))$$,
+  'етап з датою (співбесіда з керівником) без дати і часу не приймається');
 select public.move_application('43000000-0000-0000-0000-000000000001',
-  (select s.id from public.pipeline_stages s join public.pipelines p on p.id = s.pipeline_id and p.is_default where s.code = 'first_contact'),
-  p_starts_at => now() + interval '2 day');
+  (select s.id from public.pipeline_stages s join public.pipelines p on p.id = s.pipeline_id and p.is_default where s.code = 'first_contact'));
+select tst.ok((select count(*) from public.interviews where application_id = '43000000-0000-0000-0000-000000000001' and kind = 'call') = 0,
+              'етап без дати (перший контакт) не вимагає і не створює подію');
 select tst.ok((select closed_at is null and rejection_reason_id is null from public.applications
                where id = '43000000-0000-0000-0000-000000000001'), 'повернення з відмови знімає причину і відкриває відгук');
 

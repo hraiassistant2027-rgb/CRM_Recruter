@@ -1,26 +1,30 @@
 // Довідники співбесід
 
 export const KIND_LABELS: Record<string, string> = {
-  call: 'Дзвінок кандидату',
-  phone: 'Телефонна співбесіда',
+  phone: 'Співбесіда з рекрутером',
   manager: 'Співбесіда з керівником',
+  polygraph: 'Перевірка на поліграфі',
+  offer: 'Оформлення (офер)',
+  start: 'Вихід на роботу',
+  call: 'Дзвінок кандидату',
   repeat: 'Повторна співбесіда',
-  offer: 'Оффер: зустріч або дзвінок',
-  other: 'Співбесіда',
+  other: 'Інша зустріч',
 };
 
 // Колір смуги події в календарі за типом контакту
 export const KIND_COLORS: Record<string, string> = {
-  call: '#38BDF8',
   phone: '#818CF8',
   manager: '#F59E0B',
-  repeat: '#FBBF24',
+  polygraph: '#A855F7',
   offer: '#16A34A',
+  start: '#0F766E',
+  call: '#38BDF8',
+  repeat: '#FBBF24',
   other: '#9CA3AF',
 };
 
 // Типи контакту, для яких за замовчуванням варто надіслати кандидату запрошення з календаря
-export const INVITE_BY_DEFAULT = ['manager', 'repeat', 'offer'];
+export const INVITE_BY_DEFAULT = ['manager', 'repeat', 'polygraph', 'offer', 'start'];
 
 export const STATUS_LABELS: Record<string, { label: string; tone: 'ok' | 'warn' | 'danger' | 'neutral' }> = {
   scheduled: { label: 'призначено', tone: 'ok' },
