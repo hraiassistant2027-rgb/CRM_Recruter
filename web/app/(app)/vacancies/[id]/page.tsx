@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Pencil } from 'lucide-react';
+import { Pencil, Upload } from 'lucide-react';
+import { CandidateForm } from '../../candidates/candidate-form';
 import { requirePermission } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { can } from '@/lib/permissions';
@@ -15,7 +16,12 @@ import { loadBoard } from '../load';
 
 export const metadata: Metadata = { title: 'Вакансія' };
 
-const NOTICES: Record<string, string> = { created: 'Вакансію створено', saved: 'Зміни збережено' };
+const NOTICES: Record<string, string> = {
+  created: 'Вакансію створено',
+  saved: 'Зміни збережено',
+  candidate_added: 'Кандидата створено і додано у вакансію',
+  candidate_created: 'Кандидата створено',
+};
 
 export default async function VacancyPage({
   params,
@@ -45,7 +51,15 @@ export default async function VacancyPage({
   const canEdit = can(p, 'vacancies.manage');
   const canMove = can(p, 'applications.update');
   const canAdd = can(p, 'applications.create') && ['open', 'on_hold', 'draft'].includes(v.status);
-  const notice = Array.isArray(sp.notice) ? sp.notice[0] : sp.notice;
+  const one = (k: string) => (Array.isArray(sp[k]) ? sp[k]![0] : (sp[k] as string | undefined));
+  const notice = one('notice');
+  const noticeCandidate = one('candidate');
+  const addError = one('add_error');
+  const uploadError = one('upload_error');
+  const showNewForm = one('new') === '1' && canAdd && can(p, 'candidates.create');
+  const { data: sources } = showNewForm
+    ? await supabase.from('sources').select('id, name').eq('is_active', true).order('sort_order')
+    : { data: [] };
   const manager = (v.hiring_manager_id && userName.get(v.hiring_manager_id)) || v.hiring_manager_name;
 
   return (
@@ -66,11 +80,26 @@ export default async function VacancyPage({
           </div>
         }
       />
-      {notice && NOTICES[notice] && (
-        <div className="mb-4">
-          <Alert kind="success">{NOTICES[notice]}</Alert>
+      {(notice && NOTICES[notice]) || addError || uploadError ? (
+        <div className="mb-4 space-y-2">
+          {notice && NOTICES[notice] && (
+            <Alert kind="success">
+              {NOTICES[notice]}
+              {noticeCandidate && uuidSchema.safeParse(noticeCandidate).success && (
+                <>
+                  {' '}
+                  —{' '}
+                  <Link href={`/candidates/${noticeCandidate}`} className="underline">
+                    відкрити картку
+                  </Link>
+                </>
+              )}
+            </Alert>
+          )}
+          {addError && <Alert>У вакансію не додано: {addError.slice(0, 300)}</Alert>}
+          {uploadError && <Alert>Резюме не збережено: {uploadError.slice(0, 300)}</Alert>}
         </div>
-      )}
+      ) : null}
 
       <div className="mb-6 grid gap-4 lg:grid-cols-[2fr_1fr]">
         <Card>
@@ -95,9 +124,27 @@ export default async function VacancyPage({
           <Card>
             <h2 className="mb-3 font-medium">Додати кандидата з бази</h2>
             <AddCandidate vacancyId={v.id} canCreateCandidate={can(p, 'candidates.create')} />
+            {can(p, 'candidates.create') && !showNewForm && (
+              <Link
+                href={`/vacancies/${id}?new=1#new-candidate`}
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-accent-strong bg-accent-soft/40 px-4 py-3 text-sm font-medium hover:bg-accent-soft"
+              >
+                <Upload className="h-4 w-4" aria-hidden /> Новий кандидат із резюме
+              </Link>
+            )}
           </Card>
         )}
       </div>
+
+      {showNewForm && (
+        <Card className="mb-6">
+          <div id="new-candidate" className="scroll-mt-4">
+            <h2 className="font-medium">Новий кандидат у вакансію «{v.title}»</h2>
+            <p className="mb-4 text-sm text-ink-soft">Оберіть файл резюме — дані заповняться автоматично. Після збереження кандидат з'явиться на етапі «Новий кандидат».</p>
+            <CandidateForm sources={(sources ?? []) as { id: string; name: string }[]} vacancyId={v.id} cancelHref={`/vacancies/${id}`} />
+          </div>
+        </Card>
+      )}
 
       {board && (
         <>

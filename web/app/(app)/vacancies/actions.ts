@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { uuidSchema, vacancySchema } from '@/lib/validation';
 import { translateError } from '@/lib/errors';
+import { insertApplication } from '@/lib/applications';
 import type { FormState } from '@/lib/form-state';
 
 export type VacancyFormState = FormState & { fieldErrors?: Record<string, string> };
@@ -74,41 +75,12 @@ export async function addApplication(_prev: FormState, formData: FormData): Prom
   if (!candidateId.success) return { error: 'Оберіть кандидата' };
 
   const supabase = await createClient();
-  const [{ data: vacancy }, { data: candidate }, { data: auth }] = await Promise.all([
-    supabase.from('vacancies').select('id, title, pipeline_id, recruiter_id, status').eq('id', vacancyId.data).maybeSingle(),
-    supabase.from('candidates').select('id, full_name, source_id').eq('id', candidateId.data).maybeSingle(),
-    supabase.auth.getUser(),
-  ]);
-  if (!vacancy) return { error: 'Вакансію не знайдено' };
-  if (!candidate) return { error: 'Кандидата не знайдено' };
-  if (!['open', 'on_hold', 'draft'].includes(vacancy.status)) return { error: 'Вакансія закрита — спершу відкрийте її знову' };
-
-  const { data: firstStage } = await supabase
-    .from('pipeline_stages')
-    .select('id')
-    .eq('pipeline_id', vacancy.pipeline_id)
-    .eq('is_active', true)
-    .eq('kind', 'open')
-    .order('sort_order')
-    .limit(1)
-    .maybeSingle();
-  if (!firstStage) return { error: 'У воронці немає активних етапів' };
-
-  const { error } = await supabase.from('applications').insert({
-    candidate_id: candidate.id,
-    vacancy_id: vacancy.id,
-    recruiter_id: vacancy.recruiter_id ?? auth.user?.id ?? null,
-    stage_id: firstStage.id,
-    source_id: candidate.source_id,
-  });
-  if (error) {
-    if (error.code === '23505') return { error: `${candidate.full_name} вже бере участь у відборі на цю вакансію` };
-    return { error: translateError(error) };
-  }
-  revalidatePath(`/vacancies/${vacancy.id}`);
-  revalidatePath(`/candidates/${candidate.id}`);
+  const result = await insertApplication(supabase, vacancyId.data, candidateId.data);
+  if (result.error) return { error: result.error };
+  revalidatePath(`/vacancies/${vacancyId.data}`);
+  revalidatePath(`/candidates/${candidateId.data}`);
   revalidatePath('/pipeline');
-  return { ok: `${candidate.full_name} → «${vacancy.title}»` };
+  return { ok: result.ok };
 }
 
 export async function moveApplication(input: {

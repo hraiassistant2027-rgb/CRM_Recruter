@@ -15,6 +15,7 @@ import {
   type CandidateInput,
 } from '@/lib/validation';
 import { translateError } from '@/lib/errors';
+import { insertApplication } from '@/lib/applications';
 import type { DuplicateRow } from '@/lib/candidates';
 import { extractResumeText } from '@/lib/resume-text';
 import { FIELD_LABELS, firstLines, parseResumeText, type ResumeFields } from '@/lib/resume-parse';
@@ -220,17 +221,28 @@ export async function createCandidate(_prev: CandidateFormState, formData: FormD
   const notices: string[] = ['created'];
   if (consentError) notices.push('consent_failed');
 
+  let uploadIssue: string | null = null;
   const file = formData.get('resume');
   if (file instanceof File && file.size > 0) {
-    const { issue: uploadIssue } = await storeResume(supabase, created.id, file);
-    if (uploadIssue) {
-      revalidatePath('/candidates');
-      redirect(`/candidates/${created.id}?notice=${notices.join(',')}&upload_error=${encodeURIComponent(uploadIssue)}`);
-    }
+    uploadIssue = (await storeResume(supabase, created.id, file)).issue;
+  }
+
+  // Створення зі сторінки вакансії: одразу додаємо кандидата у відбір і повертаємось до воронки
+  const vacancyId = uuidSchema.safeParse(formData.get('vacancy_id'));
+  if (vacancyId.success) {
+    const added = await insertApplication(supabase, vacancyId.data, created.id);
+    revalidatePath('/candidates');
+    revalidatePath(`/vacancies/${vacancyId.data}`);
+    const qs = new URLSearchParams({ notice: added.error ? 'candidate_created' : 'candidate_added', candidate: created.id });
+    if (added.error) qs.set('add_error', added.error);
+    if (uploadIssue) qs.set('upload_error', uploadIssue);
+    redirect(`/vacancies/${vacancyId.data}?${qs.toString()}`);
   }
 
   revalidatePath('/candidates');
-  redirect(`/candidates/${created.id}?notice=${notices.join(',')}`);
+  const qs = new URLSearchParams({ notice: notices.join(',') });
+  if (uploadIssue) qs.set('upload_error', uploadIssue);
+  redirect(`/candidates/${created.id}?${qs.toString()}`);
 }
 
 export async function updateCandidate(_prev: CandidateFormState, formData: FormData): Promise<CandidateFormState> {

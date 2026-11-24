@@ -68,7 +68,7 @@ export function AddCandidate({ vacancyId, canCreateCandidate }: { vacancyId: str
         <p className="text-sm text-ink-soft">
           Не знайдено.{' '}
           {canCreateCandidate && (
-            <Link href="/candidates/new" className="underline">
+            <Link href={`/vacancies/${vacancyId}?new=1#new-candidate`} className="underline">
               Створити нового кандидата
             </Link>
           )}

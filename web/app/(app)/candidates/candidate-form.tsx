@@ -1,7 +1,9 @@
 'use client';
 import Link from 'next/link';
 import { useActionState, useRef, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { createCandidate, extractResumeFields, updateCandidate, type CandidateFormState } from './actions';
+import { addApplication } from '../vacancies/actions';
 import { FIELD_LABELS, type ResumeFields } from '@/lib/resume-parse';
 import { Alert, Button, Field, Input, Select } from '@/components/ui';
 import { LEGAL_BASIS_LABELS, MATCH_LABELS, type CandidateRow } from '@/lib/candidates';
@@ -11,7 +13,19 @@ type Source = { id: string; name: string };
 const textareaClass =
   'block w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-ink-soft/60 focus:border-accent-strong focus:outline-none focus:ring-2 focus:ring-accent/30';
 
-export function CandidateForm({ sources, candidate }: { sources: Source[]; candidate?: CandidateRow }) {
+export function CandidateForm({
+  sources,
+  candidate,
+  vacancyId,
+  cancelHref,
+}: {
+  sources: Source[];
+  candidate?: CandidateRow;
+  vacancyId?: string;
+  cancelHref?: string;
+}) {
+  const router = useRouter();
+  const [dupMessage, setDupMessage] = useState<string | null>(null);
   const isEdit = Boolean(candidate);
   const [state, action] = useActionState<CandidateFormState, FormData>(isEdit ? updateCandidate : createCandidate, {});
   const confirmRef = useRef<HTMLInputElement>(null);
@@ -77,6 +91,7 @@ export function CandidateForm({ sources, candidate }: { sources: Source[]; candi
       }}
     >
       {c && <input type="hidden" name="id" value={c.id} />}
+      {vacancyId && <input type="hidden" name="vacancy_id" value={vacancyId} />}
       <input ref={confirmRef} type="hidden" name="confirm_duplicates" value="no" />
 
       {state.duplicates && state.duplicates.length > 0 && (
@@ -97,9 +112,33 @@ export function CandidateForm({ sources, candidate }: { sources: Source[]; candi
                   <span className="text-ink-soft">картка, до якої у вас немає доступу</span>
                 )}
                 {d.owner_name && <span className="text-ink-soft">· відповідальний: {d.owner_name}</span>}
+                {vacancyId && d.accessible && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={pending}
+                    onClick={() => {
+                      const data = new FormData();
+                      data.set('vacancy_id', vacancyId);
+                      data.set('candidate_id', d.candidate_id);
+                      startTransition(async () => {
+                        const result = await addApplication({}, data);
+                        if (result.error) setDupMessage(result.error);
+                        else router.push(`/vacancies/${vacancyId}?notice=candidate_added&candidate=${d.candidate_id}`);
+                      });
+                    }}
+                  >
+                    Додати цього кандидата у вакансію
+                  </Button>
+                )}
               </li>
             ))}
           </ul>
+          {dupMessage && (
+            <div className="mt-3">
+              <Alert>{dupMessage}</Alert>
+            </div>
+          )}
           <p className="mt-3 text-sm text-ink-soft">
             Відкрийте знайдену картку (у новій вкладці) і перевірте. Якщо це інша людина — збережіть все одно.
           </p>
@@ -248,9 +287,9 @@ export function CandidateForm({ sources, candidate }: { sources: Source[]; candi
 
       <div className="flex flex-wrap gap-3">
         <Button type="submit" disabled={pending}>
-          {pending ? 'Зберігаємо…' : isEdit ? 'Зберегти зміни' : 'Створити кандидата'}
+          {pending ? 'Зберігаємо…' : isEdit ? 'Зберегти зміни' : vacancyId ? 'Створити і додати у вакансію' : 'Створити кандидата'}
         </Button>
-        <Link href={c ? `/candidates/${c.id}` : '/candidates'} className="inline-flex items-center px-3 text-sm text-ink-soft underline">
+        <Link href={cancelHref ?? (c ? `/candidates/${c.id}` : '/candidates')} className="inline-flex items-center px-3 text-sm text-ink-soft underline">
           Скасувати
         </Link>
       </div>
