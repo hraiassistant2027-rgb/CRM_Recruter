@@ -30,6 +30,9 @@ import {
   WithdrawConsentButton,
 } from './card-actions';
 import { AddToVacancyForm } from './add-to-vacancy';
+import { EmailComposer } from '@/components/email-composer';
+import { SyncEmailsButton } from '@/components/email-thread';
+import { Mail, MailOpen } from 'lucide-react';
 
 export const metadata: Metadata = { title: 'Картка кандидата' };
 
@@ -103,6 +106,23 @@ export default async function CandidatePage({
     ? await supabase.from('application_stage_history').select('id, application_id, to_stage_id, changed_by, changed_at, comment').in('application_id', apps.map((a) => a.id)).order('changed_at', { ascending: false })
     : { data: [] };
   const history = (histData ?? []) as Hist[];
+
+  // Листування (етап 5)
+  type Msg = { id: string; direction: 'in' | 'out'; subject: string | null; body_text: string | null; snippet: string | null; status: string; error: string | null; from_email: string | null; sent_at: string | null; received_at: string | null; created_at: string; sent_by: string | null };
+  const canMail = can(session.permissions, 'email.read');
+  const canSend = can(session.permissions, 'email.send') && !deleted;
+  const [mailRes, tplRes, accountRes] = canMail
+    ? await Promise.all([
+        supabase.from('email_messages').select('id, direction, subject, body_text, snippet, status, error, from_email, sent_at, received_at, created_at, sent_by').eq('candidate_id', id).order('created_at', { ascending: false }).limit(50),
+        supabase.from('email_templates').select('id, name').eq('is_active', true).order('name'),
+        supabase.from('email_accounts').select('google_email, status').eq('user_id', session.userId).maybeSingle(),
+      ])
+    : [{ data: [] }, { data: [] }, { data: null }];
+  const mails = ((mailRes.data ?? []) as Msg[]).sort(
+    (a, b) => new Date(b.sent_at ?? b.received_at ?? b.created_at).getTime() - new Date(a.sent_at ?? a.received_at ?? a.created_at).getTime(),
+  );
+  const account = accountRes.data as { google_email: string; status: string } | null;
+  const mailReady = account?.status === 'active';
 
   const p = session.permissions;
   const deleted = Boolean(c.deleted_at);
@@ -290,6 +310,67 @@ export default async function CandidatePage({
                   </ul>
                 </>
               )}
+            </Card>
+          )}
+
+          {canMail && (
+            <Card>
+              <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                <h2 className="font-medium">Листування</h2>
+                {mailReady && c.email && <SyncEmailsButton candidateId={id} />}
+              </div>
+              {canSend && (
+                <div className="mb-4">
+                  {!c.email ? (
+                    <p className="text-sm text-ink-soft">Щоб написати кандидату, додайте email у картку.</p>
+                  ) : !mailReady ? (
+                    <p className="text-sm text-ink-soft">
+                      Щоб надсилати листи зі свого Gmail, підключіть Google у{' '}
+                      <Link href="/profile" className="underline">
+                        профілі
+                      </Link>
+                      .
+                    </p>
+                  ) : (
+                    <details>
+                      <summary className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium hover:bg-accent-strong">
+                        <Mail className="h-4 w-4" aria-hidden /> Написати лист
+                      </summary>
+                      <div className="mt-4">
+                        <EmailComposer
+                          candidateId={id}
+                          candidateEmail={c.email}
+                          fromEmail={account!.google_email}
+                          templates={(tplRes.data ?? []) as { id: string; name: string }[]}
+                          applications={apps.map((a) => ({ id: a.id, name: vacancyTitle.get(a.vacancy_id) ?? 'Вакансія' }))}
+                        />
+                      </div>
+                    </details>
+                  )}
+                </div>
+              )}
+              <ul className="space-y-2">
+                {mails.map((m) => (
+                  <li key={m.id} className={`rounded-lg border p-3 text-sm ${m.direction === 'in' ? 'border-accent/40 bg-accent-soft/30' : 'border-line'}`}>
+                    <details>
+                      <summary className="cursor-pointer list-none">
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-ink-soft">
+                          {m.direction === 'in' ? <MailOpen className="h-3.5 w-3.5" aria-hidden /> : <Mail className="h-3.5 w-3.5" aria-hidden />}
+                          <span>{m.direction === 'in' ? `Від кандидата` : `Надіслав(-ла) ${m.sent_by ? names.get(m.sent_by) ?? '' : m.from_email ?? ''}`}</span>
+                          <span>· {formatDate(m.sent_at ?? m.received_at ?? m.created_at, true)}</span>
+                          {m.status === 'failed' && <Badge tone="danger">не надіслано</Badge>}
+                          {m.status === 'queued' && <Badge tone="warn">надсилається</Badge>}
+                        </div>
+                        <div className="mt-1 font-medium">{m.subject || '(без теми)'}</div>
+                        <div className="truncate text-xs text-ink-soft">{m.snippet}</div>
+                      </summary>
+                      <p className="mt-3 whitespace-pre-wrap border-t border-line pt-3">{m.body_text}</p>
+                      {m.error && <p className="mt-2 text-xs text-danger">{m.error}</p>}
+                    </details>
+                  </li>
+                ))}
+                {mails.length === 0 && <li className="text-sm text-ink-soft">Листів ще немає</li>}
+              </ul>
             </Card>
           )}
 

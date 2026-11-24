@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { requirePermission } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import Link from 'next/link';
+import { Plus } from 'lucide-react';
 import { Alert, Badge, Card, PageHeader } from '@/components/ui';
 
 export const metadata: Metadata = { title: 'Шаблони листів' };
@@ -16,7 +18,8 @@ const CATEGORY: Record<string, string> = {
 
 type TemplateRow = { id: string; name: string; category: string; subject: string; variables: string[]; is_active: boolean };
 
-export default async function TemplatesPage() {
+export default async function TemplatesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const sp = await searchParams;
   await requirePermission('templates.manage');
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -27,13 +30,28 @@ export default async function TemplatesPage() {
 
   return (
     <>
-      <PageHeader title="Шаблони листів" description="Базові шаблони вже в системі. Редагування і надсилання листів — етап 5 (Gmail)." />
+      <PageHeader
+        title="Шаблони листів"
+        description="Використовуються під час надсилання листа з картки кандидата"
+        actions={
+          <Link href="/templates/new" className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium hover:bg-accent-strong">
+            <Plus className="h-4 w-4" aria-hidden /> Новий шаблон
+          </Link>
+        }
+      />
+      {sp.saved && (
+        <div className="mb-4">
+          <Alert kind="success">Шаблон збережено</Alert>
+        </div>
+      )}
       {error && <Alert>Не вдалося завантажити шаблони. Спробуйте оновити сторінку.</Alert>}
       <div className="grid gap-4 md:grid-cols-2">
         {templates.map((t) => (
           <Card key={t.id}>
             <div className="flex items-start justify-between gap-3">
-              <h2 className="font-medium">{t.name}</h2>
+              <Link href={`/templates/${t.id}`} className="font-medium hover:underline">
+                {t.name}
+              </Link>
               <Badge tone={t.is_active ? 'ok' : 'neutral'}>{t.is_active ? 'Активний' : 'Вимкнено'}</Badge>
             </div>
             <p className="mt-1 text-xs text-ink-soft">{CATEGORY[t.category] ?? t.category}</p>
