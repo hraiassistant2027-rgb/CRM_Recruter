@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findCity, findPhone, parseResumeText, resumeDisplayName } from './resume-parse';
+import { findCity, findName, findPhone, parseResumeText, resumeDisplayName } from './resume-parse';
 
 describe('розпізнавання резюме', () => {
   it('українське резюме з підписаними полями', () => {
@@ -25,7 +25,7 @@ linkedin.com/in/petro-ivanenko`);
 Project Manager
 Kyiv, Ukraine | 093 555 44 33 | olena@ukr.net
 Salary expectations: $2500`);
-    expect(r).toMatchObject({ full_name: 'Olena Shevchenko', city: 'Київ', phone: '+38 093 555 44 33', desired_salary: '2500', salary_currency: 'USD' });
+    expect(r).toMatchObject({ full_name: 'Shevchenko Olena', city: 'Київ', phone: '+38 093 555 44 33', desired_salary: '2500', salary_currency: 'USD' });
   });
   it('посада, місце проживання, зарплата «від»', () => {
     const r = parseResumeText(`Петренко Андрій
@@ -48,7 +48,24 @@ Salary expectations: $2500`);
   });
 });
 
+describe('порядок ПІБ: Прізвище Ім\'я По батькові', () => {
+  it('переставляє «Ім\'я По-батькові Прізвище» та «Ім\'я Прізвище»', () => {
+    expect(findName('Петро Миколайович Іваненко\nтел.')).toBe('Іваненко Петро Миколайович');
+    expect(findName('Андрій Петренко\nПрораб')).toBe('Петренко Андрій');
+    expect(findName('Петренко Андрій\nПрораб')).toBe('Петренко Андрій');
+    expect(findName('ШЕВЧЕНКО ОЛЕНА ІГОРІВНА')).toBe('Шевченко Олена Ігорівна');
+  });
+  it('знаходить ПІБ у тексті без розривів рядків', () => {
+    expect(findName('Резюме Іваненко Петро Миколайович Бажана посада Прораб Київ 0671234567')).toBe('Іваненко Петро Миколайович');
+  });
+});
+
 describe('назва файлу резюме', () => {
+  it('з датою завантаження', () => {
+    expect(resumeDisplayName('Іваненко Петро Миколайович', 'scan.pdf', 1, '2026-11-24T08:00:00Z')).toBe(
+      'Іваненко Петро Миколайович — резюме від 24.11.2026.pdf',
+    );
+  });
   it('за ПІБ кандидата', () => {
     expect(resumeDisplayName('Іваненко Петро', 'scan_0001.PDF')).toBe('Іваненко Петро — резюме.pdf');
     expect(resumeDisplayName('Іваненко Петро', 'cv.docx', 2)).toBe('Іваненко Петро — резюме (2).docx');

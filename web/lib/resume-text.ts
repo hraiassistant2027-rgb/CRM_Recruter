@@ -20,14 +20,44 @@ function rtfToText(rtf: string): string {
     .replace(/[{}]/g, '');
 }
 
+// Текст PDF зі збереженням рядків: ім'я, телефон, місто зазвичай стоять окремими рядками,
+// і без розривів їх неможливо відрізнити від решти тексту
+type PdfItem = { str?: string; transform?: number[]; width?: number; hasEOL?: boolean };
+
+async function pdfText(bytes: Uint8Array): Promise<string> {
+  const { getDocumentProxy } = await import('unpdf');
+  const pdf = await getDocumentProxy(new Uint8Array(bytes));
+  const pages: string[] = [];
+  for (let i = 1; i <= Math.min(pdf.numPages, 30); i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    let out = '';
+    let lastY: number | null = null;
+    let lastXEnd = 0;
+    for (const raw of content.items as PdfItem[]) {
+      if (typeof raw.str !== 'string' || !raw.transform) continue;
+      const x = raw.transform[4];
+      const y = raw.transform[5];
+      if (lastY !== null && Math.abs(y - lastY) > 2) {
+        if (!out.endsWith('\n')) out += '\n';
+      } else if (out && !out.endsWith('\n') && !out.endsWith(' ') && raw.str && !raw.str.startsWith(' ') && x - lastXEnd > 1) {
+        out += ' ';
+      }
+      out += raw.str;
+      lastY = y;
+      lastXEnd = x + (raw.width ?? 0);
+      if (raw.hasEOL) out += '\n';
+    }
+    pages.push(out);
+  }
+  return pages.join('\n');
+}
+
 export async function extractResumeText(bytes: Uint8Array, ext: string): Promise<string | null> {
   try {
     let text = '';
     if (ext === 'pdf') {
-      const { extractText, getDocumentProxy } = await import('unpdf');
-      const pdf = await getDocumentProxy(new Uint8Array(bytes));
-      const result = await extractText(pdf, { mergePages: false });
-      text = (Array.isArray(result.text) ? result.text : [result.text]).join('\n');
+      text = await pdfText(bytes);
     } else if (ext === 'docx') {
       const mammoth = await import('mammoth');
       const result = await mammoth.extractRawText({ buffer: Buffer.from(bytes) });

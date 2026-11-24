@@ -17,7 +17,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const { data: doc } = await supabase
     .from('documents')
-    .select('id, candidate_id, storage_bucket, storage_path, original_name, mime_type, deleted_at')
+    .select('id, candidate_id, storage_bucket, storage_path, original_name, mime_type, created_at, deleted_at')
     .eq('id', id)
     .maybeSingle();
   if (!doc || doc.deleted_at) return new NextResponse('Файл не знайдено або немає доступу', { status: 404 });
@@ -26,10 +26,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (doc.candidate_id) {
     const [{ data: candidate }, { data: siblings }] = await Promise.all([
       supabase.from('candidates').select('full_name').eq('id', doc.candidate_id).maybeSingle(),
-      supabase.from('documents').select('id').eq('candidate_id', doc.candidate_id).is('deleted_at', null).order('created_at'),
+      supabase.from('documents').select('id, created_at').eq('candidate_id', doc.candidate_id).is('deleted_at', null).order('created_at'),
     ]);
-    const index = Math.max(1, (siblings ?? []).findIndex((s: { id: string }) => s.id === doc.id) + 1);
-    if (candidate) fileName = resumeDisplayName(candidate.full_name, doc.original_name, index);
+    // Номер (2), (3) — лише для кількох файлів, завантажених того самого дня
+    const day = (v: string) => String(v).slice(0, 10);
+    const sameDay = (siblings ?? []).filter((s: { id: string; created_at: string }) => day(s.created_at) === day(doc.created_at));
+    const index = Math.max(1, sameDay.findIndex((s: { id: string }) => s.id === doc.id) + 1);
+    if (candidate) fileName = resumeDisplayName(candidate.full_name, doc.original_name, index, doc.created_at);
   }
 
   const admin = createAdminClient();

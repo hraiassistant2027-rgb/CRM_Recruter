@@ -139,8 +139,8 @@ export function CandidateForm({ sources, candidate }: { sources: Source[]; candi
 
       <section className="grid gap-4 md:grid-cols-2">
         <div className="md:col-span-2">
-          <Field label="ПІБ *" htmlFor="full_name" error={fe.full_name}>
-            <Input id="full_name" name="full_name" defaultValue={c?.full_name} required autoFocus={!isEdit} />
+          <Field label="ПІБ *" htmlFor="full_name" error={fe.full_name} hint="У порядку: Прізвище Ім'я По батькові">
+            <Input id="full_name" name="full_name" defaultValue={c?.full_name} required placeholder="Іваненко Петро Миколайович" />
           </Field>
         </div>
         <Field label="Телефон" htmlFor="phone" error={fe.phone} hint="У будь-якому форматі, напр. 067 123 45 67">

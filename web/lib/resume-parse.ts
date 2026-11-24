@@ -28,6 +28,46 @@ const NOT_NAME = new Set(
   ].map((w) => w.toLowerCase()),
 );
 
+// Поширені імена (укр., рос., латиницею) — щоб визначити порядок «Ім'я Прізвище» і переставити на «Прізвище Ім'я»
+const FIRST_NAMES = new Set(
+  (
+    'олександр александр олексій алексей андрій андрей анатолій анатолий антон артем артём богдан борис вадим валентин валерій валерий ' +
+    'василь василий віктор виктор віталій виталий владислав владимир володимир в\'ячеслав вячеслав геннадій геннадий георгій георгий ' +
+    'григорій григорий данило даниил денис дмитро дмитрий євген евгений егор єгор іван иван ігор игорь ілля илья йосип кирило кирилл ' +
+    'костянтин константин леонід леонид максим марко микола николай михайло михаил назар олег остап павло павел петро петр роман ' +
+    'руслан сергій сергей станіслав станислав степан тарас тимофій тимур федір федор юрій юрий ярослав яків яков ' +
+    'алла аліна алина алла анастасія анастасия ганна анна антоніна антонина валентина валерія валерия вероніка вероника вікторія виктория ' +
+    'галина дарина дарья діана диана євгенія евгения єлизавета елизавета олена елена жанна зоя інна инна ірина ирина катерина екатерина ' +
+    'кристина лариса леся лілія лилия любов любовь людмила маргарита марина марія мария мирослава надія надежда наталія наталья наталия ' +
+    'неля оксана ольга поліна полина раїса раиса світлана светлана софія софия тамара тетяна татьяна уляна ульяна христина юлія юлия яна ' +
+    'oleksandr alexander alex oleksii alexey andrii andriy andrey anatolii anton artem bohdan bogdan borys denys denis dmytro dmitry ' +
+    'yevhen eugene ivan ihor igor illia ilya kyrylo kostiantyn maksym maxim mykola mykhailo michael nazar oleh oleg ostap pavlo petro ' +
+    'roman ruslan serhii sergey sergii stanislav taras yurii yuriy vadym vadim vasyl viktor victor vitalii volodymyr vladimir yaroslav ' +
+    'alina anastasiia anna hanna daria diana olena elena kateryna iryna irina khrystyna kristina larysa liudmyla maryna mariia maria ' +
+    'nataliia natalia oksana olha olga sofiia sofia svitlana tetiana tatiana yuliia yulia yana viktoriia victoria valeriia'
+  ).split(/\s+/),
+);
+
+const PATRONYMIC = /(ович|евич|йович|ьович|івна|ївна|овна|евна|ична|інічна|ich|ivna|ovych|ovna)$/i;
+const SURNAME_END = /(енко|ко|ук|юк|чук|ський|цький|ська|цька|зький|ов|ова|ев|ева|єв|єва|ін|іна|ин|ина|ич|ак|як|ець|ій|enko|uk|iuk|yuk|chuk|skyi|ska|sky|ov|ova|ev|eva|in|ina|ych)$/i;
+
+// Порядок для картки: Прізвище Ім'я По батькові
+export function toSurnameFirst(words: string[]): string[] {
+  if (words.length === 3) {
+    // Ім'я По-батькові Прізвище -> Прізвище Ім'я По-батькові
+    if (PATRONYMIC.test(words[1]) && !PATRONYMIC.test(words[2])) return [words[2], words[0], words[1]];
+    return words;
+  }
+  if (words.length === 2) {
+    const [a, b] = words;
+    const aFirst = FIRST_NAMES.has(a.toLowerCase());
+    const bFirst = FIRST_NAMES.has(b.toLowerCase());
+    if (aFirst && !bFirst) return [b, a];
+    if (!aFirst && !bFirst && SURNAME_END.test(b) && !SURNAME_END.test(a)) return [b, a];
+  }
+  return words;
+}
+
 // Великі міста України у різних написаннях -> назва українською
 const CITIES: [RegExp, string][] = [
   [/(?<!\p{L})(київ|киев|kyiv|kiev)/iu, 'Київ'],
@@ -116,6 +156,15 @@ export function findName(text: string): string | undefined {
     const n = nameFromLine(line);
     if (n) return n;
   }
+  // Запасний варіант: текст без розривів рядків — шукаємо 2–3 слова з великої літери на початку
+  const flat = lines.slice(0, 6).join(' ').replace(/^(резюме|curriculum vitae|cv|resume)\s*/i, '');
+  const word = `[${UP}][${UP}${LOW}]{1,30}`;
+  const m = flat.match(new RegExp(`^(${word})\\s+(${word})(?:\\s+(${word}))?`));
+  if (m) {
+    const three = m[3] ? nameFromLine(`${m[1]} ${m[2]} ${m[3]}`) : undefined;
+    if (three && (PATRONYMIC.test(m[3]!) || PATRONYMIC.test(m[2]))) return three;
+    return nameFromLine(`${m[1]} ${m[2]}`);
+  }
   return undefined;
 }
 
@@ -128,7 +177,7 @@ function nameFromLine(line: string): string | undefined {
   if (words.some((w) => NOT_NAME.has(w.toLowerCase()))) return undefined;
   // Змішаний алфавіт в одному слові — не ім'я
   if (words.some((w) => /[A-Za-z]/.test(w) && /[А-Яа-яІіЇїЄєҐґ]/.test(w))) return undefined;
-  return words.map(titleCase).join(' ');
+  return toSurnameFirst(words.map(titleCase)).join(' ');
 }
 
 export function findCity(text: string): string | undefined {
@@ -205,9 +254,13 @@ export const FIELD_LABELS: Record<keyof ResumeFields, string> = {
   linkedin_url: 'LinkedIn',
 };
 
-// Назва файлу резюме за ПІБ кандидата: "Іваненко Петро — резюме.pdf", для другого файлу — "(2)"
-export function resumeDisplayName(fullName: string, originalName: string, index = 1): string {
+// Назва файлу резюме за ПІБ кандидата і датою завантаження:
+// "Іваненко Петро Миколайович — резюме від 24.11.2026.pdf", для другого файлу — "(2)"
+export function resumeDisplayName(fullName: string, originalName: string, index = 1, uploadedAt?: string | Date | null): string {
   const ext = originalName.includes('.') ? originalName.split('.').pop()!.toLowerCase() : 'pdf';
   const base = fullName.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim() || 'Кандидат';
-  return `${base} — резюме${index > 1 ? ` (${index})` : ''}.${ext}`;
+  const date = uploadedAt
+    ? ` від ${new Intl.DateTimeFormat('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Kyiv' }).format(new Date(uploadedAt))}`
+    : '';
+  return `${base} — резюме${date}${index > 1 ? ` (${index})` : ''}.${ext}`;
 }

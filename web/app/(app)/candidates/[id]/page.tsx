@@ -94,7 +94,11 @@ export default async function CandidatePage({
   );
 
   const docList = (docs.data ?? []) as Doc[];
-  const docName = (d: Doc) => resumeDisplayName(c.full_name, d.original_name, docList.length - docList.indexOf(d));
+  const docName = (d: Doc) => {
+    // Номер (2), (3) — лише для кількох файлів, завантажених того самого дня
+    const sameDay = docList.filter((x) => x.created_at.slice(0, 10) === d.created_at.slice(0, 10)).reverse();
+    return resumeDisplayName(c.full_name, d.original_name, sameDay.indexOf(d) + 1, d.created_at);
+  };
   const viewId = Array.isArray(sp.view) ? sp.view[0] : sp.view;
   const viewing = docList.find((d) => d.id === viewId) ?? null;
   const viewExt = viewing?.original_name.split('.').pop()?.toLowerCase() ?? '';
