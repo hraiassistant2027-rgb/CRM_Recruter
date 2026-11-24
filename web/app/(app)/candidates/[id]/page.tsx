@@ -30,6 +30,10 @@ import {
   WithdrawConsentButton,
 } from './card-actions';
 import { AddToVacancyForm } from './add-to-vacancy';
+import { ApplicationStage } from '@/components/application-stage';
+import type { Reason } from '@/components/pipeline-board';
+import type { Site } from '@/components/location-picker';
+import type { Stage } from '@/lib/vacancies';
 import { EmailComposer } from '@/components/email-composer';
 import { InterviewActions, ScheduleInterview } from '@/components/interviews';
 import { INTERVIEW_COLUMNS, KIND_LABELS, RESPONSE_LABELS, STATUS_LABELS, type InterviewRow } from '@/lib/interviews';
@@ -94,15 +98,20 @@ export default async function CandidatePage({
   const [appsRes, stagesRes, reasonsRes, vacanciesRes] = canApps
     ? await Promise.all([
         supabase.from('applications').select('id, vacancy_id, stage_id, stage_changed_at, rejection_reason_id, rejection_comment, created_at').eq('candidate_id', id).order('created_at', { ascending: false }),
-        supabase.from('pipeline_stages').select('id, name, color, kind'),
-        supabase.from('rejection_reasons').select('id, name'),
-        supabase.from('vacancies').select('id, title, status, recruiter_id, hiring_manager_id').order('opened_at', { ascending: false }).limit(500),
+        supabase.from('pipeline_stages').select('id, code, name, color, sort_order, kind, sla_days, contact_kind, pipeline_id, is_active').order('sort_order'),
+        supabase.from('rejection_reasons').select('id, name, side, is_active').order('sort_order'),
+        supabase.from('vacancies').select('id, title, status, recruiter_id, hiring_manager_id, pipeline_id, site_id').order('opened_at', { ascending: false }).limit(500),
       ])
     : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
   const apps = (appsRes.data ?? []) as App[];
-  const stageById = new Map(((stagesRes.data ?? []) as { id: string; name: string; color: string; kind: string }[]).map((s) => [s.id, s]));
-  const reasonById = new Map(((reasonsRes.data ?? []) as { id: string; name: string }[]).map((r) => [r.id, r.name]));
-  const allVacancies = (vacanciesRes.data ?? []) as { id: string; title: string; status: string; recruiter_id: string | null; hiring_manager_id: string | null }[];
+  type StageRow = Stage & { pipeline_id: string; is_active: boolean };
+  const allStages = (stagesRes.data ?? []) as StageRow[];
+  const stageById = new Map(allStages.map((s) => [s.id, s]));
+  const allReasons = ((reasonsRes.data ?? []) as (Reason & { is_active: boolean })[]).filter((r) => r.is_active);
+  const { data: sitesData } = canApps ? await supabase.from('sites').select('id, name, address').eq('is_active', true).order('name') : { data: [] };
+  const sites = (sitesData ?? []) as Site[];
+  const reasonById = new Map(allReasons.map((r) => [r.id, r.name]));
+  const allVacancies = (vacanciesRes.data ?? []) as { id: string; title: string; status: string; recruiter_id: string | null; hiring_manager_id: string | null; pipeline_id: string; site_id: string | null }[];
   const vacancyTitle = new Map(allVacancies.map((v) => [v.id, v.title]));
   const openVacancies = allVacancies.filter(
     (v) =>
@@ -564,6 +573,8 @@ export default async function CandidatePage({
                         fromEmail={account!.google_email}
                         templates={(tplRes.data ?? []) as { id: string; name: string }[]}
                         inviteTemplateId={inviteTemplate?.id}
+                        sites={sites}
+                        defaultSiteId={vacancyOf.get(schedulable[0]?.vacancy_id ?? '')?.site_id ?? null}
                       />
                     </div>
                   </details>
@@ -599,6 +610,27 @@ export default async function CandidatePage({
                         </span>
                         <span className="text-ink-soft">з {formatDate(a.stage_changed_at)}</span>
                       </div>
+                      {(() => {
+                        const v = vacancyOf.get(a.vacancy_id);
+                        if (!v || deleted || !canOn(session.permissions, 'applications.update', v.recruiter_id === session.userId || v.hiring_manager_id === session.userId)) return null;
+                        return (
+                          <ApplicationStage
+                            applicationId={a.id}
+                            candidateName={c.full_name}
+                            currentStageId={a.stage_id}
+                            stages={allStages.filter((s) => s.pipeline_id === v.pipeline_id && (s.is_active || s.id === a.stage_id))}
+                            reasons={allReasons}
+                            sites={sites}
+                            defaultSiteId={v.site_id}
+                            googleReady={mailReady}
+                            mail={
+                              mailReady && c.email
+                                ? { candidateId: id, candidateEmail: c.email, fromEmail: account!.google_email, templates: (tplRes.data ?? []) as { id: string; name: string }[], inviteTemplateId: inviteTemplate?.id }
+                                : null
+                            }
+                          />
+                        );
+                      })()}
                       {a.rejection_reason_id && (
                         <div className="mt-1 text-xs text-danger">
                           {reasonById.get(a.rejection_reason_id)}

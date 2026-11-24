@@ -15,10 +15,10 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
   const supabase = await createClient();
   const { data } = await supabase
     .from('vacancies')
-    .select('id, title, pipeline_id, status, recruiter_id, hiring_manager_id')
+    .select('id, title, pipeline_id, status, recruiter_id, hiring_manager_id, site_id')
     .in('status', ['open', 'on_hold', 'draft'])
     .order('opened_at', { ascending: false });
-  const vacancies = (data ?? []) as { id: string; title: string; pipeline_id: string; status: string; recruiter_id: string | null; hiring_manager_id: string | null }[];
+  const vacancies = (data ?? []) as { id: string; title: string; pipeline_id: string; status: string; recruiter_id: string | null; hiring_manager_id: string | null; site_id: string | null }[];
   const wanted = Array.isArray(sp.vacancy) ? sp.vacancy[0] : sp.vacancy;
   const current = vacancies.find((v) => v.id === wanted) ?? vacancies[0];
   const board = current ? await loadBoard(supabase, current.id, current.pipeline_id) : null;
@@ -68,6 +68,8 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
               cards={board.cards}
               reasons={board.reasons}
               googleReady={gAccount?.status === 'active'}
+              sites={board.sites}
+              defaultSiteId={current?.site_id ?? null}
               canMove={
                 !!current &&
                 canOn(session.permissions, 'applications.update', current.recruiter_id === session.userId || current.hiring_manager_id === session.userId)

@@ -179,7 +179,7 @@ export default async function VacancyPage({
       {board && (
         <>
           <h2 className="mb-3 text-lg font-semibold">Воронка</h2>
-          <PipelineBoard stages={board.stages} cards={board.cards} reasons={board.reasons} canMove={canMove} googleReady={googleReady} />
+          <PipelineBoard stages={board.stages} cards={board.cards} reasons={board.reasons} canMove={canMove} googleReady={googleReady} sites={board.sites} defaultSiteId={v.site_id} />
         </>
       )}
     </>

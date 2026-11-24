@@ -6,7 +6,7 @@ type Supa = Awaited<ReturnType<typeof createClient>>;
 
 // Дані для канбан-дошки однієї вакансії
 export async function loadBoard(supabase: Supa, vacancyId: string, pipelineId: string) {
-  const [{ data: stages }, { data: apps }, { data: reasons }] = await Promise.all([
+  const [{ data: stages }, { data: apps }, { data: reasons }, { data: sites }] = await Promise.all([
     supabase
       .from('pipeline_stages')
       .select('id, code, name, color, sort_order, kind, sla_days, contact_kind')
@@ -19,6 +19,7 @@ export async function loadBoard(supabase: Supa, vacancyId: string, pipelineId: s
       .eq('vacancy_id', vacancyId)
       .order('stage_changed_at', { ascending: false }),
     supabase.from('rejection_reasons').select('id, name, side').eq('is_active', true).order('sort_order'),
+    supabase.from('sites').select('id, name, address').eq('is_active', true).order('name'),
   ]);
   const reasonName = new Map(((reasons ?? []) as { id: string; name: string }[]).map((r) => [r.id, r.name]));
 
@@ -47,6 +48,7 @@ export async function loadBoard(supabase: Supa, vacancyId: string, pipelineId: s
     stages: (stages ?? []) as Stage[],
     cards,
     reasons: (reasons ?? []) as { id: string; name: string; side: 'company' | 'candidate' }[],
+    sites: (sites ?? []) as { id: string; name: string; address: string | null }[],
   };
 }
 

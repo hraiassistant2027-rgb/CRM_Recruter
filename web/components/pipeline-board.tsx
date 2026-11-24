@@ -4,10 +4,11 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
 import { moveApplication, type ContactInput } from '@/app/(app)/vacancies/actions';
 import { INVITE_BY_DEFAULT, KIND_LABELS } from '@/lib/interviews';
+import { LocationPicker, type LocationValue, type Site } from '@/components/location-picker';
 import { Alert, Button, Field, Input, Select } from '@/components/ui';
 import { daysOnStage, type BoardCard, type Stage } from '@/lib/vacancies';
 
-type Reason = { id: string; name: string; side: 'company' | 'candidate' };
+export type Reason = { id: string; name: string; side: 'company' | 'candidate' };
 type Pending = { card: BoardCard; stage: Stage; mode: 'reject' | 'contact' } | null;
 
 const CLOSED = ['rejected', 'withdrawn'];
@@ -18,12 +19,16 @@ export function PipelineBoard({
   reasons,
   canMove,
   googleReady = false,
+  sites = [],
+  defaultSiteId = null,
 }: {
   stages: Stage[];
   cards: BoardCard[];
   reasons: Reason[];
   canMove: boolean;
   googleReady?: boolean;
+  sites?: Site[];
+  defaultSiteId?: string | null;
 }) {
   const router = useRouter();
   const [cards, setCards] = useState(initialCards);
@@ -176,6 +181,8 @@ export function PipelineBoard({
         <ContactDialog
           pending={pending}
           googleReady={googleReady}
+          sites={sites}
+          defaultSiteId={defaultSiteId}
           onCancel={() => setPending(null)}
           onConfirm={(contact, comment) => {
             const p = pending;
@@ -201,13 +208,13 @@ export function PipelineBoard({
   );
 }
 
-function RejectDialog({
+export function RejectDialog({
   pending,
   reasons,
   onCancel,
   onConfirm,
 }: {
-  pending: NonNullable<Pending>;
+  pending: { card: { full_name: string }; stage: Stage };
   reasons: Reason[];
   onCancel: () => void;
   onConfirm: (reasonId: string, comment: string) => void;
@@ -254,14 +261,18 @@ function RejectDialog({
   );
 }
 
-function ContactDialog({
+export function ContactDialog({
   pending,
   googleReady,
+  sites,
+  defaultSiteId,
   onCancel,
   onConfirm,
 }: {
-  pending: NonNullable<Pending>;
+  pending: { card: { full_name: string }; stage: Stage };
   googleReady: boolean;
+  sites: Site[];
+  defaultSiteId?: string | null;
   onCancel: () => void;
   onConfirm: (contact: ContactInput, comment: string) => void;
 }) {
@@ -270,12 +281,12 @@ function ContactDialog({
   const [date, setDate] = useState(tomorrow);
   const [time, setTime] = useState('10:00');
   const [duration, setDuration] = useState(kind === 'call' ? 15 : kind === 'phone' ? 30 : 60);
-  const [location, setLocation] = useState(kind === 'call' || kind === 'phone' ? 'Телефоном' : '');
-  const [meet, setMeet] = useState(false);
+  const [place, setPlace] = useState<LocationValue>({ mode: 'phone', location: 'Телефоном', meet: false });
   const [google, setGoogle] = useState(googleReady);
   const [invite, setInvite] = useState(INVITE_BY_DEFAULT.includes(kind));
   const [comment, setComment] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
+  const online = place.mode === 'online';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 p-4" role="dialog" aria-modal="true" aria-labelledby="contact-title">
@@ -304,29 +315,34 @@ function ContactDialog({
               </Select>
             </Field>
           </div>
-          <Field label="Місце" htmlFor="c-loc">
-            <Input id="c-loc" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Телефоном, адреса офісу чи об’єкта" />
-          </Field>
+          <LocationPicker
+            sites={sites}
+            defaultMode={kind === 'call' || kind === 'phone' ? 'phone' : defaultSiteId ? 'site' : 'office'}
+            defaultSiteId={defaultSiteId}
+            googleReady={googleReady}
+            idPrefix="c-loc"
+            onChange={(v) => {
+              setPlace(v);
+              if (v.mode === 'online') {
+                setGoogle(true);
+                setInvite(true);
+              }
+            }}
+          />
           <Field label="Коментар" htmlFor="c-comment">
             <Input id="c-comment" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Про що домовились" />
           </Field>
           {googleReady ? (
             <div className="space-y-2 text-sm">
               <label className="flex items-center gap-2">
-                <input type="checkbox" checked={google} onChange={(e) => setGoogle(e.target.checked)} className="accent-[var(--color-accent-strong)]" />
+                <input type="checkbox" checked={google || online} disabled={online} onChange={(e) => setGoogle(e.target.checked)} className="accent-[var(--color-accent-strong)]" />
                 Додати в мій Google Календар
               </label>
-              {google && (
-                <>
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" checked={meet} onChange={(e) => setMeet(e.target.checked)} className="accent-[var(--color-accent-strong)]" />
-                    Онлайн через Google Meet
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" checked={invite} onChange={(e) => setInvite(e.target.checked)} className="accent-[var(--color-accent-strong)]" />
-                    Надіслати кандидату запрошення з календаря
-                  </label>
-                </>
+              {(google || online) && (
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={invite} onChange={(e) => setInvite(e.target.checked)} className="accent-[var(--color-accent-strong)]" />
+                  Надіслати кандидату запрошення з календаря{online ? ' (з посиланням Google Meet)' : ''}
+                </label>
               )}
             </div>
           ) : (
@@ -345,7 +361,15 @@ function ContactDialog({
                 setProblem('Вкажіть дату і час');
                 return;
               }
-              onConfirm({ date, time, duration, location, meet: google && meet, google, inviteCandidate: google && invite }, comment);
+              if (online && !googleReady) {
+                setProblem('Для онлайн-зустрічі спершу підключіть Google у профілі');
+                return;
+              }
+              const useGoogle = googleReady && (google || online);
+              onConfirm(
+                { date, time, duration, location: place.location, meet: online, google: useGoogle, inviteCandidate: useGoogle && invite },
+                comment,
+              );
             }}
           >
             Зберегти

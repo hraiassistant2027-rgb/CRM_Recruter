@@ -101,7 +101,7 @@ export async function moveApplication(input: {
   reasonId?: string | null;
   comment?: string | null;
   contact?: ContactInput | null;
-}): Promise<FormState> {
+}): Promise<FormState & { interviewId?: string }> {
   const ids = [input.applicationId, input.stageId, ...(input.reasonId ? [input.reasonId] : [])];
   if (!ids.every((v) => uuidSchema.safeParse(v).success)) return { error: 'Невірні дані' };
   const comment = (input.comment ?? '').trim().slice(0, 1000) || null;
@@ -141,7 +141,7 @@ export async function moveApplication(input: {
   revalidatePath('/calendar');
   revalidatePath('/vacancies', 'layout');
   revalidatePath('/candidates', 'layout');
-  return { ok: `Етап змінено.${note}` };
+  return { ok: `Етап змінено.${note}`, interviewId: (interviewId as string | null) ?? undefined };
 }
 
 // Пошук кандидатів для додавання у вакансію (до 10 результатів)

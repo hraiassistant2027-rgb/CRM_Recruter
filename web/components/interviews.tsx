@@ -5,6 +5,7 @@ import { cancelInterview, rescheduleInterview, saveInterviewResult, scheduleInte
 import { Alert, Button, Field, Input, Select } from '@/components/ui';
 import { EmailComposer } from '@/components/email-composer';
 import { KIND_LABELS } from '@/lib/interviews';
+import { LocationPicker, type LocationValue, type Site } from '@/components/location-picker';
 
 type Option = { id: string; name: string };
 type Msg = { ok?: string; error?: string } | null;
@@ -31,7 +32,8 @@ export function ScheduleInterview({
   fromEmail,
   templates,
   inviteTemplateId,
-  defaultLocation,
+  sites = [],
+  defaultSiteId = null,
 }: {
   applications: Option[];
   users: Option[];
@@ -40,11 +42,12 @@ export function ScheduleInterview({
   fromEmail: string;
   templates: Option[];
   inviteTemplateId?: string;
-  defaultLocation?: string;
+  sites?: Site[];
+  defaultSiteId?: string | null;
 }) {
   const [busy, start] = useTransition();
   const [msg, setMsg] = useState<Msg>(null);
-  const [meet, setMeet] = useState(false);
+  const [place, setPlace] = useState<LocationValue>({ mode: 'phone', location: 'Телефоном', meet: false });
   const [created, setCreated] = useState<{ interviewId: string; applicationId: string } | null>(null);
   const [writeLetter, setWriteLetter] = useState(false);
 
@@ -87,7 +90,10 @@ export function ScheduleInterview({
         start(async () => {
           const r = await scheduleInterview(data);
           setMsg(r);
-          if (r.ok && r.interviewId) setCreated({ interviewId: r.interviewId, applicationId: String(data.get('application_id')) });
+          if (r.ok && r.interviewId) {
+            setCreated({ interviewId: r.interviewId, applicationId: String(data.get('application_id')) });
+            if (place.meet) setWriteLetter(true); // онлайн — одразу пропонуємо лист із посиланням Meet
+          }
         });
       }}
     >
@@ -128,13 +134,9 @@ export function ScheduleInterview({
           </Field>
         </div>
         <div className="md:col-span-2">
-          <label className="mb-2 flex items-center gap-2 text-sm">
-            <input type="checkbox" name="meet" checked={meet} onChange={(e) => setMeet(e.target.checked)} className="accent-[var(--color-accent-strong)]" />
-            Онлайн через Google Meet (посилання створиться автоматично)
-          </label>
-          <Field label={meet ? 'Місце (необов’язково)' : 'Місце співбесіди'} htmlFor="iv-location">
-            <Input id="iv-location" name="location" defaultValue={defaultLocation ?? ''} placeholder="Адреса офісу або об’єкта, «телефоном»" />
-          </Field>
+          <input type="hidden" name="location" value={place.location} />
+          {place.meet && <input type="hidden" name="meet" value="on" />}
+          <LocationPicker sites={sites} defaultMode="phone" defaultSiteId={defaultSiteId} googleReady idPrefix="iv-loc" onChange={setPlace} />
         </div>
       </div>
 
