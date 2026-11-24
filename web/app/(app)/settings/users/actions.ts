@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { firstIssue, inviteSchema, uuidSchema } from '@/lib/validation';
 import { translateError } from '@/lib/errors';
-import { appUrl } from '@/lib/env';
+import { confirmLink, sendSystemEmail } from '@/lib/system-mail';
 import type { FormState } from '@/lib/form-state';
 
 const NO_RIGHTS: FormState = { error: 'Недостатньо прав для цієї дії або сесію не підтверджено кодом MFA' };
@@ -36,12 +36,25 @@ export async function inviteUser(_prev: FormState, formData: FormData): Promise<
   if (!(await allowed(supabase, 'users.manage'))) return NO_RIGHTS;
   const me = await currentUserId(supabase);
 
+  // Посилання-запрошення створює Supabase, а лист надсилається з Gmail адміністратора
   const admin = createAdminClient();
-  const { data, error } = await admin.auth.admin.inviteUserByEmail(parsed.data.email, {
-    data: { full_name: parsed.data.full_name },
-    redirectTo: `${appUrl()}/update-password`,
+  const { data, error } = await admin.auth.admin.generateLink({
+    type: 'invite',
+    email: parsed.data.email,
+    options: { data: { full_name: parsed.data.full_name } },
   });
-  if (error || !data.user) return { error: translateError(error) };
+  if (error || !data.user || !data.properties?.hashed_token) return { error: translateError(error) };
+  const link = confirmLink(data.properties.hashed_token, 'invite');
+  const sent = await sendSystemEmail({
+    to: parsed.data.email,
+    subject: 'Запрошення до HR CRM KAN',
+    paragraphs: [
+      `Добрий день, ${parsed.data.full_name}!`,
+      'Вас запрошено до HR CRM KAN — системи рекрутингу компанії. Натисніть кнопку, щоб встановити пароль. Після цього система попросить налаштувати двофакторну перевірку в застосунку Google Authenticator.',
+    ],
+    link: { url: link, label: 'Прийняти запрошення' },
+    preferredSenderId: me ?? undefined,
+  });
 
   // Роль призначаємо від імені адміністратора: діють правила RLS і журнал дій
   let roleNote = '';
@@ -56,7 +69,12 @@ export async function inviteUser(_prev: FormState, formData: FormData): Promise<
   }
 
   revalidatePath('/settings/users');
-  return { ok: `Запрошення надіслано на ${parsed.data.email}.${roleNote}` };
+  if (!sent.sent) {
+    return {
+      ok: `Користувача створено, але лист не надіслано (${sent.error}). Надішліть йому це одноразове посилання самостійно: ${link}${roleNote}`,
+    };
+  }
+  return { ok: `Запрошення надіслано на ${parsed.data.email} з ${sent.from}.${roleNote}` };
 }
 
 export async function setUserActive(_prev: FormState, formData: FormData): Promise<FormState> {
