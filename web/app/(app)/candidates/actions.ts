@@ -414,3 +414,114 @@ export async function addNote(_prev: FormState, formData: FormData): Promise<For
   revalidatePath(`/candidates/${id.data}`);
   return { ok: 'Нотатку додано' };
 }
+
+// ---------------------------------------------------------------------
+// Пакетне завантаження резюме: кожен файл — окремий виклик (клієнт надсилає по черзі).
+// Картка створюється автоматично з розпізнаних даних і позначається «не перевірено».
+// ---------------------------------------------------------------------
+export type ImportResult = {
+  status: 'created' | 'existing' | 'duplicate_file' | 'error';
+  message: string;
+  candidateId?: string;
+  name?: string;
+  addedToVacancy?: boolean;
+};
+
+export async function importResume(formData: FormData): Promise<ImportResult> {
+  const file = formData.get('resume');
+  if (!(file instanceof File) || file.size === 0) return { status: 'error', message: 'Файл порожній' };
+  const issue = resumeFileIssue(file.name, file.size);
+  if (issue) return { status: 'error', message: issue };
+  const vacancy = uuidSchema.safeParse(formData.get('vacancy_id'));
+  const vacancyId = vacancy.success ? vacancy.data : null;
+  const source = uuidSchema.safeParse(formData.get('source_id'));
+
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { status: 'error', message: 'Сесія завершилася. Увійдіть знову.' };
+
+  const addToVacancy = async (candidateId: string) => {
+    if (!vacancyId) return { added: false, note: '' };
+    const r = await insertApplication(supabase, vacancyId, candidateId);
+    return r.error ? { added: false, note: ` У вакансію не додано: ${r.error}` } : { added: true, note: ' Додано у вакансію.' };
+  };
+
+  // 1. Той самий файл уже є в базі
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const sha256 = createHash('sha256').update(bytes).digest('hex');
+  const admin = createAdminClient();
+  const { data: sameFile } = await admin.from('documents').select('candidate_id').eq('sha256', sha256).is('deleted_at', null).maybeSingle();
+  if (sameFile?.candidate_id) {
+    const { data: owner } = await supabase.from('candidates').select('id, full_name').eq('id', sameFile.candidate_id).maybeSingle();
+    if (!owner) return { status: 'duplicate_file', message: 'Цей файл уже є в базі (у картці, до якої у вас немає доступу)' };
+    const v = await addToVacancy(owner.id);
+    return { status: 'duplicate_file', message: `Цей файл уже є в картці.${v.note}`, candidateId: owner.id, name: owner.full_name, addedToVacancy: v.added };
+  }
+
+  // 2. Розпізнавання
+  const ext = file.name.split('.').pop()!.toLowerCase();
+  const text = await extractResumeText(bytes, ext);
+  const fields = parseResumeText(text ?? '', file.name);
+  const raw: Record<string, string> = {
+    full_name: fields.full_name ?? `Без імені (${file.name.slice(0, 80)})`,
+    phone: fields.phone ?? '',
+    email: fields.email ?? '',
+    city: fields.city ?? '',
+    linkedin_url: fields.linkedin_url ?? '',
+    current_position: fields.current_position ?? '',
+    source_id: source.success ? source.data : '',
+    experience_years: '',
+    desired_salary: fields.desired_salary ?? '',
+    salary_currency: fields.salary_currency ?? 'UAH',
+    available_from: '',
+    skills: '',
+    summary: '',
+  };
+  const parsed = candidateSchema.safeParse(raw);
+  // Якщо якесь розпізнане поле не пройшло перевірку — прибираємо його, а не зупиняємось
+  let input: CandidateInput;
+  if (parsed.success) input = parsed.data;
+  else {
+    for (const i of parsed.error.issues) if (i.path[0] && i.path[0] !== 'full_name') raw[String(i.path[0])] = '';
+    const retry = candidateSchema.safeParse(raw);
+    if (!retry.success) return { status: 'error', message: retry.error.issues[0]?.message ?? 'Не вдалося розпізнати дані' };
+    input = retry.data;
+  }
+
+  // 3. Точний дублікат за телефоном, email або LinkedIn — додаємо резюме до наявної картки
+  const exact = (await findDuplicates(supabase, input, null)).find((d) => d.match_type === 'exact' && d.accessible);
+  if (exact) {
+    const stored = await storeResume(supabase, exact.candidate_id, file);
+    const v = await addToVacancy(exact.candidate_id);
+    return {
+      status: 'existing',
+      message: `Кандидат уже є в базі (збіг: ${exact.matched_on === 'phone' ? 'телефон' : exact.matched_on === 'email' ? 'email' : 'LinkedIn'}).${stored.issue ? ` Резюме не додано: ${stored.issue}` : ' Резюме додано до картки.'}${v.note}`,
+      candidateId: exact.candidate_id,
+      name: exact.full_name ?? undefined,
+      addedToVacancy: v.added,
+    };
+  }
+
+  // 4. Нова картка
+  const candidateId = randomUUID();
+  const { error } = await supabase.from('candidates').insert({ id: candidateId, ...toRow(input), review_status: 'unreviewed' });
+  if (error) return { status: 'error', message: translateError(error) };
+  await supabase.from('consents').insert({
+    candidate_id: candidateId,
+    legal_basis: 'pre_contract',
+    source: 'Резюме надіслано кандидатом (пакетне завантаження)',
+  });
+  const stored = await storeResume(supabase, candidateId, file);
+  const v = await addToVacancy(candidateId);
+  revalidatePath('/candidates');
+  if (vacancyId) revalidatePath(`/vacancies/${vacancyId}`);
+
+  const missing = [!fields.full_name && 'ПІБ', !fields.phone && 'телефон', !fields.email && 'email'].filter(Boolean);
+  return {
+    status: 'created',
+    message: `Створено.${missing.length ? ` Не розпізнано: ${missing.join(', ')}.` : ''}${stored.issue ? ` Резюме не збережено: ${stored.issue}` : ''}${v.note}`,
+    candidateId,
+    name: input.full_name,
+    addedToVacancy: v.added,
+  };
+}

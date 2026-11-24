@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Pencil, Upload } from 'lucide-react';
+import { Files, Pencil, Upload } from 'lucide-react';
+import { BulkResumeUpload } from '@/components/bulk-resume-upload';
 import { CandidateForm } from '../../candidates/candidate-form';
 import { requirePermission } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -57,7 +58,8 @@ export default async function VacancyPage({
   const addError = one('add_error');
   const uploadError = one('upload_error');
   const showNewForm = one('new') === '1' && canAdd && can(p, 'candidates.create');
-  const { data: sources } = showNewForm
+  const showBulk = one('bulk') === '1' && canAdd && can(p, 'candidates.create');
+  const { data: sources } = showNewForm || showBulk
     ? await supabase.from('sources').select('id, name').eq('is_active', true).order('sort_order')
     : { data: [] };
   const manager = (v.hiring_manager_id && userName.get(v.hiring_manager_id)) || v.hiring_manager_name;
@@ -124,17 +126,42 @@ export default async function VacancyPage({
           <Card>
             <h2 className="mb-3 font-medium">Додати кандидата з бази</h2>
             <AddCandidate vacancyId={v.id} canCreateCandidate={can(p, 'candidates.create')} />
-            {can(p, 'candidates.create') && !showNewForm && (
-              <Link
-                href={`/vacancies/${id}?new=1#new-candidate`}
-                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-accent-strong bg-accent-soft/40 px-4 py-3 text-sm font-medium hover:bg-accent-soft"
-              >
-                <Upload className="h-4 w-4" aria-hidden /> Новий кандидат із резюме
-              </Link>
+            {can(p, 'candidates.create') && (
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <Link
+                  href={`/vacancies/${id}?new=1#new-candidate`}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-dashed border-accent-strong bg-accent-soft/40 px-3 py-3 text-sm font-medium hover:bg-accent-soft"
+                >
+                  <Upload className="h-4 w-4" aria-hidden /> Одне резюме
+                </Link>
+                <Link
+                  href={`/vacancies/${id}?bulk=1#bulk-upload`}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-dashed border-accent-strong bg-accent-soft/40 px-3 py-3 text-sm font-medium hover:bg-accent-soft"
+                >
+                  <Files className="h-4 w-4" aria-hidden /> Кілька резюме
+                </Link>
+              </div>
             )}
           </Card>
         )}
       </div>
+
+      {showBulk && (
+        <Card className="mb-6">
+          <div id="bulk-upload" className="scroll-mt-4">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="font-medium">Кілька резюме у вакансію «{v.title}»</h2>
+                <p className="text-sm text-ink-soft">Кандидати з'являться у воронці на етапі «Новий кандидат».</p>
+              </div>
+              <Link href={`/vacancies/${id}`} className="text-sm text-ink-soft underline">
+                Закрити
+              </Link>
+            </div>
+            <BulkResumeUpload vacancyId={v.id} sources={(sources ?? []) as { id: string; name: string }[]} />
+          </div>
+        </Card>
+      )}
 
       {showNewForm && (
         <Card className="mb-6">

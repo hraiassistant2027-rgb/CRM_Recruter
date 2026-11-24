@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Upload } from 'lucide-react';
 import { requirePermission } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { can } from '@/lib/permissions';
@@ -88,12 +88,20 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
         description={trash ? 'Видалені картки. Їх можна відкрити і відновити.' : 'Єдина база для всіх вакансій'}
         actions={
           can(session.permissions, 'candidates.create') && !trash ? (
-            <Link
-              href="/candidates/new"
-              className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-ink hover:bg-accent-strong"
-            >
-              <Plus className="h-4 w-4" aria-hidden /> Додати кандидата
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/candidates/import"
+                className="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-4 py-2 text-sm font-medium hover:bg-surface"
+              >
+                <Upload className="h-4 w-4" aria-hidden /> Кілька резюме
+              </Link>
+              <Link
+                href="/candidates/new"
+                className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-ink hover:bg-accent-strong"
+              >
+                <Plus className="h-4 w-4" aria-hidden /> Додати кандидата
+              </Link>
+            </div>
           ) : undefined
         }
       />
