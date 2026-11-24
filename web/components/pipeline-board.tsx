@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { moveApplication, type ContactInput } from '@/app/(app)/vacancies/actions';
 import { INVITE_BY_DEFAULT, KIND_LABELS } from '@/lib/interviews';
 import { LocationPicker, type LocationValue, type Site } from '@/components/location-picker';
@@ -39,8 +39,42 @@ export function PipelineBoard({
   const [pending, setPending] = useState<Pending>(null);
   const [showClosed, setShowClosed] = useState(false);
   const [busy, startTransition] = useTransition();
+  const boardRef = useRef<HTMLDivElement>(null);
+  const topRef = useRef<HTMLDivElement>(null);
+  const [scrollWidth, setScrollWidth] = useState(0);
+  const [atStart, setAtStart] = useState(true);
+  const [atEnd, setAtEnd] = useState(false);
 
   useEffect(() => setCards(initialCards), [initialCards]);
+
+  // Верхня смуга прокрутки синхронізована з дошкою
+  useEffect(() => {
+    const board = boardRef.current;
+    if (!board) return;
+    const update = () => {
+      setScrollWidth(board.scrollWidth);
+      setAtStart(board.scrollLeft <= 2);
+      setAtEnd(board.scrollLeft + board.clientWidth >= board.scrollWidth - 2);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(board);
+    if (board.firstElementChild) ro.observe(board.firstElementChild);
+    return () => ro.disconnect();
+  });
+
+  const syncFrom = (from: 'top' | 'board') => {
+    const board = boardRef.current;
+    const top = topRef.current;
+    if (!board || !top) return;
+    if (from === 'top' && Math.abs(board.scrollLeft - top.scrollLeft) > 1) board.scrollLeft = top.scrollLeft;
+    if (from === 'board' && Math.abs(top.scrollLeft - board.scrollLeft) > 1) top.scrollLeft = board.scrollLeft;
+    setAtStart(board.scrollLeft <= 2);
+    setAtEnd(board.scrollLeft + board.clientWidth >= board.scrollWidth - 2);
+  };
+  const scrollBy = (dx: number) => boardRef.current?.scrollBy({ left: dx, behavior: 'smooth' });
+  const scrollToEdge = (end: boolean) =>
+    boardRef.current?.scrollTo({ left: end ? boardRef.current.scrollWidth : 0, behavior: 'smooth' });
 
   const visibleStages = stages.filter((s) => showClosed || !CLOSED.includes(s.kind));
   const closedCount = cards.filter((c) => CLOSED.includes(stages.find((s) => s.id === c.stage_id)?.kind ?? '')).length;
@@ -91,7 +125,25 @@ export function PipelineBoard({
       {error && <Alert>{error}</Alert>}
       {notice && <Alert kind="info">{notice}</Alert>}
 
-      <div className="overflow-x-auto pb-3">
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={() => scrollToEdge(false)} disabled={atStart} className="rounded-lg border border-line bg-white px-2 py-1 text-sm hover:bg-surface disabled:opacity-30" aria-label="На початок воронки" title="На початок">
+          ⇤
+        </button>
+        <button type="button" onClick={() => scrollBy(-500)} disabled={atStart} className="rounded-lg border border-line bg-white px-3 py-1 text-sm hover:bg-surface disabled:opacity-30" aria-label="Прокрутити ліворуч" title="Ліворуч">
+          ←
+        </button>
+        <div ref={topRef} onScroll={() => syncFrom('top')} className="h-4 flex-1 overflow-x-auto overflow-y-hidden" aria-hidden="true">
+          <div style={{ width: scrollWidth, height: 1 }} />
+        </div>
+        <button type="button" onClick={() => scrollBy(500)} disabled={atEnd} className="rounded-lg border border-line bg-white px-3 py-1 text-sm hover:bg-surface disabled:opacity-30" aria-label="Прокрутити праворуч" title="Праворуч">
+          →
+        </button>
+        <button type="button" onClick={() => scrollToEdge(true)} disabled={atEnd} className="rounded-lg border border-line bg-white px-2 py-1 text-sm hover:bg-surface disabled:opacity-30" aria-label="До останнього етапу" title="До останнього етапу">
+          ⇥
+        </button>
+      </div>
+
+      <div ref={boardRef} onScroll={() => syncFrom('board')} className="overflow-x-auto pb-3">
         <div className="flex min-w-max gap-3">
           {visibleStages.map((stage) => {
             const list = cards.filter((c) => c.stage_id === stage.id);

@@ -18,7 +18,10 @@ const C = {
   recruiter: '#BE185D', // рекрутер — малиновий
 };
 
-const HOUR_PX = 64;
+const SLOT_MIN = 30; // крок сітки — пів години
+const SLOT_PX = 44; // висота одного пів-годинного рядка
+const DAY_START = 9 * 60 + 30; // 9:30
+const DAY_END = 18 * 60; // останній слот 17:30–18:00
 const DAY_HEAD = new Intl.DateTimeFormat('uk-UA', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
 const RANGE = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'long', timeZone: 'UTC' });
 
@@ -81,10 +84,12 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   // Видимі години: 08–20 або ширше, якщо є події раніше/пізніше
   const starts = items.map((i) => minutesOfDay(i.starts_at));
   const ends = items.map((i) => minutesOfDay(i.ends_at) || 24 * 60);
-  const firstHour = Math.min(8, ...starts.map((m) => Math.floor(m / 60)));
-  const lastHour = Math.max(20, ...ends.map((m) => Math.ceil(m / 60)));
-  const hours = Array.from({ length: lastHour - firstHour }, (_, i) => firstHour + i);
-  const height = hours.length * HOUR_PX;
+  // Сітка 9:30–18:00 по пів години; ширша, якщо є зустрічі раніше чи пізніше
+  const gridStart = Math.min(DAY_START, ...starts.map((m) => Math.floor(m / SLOT_MIN) * SLOT_MIN));
+  const gridEnd = Math.max(DAY_END, ...ends.map((m) => Math.ceil(m / SLOT_MIN) * SLOT_MIN));
+  const slots = Array.from({ length: (gridEnd - gridStart) / SLOT_MIN }, (_, i) => gridStart + i * SLOT_MIN);
+  const height = slots.length * SLOT_PX;
+  const label = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
   return (
     <>
@@ -149,9 +154,13 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
           </div>
           <div className="grid" style={{ height, gridTemplateColumns: `56px repeat(${days.length}, minmax(0, 1fr))` }}>
             <div className="relative">
-              {hours.map((h, i) => (
-                <div key={h} className="absolute right-2 -translate-y-2 text-[11px] text-ink-soft" style={{ top: i * HOUR_PX }}>
-                  {i === 0 ? '' : `${String(h).padStart(2, '0')}:00`}
+              {slots.map((m, i) => (
+                <div
+                  key={m}
+                  className={`absolute right-2 text-[11px] ${m % 60 === 0 ? 'font-medium text-ink' : 'text-ink-soft'}`}
+                  style={{ top: i * SLOT_PX + 2 }}
+                >
+                  {label(m)}
                 </div>
               ))}
             </div>
@@ -159,12 +168,12 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
               const placed = layout(items.filter((i) => dateToKyiv(i.starts_at).date === d));
               return (
                 <div key={d} className={`relative border-l border-line ${d === today ? 'bg-accent-soft/20' : ''}`}>
-                  {hours.map((h, i) => (
-                    <div key={h} className="absolute inset-x-0 border-t border-line/70" style={{ top: i * HOUR_PX }} />
+                  {slots.map((m, i) => (
+                    <div key={m} className={`absolute inset-x-0 border-t ${m % 60 === 0 ? 'border-line' : 'border-dashed border-line/60'}`} style={{ top: i * SLOT_PX }} />
                   ))}
                   {placed.map(({ item, start, end, lane, lanes }) => {
-                    const top = ((start - firstHour * 60) / 60) * HOUR_PX;
-                    const h = Math.max(((end - start) / 60) * HOUR_PX, 58);
+                    const top = ((start - gridStart) / SLOT_MIN) * SLOT_PX;
+                    const h = Math.max(((end - start) / SLOT_MIN) * SLOT_PX, 58);
                     const st = STATUS_LABELS[item.status];
                     const recruiter = item.recruiter_id ? nameOf.get(item.recruiter_id) : null;
                     return (
