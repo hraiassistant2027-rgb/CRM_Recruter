@@ -1,3 +1,4 @@
+import { appUrl } from '@/lib/env';
 import { randomBytes } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
@@ -7,8 +8,8 @@ import { authorizationUrl, googleConfigured } from '@/lib/google';
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
-  if (!data.user) return NextResponse.redirect(new URL('/login', request.url));
-  if (!googleConfigured()) return NextResponse.redirect(new URL('/profile?google=not_configured', request.url));
+  if (!data.user) return NextResponse.redirect(new URL('/login', appUrl()));
+  if (!googleConfigured()) return NextResponse.redirect(new URL('/profile?google=not_configured', appUrl()));
 
   const state = randomBytes(24).toString('base64url');
   const response = NextResponse.redirect(authorizationUrl(state, data.user.email ?? undefined));

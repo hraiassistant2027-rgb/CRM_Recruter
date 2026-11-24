@@ -1,3 +1,4 @@
+import { appUrl } from '@/lib/env';
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -13,7 +14,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const supabase = await createClient();
   const { data: userData } = await supabase.auth.getUser();
-  if (!userData.user) return NextResponse.redirect(new URL('/login', request.url));
+  if (!userData.user) return NextResponse.redirect(new URL('/login', appUrl()));
 
   const { data: doc } = await supabase
     .from('documents')

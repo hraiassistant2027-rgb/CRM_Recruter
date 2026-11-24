@@ -1,3 +1,4 @@
+import { appUrl } from '@/lib/env';
 import { timingSafeEqual } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
@@ -5,7 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { GOOGLE_SCOPES, emailFromIdToken, encryptToken, exchangeCode, revokeToken } from '@/lib/google';
 
 function back(request: NextRequest, result: string) {
-  const res = NextResponse.redirect(new URL(`/profile?google=${result}`, request.url));
+  const res = NextResponse.redirect(new URL(`/profile?google=${result}`, appUrl()));
   res.cookies.delete({ name: 'g_oauth_state', path: '/api/google/callback' });
   return res;
 }
@@ -13,7 +14,7 @@ function back(request: NextRequest, result: string) {
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
-  if (!data.user) return NextResponse.redirect(new URL('/login', request.url));
+  if (!data.user) return NextResponse.redirect(new URL('/login', appUrl()));
 
   const params = request.nextUrl.searchParams;
   if (params.get('error')) return back(request, 'denied');
