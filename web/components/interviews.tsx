@@ -229,7 +229,7 @@ export function InterviewActions({
               Скасувати
             </Button>
             <Button type="button" variant="ghost" disabled={busy} onClick={() => run(() => syncInterviewResponses(id))}>
-              Оновити відповіді
+              Оновити з календаря
             </Button>
           </>
         )}

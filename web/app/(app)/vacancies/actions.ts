@@ -135,7 +135,9 @@ export async function moveApplication(input: {
       meet: Boolean(input.contact.meet),
       inviteCandidate: Boolean(input.contact.inviteCandidate),
     });
-    note = r.error ? ` Подію в Google Календарі не створено: ${r.error}` : r.invited ? ' Запрошення надіслано кандидату.' : '';
+    note = r.error
+      ? ` Подію в Google Календарі не створено: ${r.error}`
+      : `${r.invited ? ' Запрошення надіслано кандидату.' : ''}${r.warning ? ` ${r.warning}` : ''}`;
   }
   revalidatePath('/pipeline');
   revalidatePath('/calendar');

@@ -10,6 +10,7 @@ import { GoogleNotConnected, googleFetch, googleSession, type GoogleSession } fr
 import { kyivToDate, TZ } from '@/lib/time';
 import type { FormState } from '@/lib/form-state';
 import { KIND_LABELS } from '@/lib/interviews';
+import { ensureMeetLink, waitForMeetLink } from '@/lib/calendar-events';
 
 const CAL = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
 
@@ -115,7 +116,7 @@ export async function scheduleInterview(formData: FormData): Promise<FormState &
 
   const admin = createAdminClient();
   try {
-    const event = await googleFetch<{ id: string; hangoutLink?: string; htmlLink?: string }>(
+    const event = await googleFetch<{ id: string; hangoutLink?: string }>(
       session,
       `${CAL}?sendUpdates=all&conferenceDataVersion=1`,
       {
@@ -134,7 +135,8 @@ export async function scheduleInterview(formData: FormData): Promise<FormState &
         }),
       },
     );
-    await supabase.from('interviews').update({ google_event_id: event.id, meet_link: event.hangoutLink ?? null }).eq('id', interviewId);
+    const meetLink = v.meet ? await waitForMeetLink(session, event) : null;
+    await supabase.from('interviews').update({ google_event_id: event.id, meet_link: meetLink }).eq('id', interviewId);
   } catch (e) {
     await admin.from('interviews').delete().eq('id', interviewId);
     return { error: `Подію в календарі не створено: ${gErr(e)}` };
@@ -159,7 +161,7 @@ async function loadInterview(id: string) {
   const supabase = await createClient();
   const { data: interview } = await supabase
     .from('interviews')
-    .select('id, application_id, starts_at, ends_at, google_event_id, organizer_id, status, location')
+    .select('id, application_id, starts_at, ends_at, google_event_id, organizer_id, status, location, meet_link')
     .eq('id', id)
     .maybeSingle();
   if (!interview) return null;
@@ -263,6 +265,15 @@ export async function syncInterviewResponses(id: string): Promise<FormState> {
   try {
     const session = await googleSession(ctx.interview.organizer_id);
     const event = await googleFetch<{ attendees?: Attendee[] }>(session, `${CAL}/${encodeURIComponent(ctx.interview.google_event_id)}`);
+    // Онлайн-зустріч без посилання — створюємо або забираємо посилання Meet
+    let meetNote = '';
+    if (!ctx.interview.meet_link && /онлайн|meet/i.test(ctx.interview.location ?? '')) {
+      const link = await ensureMeetLink(session, ctx.interview.google_event_id, id);
+      if (link) {
+        await ctx.supabase.from('interviews').update({ meet_link: link }).eq('id', id);
+        meetNote = ' Посилання Google Meet додано.';
+      }
+    }
     const { data: participants } = await ctx.supabase.from('interview_participants').select('id, email').eq('interview_id', id);
     let changed = 0;
     for (const p of (participants ?? []) as { id: string; email: string | null }[]) {
@@ -273,7 +284,7 @@ export async function syncInterviewResponses(id: string): Promise<FormState> {
       }
     }
     revalidateAll(ctx.candidateId);
-    return { ok: changed ? 'Відповіді учасників оновлено' : 'Відповідей поки немає' };
+    return { ok: `${changed ? 'Відповіді учасників оновлено.' : 'Нових відповідей немає.'}${meetNote}` };
   } catch (e) {
     return { error: gErr(e) };
   }

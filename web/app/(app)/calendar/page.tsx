@@ -148,11 +148,9 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
                     const st = STATUS_LABELS[item.status];
                     const recruiter = item.recruiter_id ? nameOf.get(item.recruiter_id) : null;
                     return (
-                      <Link
+                      <div
                         key={item.id}
-                        href={item.candidate_id ? `/candidates/${item.candidate_id}` : '#'}
-                        title={`${KIND_LABELS[item.kind] ?? ''} · ${item.candidate_name} · ${item.vacancy_title}`}
-                        className={`absolute overflow-hidden rounded-md border border-line bg-white px-1.5 py-1 text-[11px] leading-tight shadow-sm hover:z-10 hover:shadow-md ${item.status === 'done' || item.status === 'no_show' ? 'opacity-60' : ''}`}
+                        className={`group absolute overflow-hidden rounded-md border border-line bg-white text-[11px] leading-tight shadow-sm hover:z-10 hover:shadow-md ${item.status === 'done' || item.status === 'no_show' ? 'opacity-60' : ''}`}
                         style={{
                           top: top + 1,
                           height: h - 2,
@@ -161,27 +159,47 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
                           borderLeft: `4px solid ${KIND_COLORS[item.kind] ?? KIND_COLORS.other}`,
                         }}
                       >
-                        <div className="truncate text-ink-soft">
-                          {formatTime(item.starts_at)} · {KIND_LABELS[item.kind] ?? item.kind}
-                          {st && item.status !== 'scheduled' ? ` · ${st.label}` : ''}
-                        </div>
-                        <div className="truncate font-semibold" style={{ color: C.candidate }}>
-                          {item.candidate_name}
-                        </div>
-                        <div className="truncate font-medium" style={{ color: C.position }}>
-                          {item.vacancy_title}
-                        </div>
-                        {item.candidate_phone && (
-                          <div className="truncate font-medium" style={{ color: C.phone }}>
-                            {item.candidate_phone}
+                        {/* Онлайн-зустріч: натискання відкриває Google Meet; картка кандидата — окремою кнопкою */}
+                        <a
+                          href={item.meet_link ?? (item.candidate_id ? `/candidates/${item.candidate_id}` : '#')}
+                          {...(item.meet_link ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                          title={item.meet_link ? 'Приєднатися до Google Meet' : `${KIND_LABELS[item.kind] ?? ''} · ${item.candidate_name}`}
+                          className="block h-full px-1.5 py-1"
+                        >
+                          <div className="truncate text-ink-soft">
+                            {formatTime(item.starts_at)} · {KIND_LABELS[item.kind] ?? item.kind}
+                            {st && item.status !== 'scheduled' ? ` · ${st.label}` : ''}
                           </div>
-                        )}
-                        {recruiter && (
-                          <div className="truncate font-medium" style={{ color: C.recruiter }}>
-                            {recruiter}
+                          {item.meet_link && (
+                            <div className="my-0.5 inline-flex items-center gap-1 rounded bg-[#1A73E8] px-1.5 py-0.5 font-semibold text-white">▶ Google Meet</div>
+                          )}
+                          <div className="truncate font-semibold" style={{ color: C.candidate }}>
+                            {item.candidate_name}
                           </div>
+                          <div className="truncate font-medium" style={{ color: C.position }}>
+                            {item.vacancy_title}
+                          </div>
+                          {item.candidate_phone && (
+                            <div className="truncate font-medium" style={{ color: C.phone }}>
+                              {item.candidate_phone}
+                            </div>
+                          )}
+                          {recruiter && (
+                            <div className="truncate font-medium" style={{ color: C.recruiter }}>
+                              {recruiter}
+                            </div>
+                          )}
+                        </a>
+                        {item.meet_link && item.candidate_id && (
+                          <Link
+                            href={`/candidates/${item.candidate_id}`}
+                            title="Картка кандидата"
+                            className="absolute right-1 top-1 rounded border border-line bg-white px-1 text-[10px] text-ink-soft hover:text-ink"
+                          >
+                            картка
+                          </Link>
                         )}
-                      </Link>
+                      </div>
                     );
                   })}
                 </div>
