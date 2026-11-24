@@ -14,6 +14,12 @@ export function AuthShell({ title, subtitle, children }: { title: string; subtit
           {subtitle && <p className="mt-1 text-sm text-ink-soft">{subtitle}</p>}
           <div className="mt-6">{children}</div>
         </div>
+        <p className="mt-4 text-center text-xs text-ink-soft">
+          HR CRM KAN — внутрішня система рекрутингу ·{' '}
+          <a href="/privacy" className="underline">
+            Політика конфіденційності
+          </a>
+        </p>
       </div>
     </main>
   );
