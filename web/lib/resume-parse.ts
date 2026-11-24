@@ -25,6 +25,10 @@ const NOT_NAME = new Set(
     'україна', 'украина', 'ukraine', 'київ', 'киев', 'kyiv', 'work', 'robota', 'linkedin', 'telegram', 'viber', 'phone',
     'email', 'телефон', 'дата', 'народження', 'рождения', 'громадянство', 'гражданство', 'summary', 'experience',
     'education', 'skills', 'profile', 'objective', 'personal', 'information', 'особисті', 'дані', 'личные', 'данные',
+    'загальна', 'общая', 'інформація', 'информация', 'контактна', 'контактная', 'особа', 'лицо', 'додаткова', 'дополнительная',
+    'ключові', 'ключевые', 'професійні', 'профессиональные', 'знання', 'знания', 'мови', 'языки', 'languages', 'локація',
+    'локация', 'оновлено', 'обновлено', 'вакансія', 'вакансия', 'компанія', 'компания', 'тов', 'фоп', 'пп', 'прат', 'ооо',
+    'сертифікати', 'курси', 'курсы', 'рекомендації', 'рекомендации', 'хобі', 'хобби', 'інтереси', 'интересы', 'досягнення',
   ].map((w) => w.toLowerCase()),
 );
 
@@ -142,40 +146,84 @@ export function findLinkedIn(text: string): string | undefined {
   return m.startsWith('http') ? m : `https://${m}`;
 }
 
-export function findName(text: string): string | undefined {
-  const lines = cleanLines(text).slice(0, 30);
-  // Підписане поле має пріоритет
+export function findName(text: string, fileName?: string): string | undefined {
+  const lines = cleanLines(text).slice(0, 40);
+  // 1. Підписане поле: «ПІБ: …», «Ім'я: …»
   for (const line of lines) {
-    const labeled = line.match(/^(?:ПІБ|ПІП|ФІО|ФИО|Ім'я|Имя|Name|Full name)\s*[:—-]\s*(.+)$/i);
+    const labeled = line.match(/^(?:ПІБ|ПІП|ФІО|ФИО|Прізвище,? ім'я(?:,? по батькові)?|Ім'я|Имя|Name|Full name)\s*[:—-]\s*(.+)$/i);
     if (labeled) {
       const n = nameFromLine(labeled[1]);
       if (n) return n;
     }
   }
+  // 2. Рядок, схожий на ПІБ, у якому є відоме ім'я або по батькові (перші 40 рядків)
   for (const line of lines) {
+    const n = nameFromLine(line, true);
+    if (n) return n;
+  }
+  // 3. Окремий рядок з 2–3 слів з великої літери на самому початку резюме
+  for (const line of lines.slice(0, 6)) {
     const n = nameFromLine(line);
     if (n) return n;
   }
-  // Запасний варіант: текст без розривів рядків — шукаємо 2–3 слова з великої літери на початку
-  const flat = lines.slice(0, 6).join(' ').replace(/^(резюме|curriculum vitae|cv|resume)\s*/i, '');
-  const word = `[${UP}][${UP}${LOW}]{1,30}`;
-  const m = flat.match(new RegExp(`^(${word})\\s+(${word})(?:\\s+(${word}))?`));
-  if (m) {
-    const three = m[3] ? nameFromLine(`${m[1]} ${m[2]} ${m[3]}`) : undefined;
-    if (three && (PATRONYMIC.test(m[3]!) || PATRONYMIC.test(m[2]))) return three;
-    return nameFromLine(`${m[1]} ${m[2]}`);
+  // 4. Назва файлу: «Іваненко_Петро_резюме.pdf», «CV Petro Ivanenko.docx»
+  if (fileName) {
+    const fromFile = nameFromFileName(fileName);
+    if (fromFile) return fromFile;
+  }
+  // 5. Будь-де в тексті: 2–3 слова поспіль, серед яких відоме ім'я або по батькові
+  for (const line of cleanLines(text).slice(0, 200)) {
+    const words = line.normalize('NFC').split(/[\s,;|•·:()]+/).filter(Boolean);
+    for (let i = 0; i < words.length - 1; i++) {
+      const three = i + 2 < words.length ? [words[i], words[i + 1], words[i + 2]] : null;
+      if (three && three.some((w) => PATRONYMIC.test(fixLookalikes(w)))) {
+        const n = nameFromLine(three.join(' '), true);
+        if (n) return n;
+      }
+      const n = nameFromLine(`${words[i]} ${words[i + 1]}`, true);
+      if (n) return n;
+    }
   }
   return undefined;
 }
 
-function nameFromLine(line: string): string | undefined {
+export function nameFromFileName(fileName: string): string | undefined {
+  const base = fileName
+    .replace(/\.[a-z0-9]{2,5}$/i, '')
+    .replace(/[_.+]+/g, ' ')
+    .replace(/(?<!\p{L})(резюме|резюме_|cv|resume|curriculum|vitae|копія|копия|copy|final|new|нове|оновлене|updated)(?!\p{L})/giu, ' ')
+    .replace(/\d+/g, ' ')
+    .replace(/[()\[\]-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!base) return undefined;
+  // Назви файлів часто з малої літери: «іваненко петро»
+  const words = base.split(' ').map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w));
+  return nameFromLine(words.slice(0, 3).join(' ')) ?? (words.length > 2 ? nameFromLine(words.slice(0, 2).join(' ')) : undefined);
+}
+
+// Деякі PDF кодують кириличні «і», «а», «о»… латинськими літерами — повертаємо кирилицю
+const LOOKALIKE: Record<string, string> = {
+  a: 'а', c: 'с', e: 'е', i: 'і', o: 'о', p: 'р', x: 'х', y: 'у',
+  A: 'А', B: 'В', C: 'С', E: 'Е', H: 'Н', I: 'І', K: 'К', M: 'М', O: 'О', P: 'Р', T: 'Т', X: 'Х',
+};
+function fixLookalikes(word: string): string {
+  return /[А-Яа-яІіЇїЄєҐґ]/.test(word) ? word.replace(/[aceiopxyABCEHIKMOPTX]/g, (ch) => LOOKALIKE[ch] ?? ch) : word;
+}
+
+function looksLikePerson(words: string[]): boolean {
+  return words.some((w) => FIRST_NAMES.has(w.toLowerCase()) || PATRONYMIC.test(w));
+}
+
+function nameFromLine(line: string, requirePerson = false): string | undefined {
   // «Іваненко Петро, 35 років», «Іваненко Петро | Прораб», «Іваненко Петро — інженер»
   const cleaned = line
     .split(/\s*[,;|•·–—(]\s*|\s+-\s+|\s+\d/)[0]
     .replace(/[.:]+$/g, '')
     .trim();
-  const words = cleaned.split(' ');
+  const words = cleaned.normalize('NFC').split(' ').map(fixLookalikes);
   if (words.length < 2 || words.length > 3) return undefined;
+  if (requirePerson && !looksLikePerson(words)) return undefined;
   const word = new RegExp(`^[${UP}][${UP}${LOW}]{1,30}$`);
   if (!words.every((w) => word.test(w))) return undefined;
   if (words.some((w) => NOT_NAME.has(w.toLowerCase()))) return undefined;
@@ -239,10 +287,13 @@ export function firstLines(text: string, count = 6): string[] {
     .map((l) => (l.length > 90 ? `${l.slice(0, 90)}…` : l));
 }
 
-export function parseResumeText(text: string): ResumeFields {
-  if (!text || text.trim().length < 20) return {};
+export function parseResumeText(text: string, fileName?: string): ResumeFields {
+  if (!text || text.trim().length < 20) {
+    const fromFile = fileName ? nameFromFileName(fileName) : undefined;
+    return fromFile ? { full_name: fromFile } : {};
+  }
   const out: ResumeFields = {
-    full_name: findName(text),
+    full_name: findName(text, fileName),
     phone: findPhone(text),
     email: findEmail(text),
     city: findCity(text),

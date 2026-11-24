@@ -29,7 +29,7 @@ export function CandidateForm({ sources, candidate }: { sources: Source[]; candi
     data.set('resume', file);
     startParsing(async () => {
       const result = await extractResumeFields(data);
-      if (result.error) {
+      if (result.error && Object.keys(result.fields).length === 0) {
         setParseNote({ kind: 'info', text: result.error });
         return;
       }
@@ -52,7 +52,11 @@ export function CandidateForm({ sources, candidate }: { sources: Source[]; candi
       const base = filled.length
         ? `З резюме заповнено: ${filled.join(', ')}.${noName ? ' ПІБ не розпізнано — впишіть вручну.' : ''} Перевірте дані перед збереженням.`
         : 'Нових даних у резюме не знайдено — заповніть поля вручну.';
-      setParseNote({ kind: filled.length && !noName ? 'success' : 'info', text: base, preview: result.preview });
+      setParseNote({
+        kind: filled.length && !noName && !result.error ? 'success' : 'info',
+        text: result.error ? `${result.error} ${filled.length ? `Заповнено: ${filled.join(', ')}.` : ''}` : base,
+        preview: result.preview,
+      });
     });
   }
   const fe = state.fieldErrors ?? {};

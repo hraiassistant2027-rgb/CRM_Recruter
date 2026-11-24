@@ -100,7 +100,7 @@ async function storeResumeInner(supabase: Supa, candidateId: string, file: File)
   const mime = RESUME_TYPES[ext];
   // Текст резюме — для пошуку по базі і автозаповнення картки
   const text = await extractResumeText(bytes, ext);
-  const fields = text ? parseResumeText(text) : {};
+  const fields = parseResumeText(text ?? '', file.name);
   const path = `candidates/${candidateId}/${randomUUID()}-${safeFileName(file.name)}`;
 
   // Ідентифікатор задаємо самі і не просимо базу повернути рядок: правило читання файлів
@@ -169,6 +169,10 @@ export async function extractResumeFields(
   const ext = file.name.split('.').pop()!.toLowerCase();
   const text = await extractResumeText(new Uint8Array(await file.arrayBuffer()), ext);
   if (!text) {
+    const fromFile = parseResumeText('', file.name);
+    if (fromFile.full_name) {
+      return { fields: fromFile, error: 'Текст резюме не прочитано (можливо, скан) — ПІБ взято з назви файлу, решту заповніть вручну.' };
+    }
     return {
       fields: {},
       error: ['jpg', 'jpeg', 'png'].includes(ext)
@@ -176,7 +180,7 @@ export async function extractResumeFields(
         : 'Не вдалося прочитати текст (можливо, це скан). Заповніть поля вручну.',
     };
   }
-  const fields = parseResumeText(text);
+  const fields = parseResumeText(text, file.name);
   // Якщо ПІБ не знайдено — показуємо (лише цьому користувачу) початок тексту, щоб зрозуміти причину
   return fields.full_name ? { fields } : { fields, preview: firstLines(text) };
 }

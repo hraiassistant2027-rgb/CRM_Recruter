@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findCity, findName, findPhone, parseResumeText, resumeDisplayName } from './resume-parse';
+import { findCity, findName, findPhone, nameFromFileName, parseResumeText, resumeDisplayName } from './resume-parse';
 
 describe('розпізнавання резюме', () => {
   it('українське резюме з підписаними полями', () => {
@@ -57,6 +57,24 @@ describe('порядок ПІБ: Прізвище Ім\'я По батькові
   });
   it('знаходить ПІБ у тексті без розривів рядків', () => {
     expect(findName('Резюме Іваненко Петро Миколайович Бажана посада Прораб Київ 0671234567')).toBe('Іваненко Петро Миколайович');
+  });
+});
+
+describe('пошук ПІБ у складних випадках', () => {
+  it('ПІБ після шапки сайту і з латинськими «i» всередині', () => {
+    expect(findName('Work.ua\nРезюме від 24.11.2026\nЗагальна інформація\nКонтакти\nЛокація\nБажана посада\nКовальчук Вiталiй\nПрораб')).toBe(
+      'Ковальчук Віталій',
+    );
+  });
+  it('шапка «Загальна інформація» не вважається ПІБ', () => {
+    expect(findName('Загальна Інформація\nДосвід\nТекст')).toBeUndefined();
+  });
+  it('ПІБ з назви файлу, якщо в тексті не знайдено', () => {
+    expect(findName('Текст без імені\n', 'Іваненко_Петро_резюме.pdf')).toBe('Іваненко Петро');
+    expect(nameFromFileName('резюме-шевченко-олена-ігорівна.pdf')).toBe('Шевченко Олена Ігорівна');
+    expect(nameFromFileName('CV Petro Ivanenko (1).docx')).toBe('Ivanenko Petro');
+    expect(nameFromFileName('scan0001.pdf')).toBeUndefined();
+    expect(parseResumeText('', 'Іваненко_Петро.pdf')).toEqual({ full_name: 'Іваненко Петро' });
   });
 });
 
