@@ -110,7 +110,7 @@ export default async function CandidatePage({
   // Листування (етап 5)
   type Msg = { id: string; direction: 'in' | 'out'; subject: string | null; body_text: string | null; snippet: string | null; status: string; error: string | null; from_email: string | null; sent_at: string | null; received_at: string | null; created_at: string; sent_by: string | null };
   const canMail = can(session.permissions, 'email.read');
-  const canSend = can(session.permissions, 'email.send') && !deleted;
+  const canSend = can(session.permissions, 'email.send') && !c.deleted_at;
   const [mailRes, tplRes, accountRes] = canMail
     ? await Promise.all([
         supabase.from('email_messages').select('id, direction, subject, body_text, snippet, status, error, from_email, sent_at, received_at, created_at, sent_by').eq('candidate_id', id).order('created_at', { ascending: false }).limit(50),
