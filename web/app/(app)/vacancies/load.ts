@@ -9,7 +9,7 @@ export async function loadBoard(supabase: Supa, vacancyId: string, pipelineId: s
   const [{ data: stages }, { data: apps }, { data: reasons }] = await Promise.all([
     supabase
       .from('pipeline_stages')
-      .select('id, code, name, color, sort_order, kind, sla_days')
+      .select('id, code, name, color, sort_order, kind, sla_days, contact_kind')
       .eq('pipeline_id', pipelineId)
       .eq('is_active', true)
       .order('sort_order'),

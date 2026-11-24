@@ -46,6 +46,8 @@ export default async function VacancyPage({
     v.department_id ? supabase.from('departments').select('name').eq('id', v.department_id).maybeSingle() : Promise.resolve({ data: null }),
     supabase.from('profiles').select('id, full_name'),
   ]);
+  const { data: gAccount } = await supabase.from('email_accounts').select('status').eq('user_id', session.userId).maybeSingle();
+  const googleReady = gAccount?.status === 'active';
   const userName = new Map(((users ?? []) as { id: string; full_name: string }[]).map((u) => [u.id, u.full_name]));
   const p = session.permissions;
   // Права «свої/усі» остаточно перевіряє база; тут — лише що показувати
@@ -177,7 +179,7 @@ export default async function VacancyPage({
       {board && (
         <>
           <h2 className="mb-3 text-lg font-semibold">Воронка</h2>
-          <PipelineBoard stages={board.stages} cards={board.cards} reasons={board.reasons} canMove={canMove} />
+          <PipelineBoard stages={board.stages} cards={board.cards} reasons={board.reasons} canMove={canMove} googleReady={googleReady} />
         </>
       )}
     </>

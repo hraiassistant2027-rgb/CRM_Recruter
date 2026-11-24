@@ -2,12 +2,13 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
-import { moveApplication } from '@/app/(app)/vacancies/actions';
-import { Alert, Button, Field, Select } from '@/components/ui';
+import { moveApplication, type ContactInput } from '@/app/(app)/vacancies/actions';
+import { INVITE_BY_DEFAULT, KIND_LABELS } from '@/lib/interviews';
+import { Alert, Button, Field, Input, Select } from '@/components/ui';
 import { daysOnStage, type BoardCard, type Stage } from '@/lib/vacancies';
 
 type Reason = { id: string; name: string; side: 'company' | 'candidate' };
-type Pending = { card: BoardCard; stage: Stage } | null;
+type Pending = { card: BoardCard; stage: Stage; mode: 'reject' | 'contact' } | null;
 
 const CLOSED = ['rejected', 'withdrawn'];
 
@@ -16,15 +17,18 @@ export function PipelineBoard({
   cards: initialCards,
   reasons,
   canMove,
+  googleReady = false,
 }: {
   stages: Stage[];
   cards: BoardCard[];
   reasons: Reason[];
   canMove: boolean;
+  googleReady?: boolean;
 }) {
   const router = useRouter();
   const [cards, setCards] = useState(initialCards);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overStage, setOverStage] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending>(null);
@@ -39,24 +43,30 @@ export function PipelineBoard({
   function requestMove(card: BoardCard, stage: Stage) {
     if (card.stage_id === stage.id) return;
     if (CLOSED.includes(stage.kind)) {
-      setPending({ card, stage });
+      setPending({ card, stage, mode: 'reject' });
+      return;
+    }
+    if (stage.contact_kind) {
+      setPending({ card, stage, mode: 'contact' });
       return;
     }
     doMove(card, stage, null, null);
   }
 
-  function doMove(card: BoardCard, stage: Stage, reasonId: string | null, comment: string | null) {
+  function doMove(card: BoardCard, stage: Stage, reasonId: string | null, comment: string | null, contact: ContactInput | null = null) {
     setError(null);
     const before = cards;
     setCards((list) =>
       list.map((c) => (c.id === card.id ? { ...c, stage_id: stage.id, stage_changed_at: new Date().toISOString() } : c)),
     );
     startTransition(async () => {
-      const result = await moveApplication({ applicationId: card.id, stageId: stage.id, reasonId, comment });
+      const result = await moveApplication({ applicationId: card.id, stageId: stage.id, reasonId, comment, contact });
       if (result.error) {
         setCards(before);
         setError(`${card.full_name}: ${result.error}`);
       } else {
+        if (result.ok && result.ok !== 'Етап змінено.') setError(null);
+        setNotice(result.ok && result.ok !== 'Етап змінено.' ? `${card.full_name}: ${result.ok}` : null);
         router.refresh();
       }
     });
@@ -74,6 +84,7 @@ export function PipelineBoard({
         </label>
       </div>
       {error && <Alert>{error}</Alert>}
+      {notice && <Alert kind="info">{notice}</Alert>}
 
       <div className="overflow-x-auto pb-3">
         <div className="flex min-w-max gap-3">
@@ -161,7 +172,20 @@ export function PipelineBoard({
         </div>
       </div>
 
-      {pending && (
+      {pending?.mode === 'contact' && (
+        <ContactDialog
+          pending={pending}
+          googleReady={googleReady}
+          onCancel={() => setPending(null)}
+          onConfirm={(contact, comment) => {
+            const p = pending;
+            setPending(null);
+            doMove(p.card, p.stage, null, comment, contact);
+          }}
+        />
+      )}
+
+      {pending?.mode === 'reject' && (
         <RejectDialog
           pending={pending}
           reasons={reasons.filter((r) => r.side === (pending.stage.kind === 'withdrawn' ? 'candidate' : 'company'))}
@@ -223,6 +247,108 @@ function RejectDialog({
           </Button>
           <Button type="button" disabled={!reasonId} onClick={() => onConfirm(reasonId, comment)}>
             Підтвердити
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ContactDialog({
+  pending,
+  googleReady,
+  onCancel,
+  onConfirm,
+}: {
+  pending: NonNullable<Pending>;
+  googleReady: boolean;
+  onCancel: () => void;
+  onConfirm: (contact: ContactInput, comment: string) => void;
+}) {
+  const kind = pending.stage.contact_kind ?? 'other';
+  const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+  const [date, setDate] = useState(tomorrow);
+  const [time, setTime] = useState('10:00');
+  const [duration, setDuration] = useState(kind === 'call' ? 15 : kind === 'phone' ? 30 : 60);
+  const [location, setLocation] = useState(kind === 'call' || kind === 'phone' ? 'Телефоном' : '');
+  const [meet, setMeet] = useState(false);
+  const [google, setGoogle] = useState(googleReady);
+  const [invite, setInvite] = useState(INVITE_BY_DEFAULT.includes(kind));
+  const [comment, setComment] = useState('');
+  const [problem, setProblem] = useState<string | null>(null);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 p-4" role="dialog" aria-modal="true" aria-labelledby="contact-title">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+        <h2 id="contact-title" className="mb-1 text-lg font-semibold">
+          {pending.stage.name}
+        </h2>
+        <p className="mb-4 text-sm text-ink-soft">
+          {pending.card.full_name} · {KIND_LABELS[kind]}. Дата і час обов’язкові — подія з’явиться в календарі.
+        </p>
+        <div className="space-y-4">
+          <div className="grid grid-cols-[1fr_100px_100px] gap-2">
+            <Field label="Дата *" htmlFor="c-date">
+              <Input id="c-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            </Field>
+            <Field label="Час *" htmlFor="c-time">
+              <Input id="c-time" type="time" step={300} value={time} onChange={(e) => setTime(e.target.value)} />
+            </Field>
+            <Field label="Хвилин" htmlFor="c-dur">
+              <Select id="c-dur" value={String(duration)} onChange={(e) => setDuration(Number(e.target.value))}>
+                {[10, 15, 30, 45, 60, 90, 120].map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <Field label="Місце" htmlFor="c-loc">
+            <Input id="c-loc" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Телефоном, адреса офісу чи об’єкта" />
+          </Field>
+          <Field label="Коментар" htmlFor="c-comment">
+            <Input id="c-comment" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Про що домовились" />
+          </Field>
+          {googleReady ? (
+            <div className="space-y-2 text-sm">
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={google} onChange={(e) => setGoogle(e.target.checked)} className="accent-[var(--color-accent-strong)]" />
+                Додати в мій Google Календар
+              </label>
+              {google && (
+                <>
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={meet} onChange={(e) => setMeet(e.target.checked)} className="accent-[var(--color-accent-strong)]" />
+                    Онлайн через Google Meet
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={invite} onChange={(e) => setInvite(e.target.checked)} className="accent-[var(--color-accent-strong)]" />
+                    Надіслати кандидату запрошення з календаря
+                  </label>
+                </>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-ink-soft">Подія буде в календарі CRM. Щоб додавати її і в Google Календар, підключіть Google у профілі.</p>
+          )}
+          {problem && <Alert>{problem}</Alert>}
+        </div>
+        <div className="mt-6 flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={onCancel}>
+            Скасувати
+          </Button>
+          <Button
+            type="button"
+            onClick={() => {
+              if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{1,2}:\d{2}$/.test(time)) {
+                setProblem('Вкажіть дату і час');
+                return;
+              }
+              onConfirm({ date, time, duration, location, meet: google && meet, google, inviteCandidate: google && invite }, comment);
+            }}
+          >
+            Зберегти
           </Button>
         </div>
       </div>

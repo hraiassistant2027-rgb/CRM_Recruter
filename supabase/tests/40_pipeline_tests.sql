@@ -38,7 +38,9 @@ select tst.ok((select sum(cnt) from public.vacancy_stage_counts() where vacancy_
 \echo '--- 15. Переміщення по етапах'
 select public.move_application('43000000-0000-0000-0000-000000000001',
   (select s.id from public.pipeline_stages s join public.pipelines p on p.id = s.pipeline_id and p.is_default where s.code = 'phone_interview'),
-  null, 'Домовились на завтра');
+  null, 'Домовились на завтра', now() + interval '1 day', now() + interval '1 day 30 minutes', 'Телефоном');
+select tst.ok((select count(*) from public.interviews where application_id = '43000000-0000-0000-0000-000000000001' and kind = 'phone') = 1,
+              'перехід на етап співбесіди створює подію з датою в календарі');
 select tst.ok((select s.code from public.applications a join public.pipeline_stages s on s.id = a.stage_id
                where a.id = '43000000-0000-0000-0000-000000000001') = 'phone_interview', 'кандидата переміщено на інший етап');
 select tst.ok((select comment from public.application_stage_history where application_id = '43000000-0000-0000-0000-000000000001'
@@ -53,8 +55,12 @@ select public.move_application('43000000-0000-0000-0000-000000000001',
   (select id from public.rejection_reasons where name = 'Не відповідає вимогам'), 'Немає досвіду монолітних робіт');
 select tst.ok((select closed_at is not null and rejection_comment = 'Немає досвіду монолітних робіт'
                from public.applications where id = '43000000-0000-0000-0000-000000000001'), 'відмова з причиною закриває відгук');
+select tst.blocked($$select public.move_application('43000000-0000-0000-0000-000000000001',
+  (select s.id from public.pipeline_stages s join public.pipelines p on p.id = s.pipeline_id and p.is_default where s.code = 'first_contact'))$$,
+  'етап з контактом без дати і часу не приймається');
 select public.move_application('43000000-0000-0000-0000-000000000001',
-  (select s.id from public.pipeline_stages s join public.pipelines p on p.id = s.pipeline_id and p.is_default where s.code = 'first_contact'));
+  (select s.id from public.pipeline_stages s join public.pipelines p on p.id = s.pipeline_id and p.is_default where s.code = 'first_contact'),
+  p_starts_at => now() + interval '2 day');
 select tst.ok((select closed_at is null and rejection_reason_id is null from public.applications
                where id = '43000000-0000-0000-0000-000000000001'), 'повернення з відмови знімає причину і відкриває відгук');
 
@@ -66,7 +72,7 @@ select tst.ok((select count(*) from public.applications where id = '43000000-000
 select tst.ok((select count(*) from public.candidates where id = '42000000-0000-0000-0000-000000000001') = 1,
               'керівник бачить картку кандидата своєї вакансії');
 select tst.blocked($$select public.move_application('43000000-0000-0000-0000-000000000001',
-  (select s.id from public.pipeline_stages s join public.pipelines p on p.id = s.pipeline_id and p.is_default where s.code = 'offer'))$$,
+  (select s.id from public.pipeline_stages s join public.pipelines p on p.id = s.pipeline_id and p.is_default where s.code = 'offer'), p_starts_at => now() + interval '1 day')$$,
   'керівник не може переміщати кандидатів');
 
 \echo '--- 17. Чужа вакансія рекрутера'
@@ -75,6 +81,9 @@ select tst.ok(tst.rows($$update public.vacancies set headcount = 3 where id = '4
               'рекрутер не редагує вакансію іншого рекрутера');
 select tst.ok(tst.rows($$update public.vacancies set headcount = 2 where id = '41000000-0000-0000-0000-000000000001'$$) = 1,
               'рекрутер редагує свою вакансію');
+select tst.blocked($$update public.applications set stage_id = (select s.id from public.pipeline_stages s
+  join public.pipelines p on p.id = s.pipeline_id and p.is_default where s.code = 'offer')
+  where id = '43000000-0000-0000-0000-000000000001'$$, 'прямий перехід на «Оффер» без дати зустрічі заборонено базою');
 reset role;
 
 \echo '--- 17б. Воронка чужої вакансії'
@@ -97,7 +106,8 @@ select tst.blocked($$insert into public.applications (candidate_id, vacancy_id, 
   'рекрутер не додає кандидатів у чужу вакансію');
 select tst.login('00000000-0000-0000-0000-0000000000a1');
 select public.move_application('43000000-0000-0000-0000-000000000002',
-  (select s.id from public.pipeline_stages s join public.pipelines p on p.id = s.pipeline_id and p.is_default where s.code = 'first_contact'));
+  (select s.id from public.pipeline_stages s join public.pipelines p on p.id = s.pipeline_id and p.is_default where s.code = 'first_contact'),
+  p_starts_at => now() + interval '1 day');
 select tst.ok((select s.code from public.applications a join public.pipeline_stages s on s.id = a.stage_id
                where a.id = '43000000-0000-0000-0000-000000000002') = 'first_contact', 'адміністратор змінює будь-яку воронку');
 reset role;

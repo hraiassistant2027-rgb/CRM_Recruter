@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/server';
 import { uuidSchema, vacancySchema } from '@/lib/validation';
 import { translateError } from '@/lib/errors';
 import { insertApplication } from '@/lib/applications';
+import { createGoogleEvent } from '@/lib/calendar-events';
+import { kyivToDate } from '@/lib/time';
 import type { FormState } from '@/lib/form-state';
 
 export type VacancyFormState = FormState & { fieldErrors?: Record<string, string> };
@@ -83,28 +85,63 @@ export async function addApplication(_prev: FormState, formData: FormData): Prom
   return { ok: result.ok };
 }
 
+export type ContactInput = {
+  date: string;
+  time: string;
+  duration: number;
+  location?: string | null;
+  meet?: boolean;
+  google?: boolean;
+  inviteCandidate?: boolean;
+};
+
 export async function moveApplication(input: {
   applicationId: string;
   stageId: string;
   reasonId?: string | null;
   comment?: string | null;
+  contact?: ContactInput | null;
 }): Promise<FormState> {
   const ids = [input.applicationId, input.stageId, ...(input.reasonId ? [input.reasonId] : [])];
   if (!ids.every((v) => uuidSchema.safeParse(v).success)) return { error: 'Невірні дані' };
   const comment = (input.comment ?? '').trim().slice(0, 1000) || null;
 
+  let startsAt: Date | null = null;
+  let endsAt: Date | null = null;
+  if (input.contact) {
+    startsAt = kyivToDate(input.contact.date, input.contact.time);
+    const duration = Number(input.contact.duration);
+    if (!startsAt) return { error: 'Вкажіть дату і час' };
+    if (!Number.isInteger(duration) || duration < 5 || duration > 480) return { error: 'Тривалість — від 5 до 480 хвилин' };
+    endsAt = new Date(startsAt.getTime() + duration * 60_000);
+  }
+
   const supabase = await createClient();
-  const { error } = await supabase.rpc('move_application', {
+  const { data: interviewId, error } = await supabase.rpc('move_application', {
     p_id: input.applicationId,
     p_stage_id: input.stageId,
     p_reason_id: input.reasonId ?? null,
     p_comment: comment,
+    p_starts_at: startsAt?.toISOString() ?? null,
+    p_ends_at: endsAt?.toISOString() ?? null,
+    p_location: input.contact?.location?.slice(0, 300) ?? null,
   });
   if (error) return { error: translateError(error) };
+
+  let note = '';
+  if (interviewId && input.contact?.google) {
+    const { data: auth } = await supabase.auth.getUser();
+    const r = await createGoogleEvent(supabase, auth.user!.id, interviewId as string, {
+      meet: Boolean(input.contact.meet),
+      inviteCandidate: Boolean(input.contact.inviteCandidate),
+    });
+    note = r.error ? ` Подію в Google Календарі не створено: ${r.error}` : r.invited ? ' Запрошення надіслано кандидату.' : '';
+  }
   revalidatePath('/pipeline');
+  revalidatePath('/calendar');
   revalidatePath('/vacancies', 'layout');
   revalidatePath('/candidates', 'layout');
-  return { ok: 'Етап змінено' };
+  return { ok: `Етап змінено.${note}` };
 }
 
 // Пошук кандидатів для додавання у вакансію (до 10 результатів)

@@ -22,6 +22,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
   const wanted = Array.isArray(sp.vacancy) ? sp.vacancy[0] : sp.vacancy;
   const current = vacancies.find((v) => v.id === wanted) ?? vacancies[0];
   const board = current ? await loadBoard(supabase, current.id, current.pipeline_id) : null;
+  const { data: gAccount } = await supabase.from('email_accounts').select('status').eq('user_id', session.userId).maybeSingle();
 
   return (
     <>
@@ -66,6 +67,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
               stages={board.stages}
               cards={board.cards}
               reasons={board.reasons}
+              googleReady={gAccount?.status === 'active'}
               canMove={
                 !!current &&
                 canOn(session.permissions, 'applications.update', current.recruiter_id === session.userId || current.hiring_manager_id === session.userId)

@@ -241,6 +241,9 @@ select tst.ok(tst.rows($$update public.applications set stage_id = (select id fr
 select tst.blocked($$update public.applications set stage_id = (select id from public.pipeline_stages where code = 'first_contact')
                      where id = '40000000-0000-0000-0000-000000000002'$$,
                    'перехід без обов''язкового поля «наступна дія» заборонений');
+-- Етап «Перший контакт» вимагає запланованого дзвінка (дата і час)
+insert into public.interviews (application_id, kind, starts_at, ends_at)
+values ('40000000-0000-0000-0000-000000000002', 'call', now() + interval '1 day', now() + interval '1 day 15 minutes');
 select tst.ok(tst.rows($$update public.applications set next_action_at = now() + interval '1 day',
                          stage_id = (select id from public.pipeline_stages where code = 'first_contact')
                          where id = '40000000-0000-0000-0000-000000000002'$$) = 1,

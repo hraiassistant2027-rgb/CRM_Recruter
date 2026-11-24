@@ -23,7 +23,7 @@ export const PRIORITY_LABELS: Record<string, string> = {
   urgent: 'Терміново',
 };
 
-export type Stage = { id: string; code: string; name: string; color: string; sort_order: number; kind: string; sla_days: number | null };
+export type Stage = { id: string; code: string; name: string; color: string; sort_order: number; kind: string; sla_days: number | null; contact_kind: string | null };
 
 export type VacancyRow = {
   id: string;
