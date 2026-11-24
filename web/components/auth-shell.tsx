@@ -6,8 +6,9 @@ export function AuthShell({ title, subtitle, children }: { title: string; subtit
     <main className="flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="mb-6 flex items-center gap-2">
-          <span className="inline-block h-8 w-8 rounded-lg bg-accent" aria-hidden="true" />
-          <span className="text-lg font-semibold">HR CRM</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-icon.png" alt="" aria-hidden="true" className="h-11 w-11 rounded-lg" />
+          <span className="text-lg font-semibold">KAN Talent</span>
         </div>
         <div className="rounded-2xl border border-line bg-white p-8 shadow-sm">
           <h1 className="text-xl font-semibold">{title}</h1>

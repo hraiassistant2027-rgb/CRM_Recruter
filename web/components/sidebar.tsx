@@ -43,8 +43,9 @@ export function Sidebar({ items }: { items: MenuLink[] }) {
       {/* Ноутбук: постійне бокове меню */}
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-line bg-white p-4 lg:flex">
         <Link href="/" className="mb-6 flex items-center gap-2 px-2">
-          <span className="inline-block h-7 w-7 rounded-lg bg-accent" aria-hidden="true" />
-          <span className="font-semibold">HR CRM</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-icon.png" alt="" aria-hidden="true" className="h-8 w-8 rounded-lg" />
+          <span className="font-semibold">KAN Talent</span>
         </Link>
         <Nav items={items} />
       </aside>
@@ -63,7 +64,11 @@ export function Sidebar({ items }: { items: MenuLink[] }) {
           <div className="fixed inset-0 z-40 flex">
             <div className="h-full w-72 overflow-y-auto bg-white p-4 shadow-xl">
               <div className="mb-6 flex items-center justify-between px-2">
-                <span className="font-semibold">HR CRM</span>
+                <span className="flex items-center gap-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/logo-icon.png" alt="" aria-hidden="true" className="h-8 w-8 rounded-lg" />
+                  <span className="font-semibold">KAN Talent</span>
+                </span>
                 <button type="button" onClick={() => setOpen(false)} aria-label="Закрити меню" className="rounded-lg p-1 hover:bg-surface">
                   <X className="h-5 w-5" />
                 </button>
