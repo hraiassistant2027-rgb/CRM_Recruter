@@ -19,9 +19,9 @@ export const PARSE_STATUS_LABELS: Record<string, string> = {
   pending: 'очікує обробки',
   extracting: 'читається текст',
   parsing: 'розпізнається',
-  parsed: 'розпізнано',
-  indexed_only: 'лише пошук',
-  failed: 'помилка обробки',
+  parsed: 'дані розпізнано',
+  indexed_only: 'текст доступний для пошуку',
+  failed: 'текст не прочитано (скан?)',
   skipped_duplicate: 'дублікат',
 };
 

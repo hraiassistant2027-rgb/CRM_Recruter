@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Download, Eye, Pencil } from 'lucide-react';
+import { Download, ExternalLink, Eye, Pencil, X } from 'lucide-react';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { docxToSafeHtml } from '@/lib/resume-text';
+import { resumeDisplayName } from '@/lib/resume-parse';
 import { requirePermission } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { can } from '@/lib/permissions';
@@ -29,7 +32,7 @@ import {
 
 export const metadata: Metadata = { title: 'Картка кандидата' };
 
-type Doc = { id: string; original_name: string; size_bytes: number | null; parse_status: string; created_at: string; uploaded_by: string | null };
+type Doc = { id: string; storage_bucket: string; storage_path: string; original_name: string; size_bytes: number | null; parse_status: string; created_at: string; uploaded_by: string | null };
 type Consent = { id: string; legal_basis: string; source: string; given_at: string; expires_at: string | null; withdrawn_at: string | null };
 type Note = { id: string; body: string; created_at: string; author_id: string };
 type Experience = { id: string; company: string | null; position: string | null; start_date: string | null; end_date: string | null; description: string | null };
@@ -67,7 +70,7 @@ export default async function CandidatePage({
   if (!c) notFound();
 
   const [docs, consents, notes, experience, education, profiles, source] = await Promise.all([
-    supabase.from('documents').select('id, original_name, size_bytes, parse_status, created_at, uploaded_by').eq('candidate_id', id).is('deleted_at', null).order('created_at', { ascending: false }),
+    supabase.from('documents').select('id, storage_bucket, storage_path, original_name, size_bytes, parse_status, created_at, uploaded_by').eq('candidate_id', id).is('deleted_at', null).order('created_at', { ascending: false }),
     supabase.from('consents').select('id, legal_basis, source, given_at, expires_at, withdrawn_at').eq('candidate_id', id).order('given_at', { ascending: false }),
     supabase.from('notes').select('id, body, created_at, author_id').eq('candidate_id', id).order('created_at', { ascending: false }).limit(100),
     supabase.from('candidate_experience').select('id, company, position, start_date, end_date, description').eq('candidate_id', id).order('sort_order'),
@@ -88,6 +91,60 @@ export default async function CandidatePage({
   const uploadError = Array.isArray(sp.upload_error) ? sp.upload_error[0] : sp.upload_error;
   const activeConsent = ((consents.data ?? []) as Consent[]).some(
     (x) => !x.withdrawn_at && (!x.expires_at || new Date(x.expires_at) > new Date()),
+  );
+
+  const docList = (docs.data ?? []) as Doc[];
+  const docName = (d: Doc) => resumeDisplayName(c.full_name, d.original_name, docList.length - docList.indexOf(d));
+  const viewId = Array.isArray(sp.view) ? sp.view[0] : sp.view;
+  const viewing = docList.find((d) => d.id === viewId) ?? null;
+  const viewExt = viewing?.original_name.split('.').pop()?.toLowerCase() ?? '';
+  let docxHtml: string | null = null;
+  if (viewing && viewExt === 'docx') {
+    const { data: blob } = await createAdminClient().storage.from(viewing.storage_bucket).download(viewing.storage_path);
+    if (blob) {
+      docxHtml = await docxToSafeHtml(new Uint8Array(await blob.arrayBuffer()));
+      await supabase.rpc('log_event', { p_action: 'view_file', p_entity: 'documents', p_entity_id: viewing.id, p_details: null });
+    }
+  }
+
+  const preview = viewing && (
+    <aside className="xl:sticky xl:top-4 xl:self-start">
+      <div className="overflow-hidden rounded-xl border border-line bg-white">
+        <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-2">
+          <span className="truncate text-sm font-medium" title={docName(viewing)}>
+            {docName(viewing)}
+          </span>
+          <span className="flex shrink-0 items-center gap-1">
+            <a href={`/api/documents/${viewing.id}`} target="_blank" rel="noopener" className="rounded-lg p-2 hover:bg-surface" title="Відкрити в новій вкладці">
+              <ExternalLink className="h-4 w-4" aria-label="Відкрити в новій вкладці" />
+            </a>
+            <a href={`/api/documents/${viewing.id}?download=1`} className="rounded-lg p-2 hover:bg-surface" title="Завантажити">
+              <Download className="h-4 w-4" aria-label="Завантажити" />
+            </a>
+            <Link href={`/candidates/${id}`} scroll={false} className="rounded-lg p-2 hover:bg-surface" title="Закрити перегляд">
+              <X className="h-4 w-4" aria-label="Закрити перегляд" />
+            </Link>
+          </span>
+        </div>
+        {['pdf', 'txt'].includes(viewExt) ? (
+          <iframe src={`/api/documents/${viewing.id}`} title={docName(viewing)} className="h-[80vh] w-full" />
+        ) : ['jpg', 'jpeg', 'png'].includes(viewExt) ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={`/api/documents/${viewing.id}`} alt={docName(viewing)} className="max-h-[80vh] w-full object-contain" />
+        ) : viewExt === 'docx' && docxHtml ? (
+          <iframe
+            sandbox=""
+            title={docName(viewing)}
+            className="h-[80vh] w-full"
+            srcDoc={`<!doctype html><html lang="uk"><head><meta charset="utf-8"><style>body{font-family:system-ui,sans-serif;font-size:14px;line-height:1.5;color:#2b2b2b;padding:24px;max-width:780px;margin:0 auto}table{border-collapse:collapse}td,th{border:1px solid #ddd;padding:4px 8px;vertical-align:top}</style></head><body>${docxHtml}</body></html>`}
+          />
+        ) : (
+          <div className="p-6 text-sm text-ink-soft">
+            Для формату .{viewExt} перегляд у браузері недоступний. Завантажте файл кнопкою вгорі.
+          </div>
+        )}
+      </div>
+    </aside>
   );
 
   return (
@@ -134,7 +191,8 @@ export default async function CandidatePage({
         )}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
+      <div className={viewing ? 'grid gap-6 xl:grid-cols-2' : ''}>
+      <div className={viewing ? 'grid gap-6' : 'grid gap-6 lg:grid-cols-[3fr_2fr]'}>
         <div className="space-y-6">
           <Card>
             <h2 className="mb-3 font-medium">Основне</h2>
@@ -228,24 +286,24 @@ export default async function CandidatePage({
           <Card>
             <h2 className="mb-3 font-medium">Резюме</h2>
             <ul className="mb-4 divide-y divide-line">
-              {((docs.data ?? []) as Doc[]).map((d) => (
-                <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+              {docList.map((d) => (
+                <li key={d.id} className={`flex flex-wrap items-center justify-between gap-2 py-2 text-sm ${viewing?.id === d.id ? 'bg-accent-soft/50' : ''}`}>
                   <div className="min-w-0">
-                    <div className="truncate font-medium" title={d.original_name}>
-                      {d.original_name}
-                    </div>
+                    <Link href={`/candidates/${id}?view=${d.id}`} scroll={false} className="block truncate font-medium hover:underline" title={`Оригінальна назва: ${d.original_name}`}>
+                      {docName(d)}
+                    </Link>
                     <div className="text-xs text-ink-soft">
                       {formatBytes(d.size_bytes)} · {formatDate(d.created_at)} · {PARSE_STATUS_LABELS[d.parse_status] ?? d.parse_status}
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
-                    <a href={`/api/documents/${d.id}`} target="_blank" rel="noopener" className="rounded-lg p-2 hover:bg-surface" title="Переглянути">
-                      <Eye className="h-4 w-4" aria-label="Переглянути" />
-                    </a>
+                    <Link href={`/candidates/${id}?view=${d.id}`} scroll={false} className="rounded-lg p-2 hover:bg-surface" title="Переглянути поруч">
+                      <Eye className="h-4 w-4" aria-label="Переглянути поруч" />
+                    </Link>
                     <a href={`/api/documents/${d.id}?download=1`} className="rounded-lg p-2 hover:bg-surface" title="Завантажити">
                       <Download className="h-4 w-4" aria-label="Завантажити" />
                     </a>
-                    {canDelete && !deleted && <DeleteDocumentButton id={d.id} candidateId={id} name={d.original_name} />}
+                    {canDelete && !deleted && <DeleteDocumentButton id={d.id} candidateId={id} name={docName(d)} />}
                   </div>
                 </li>
               ))}
@@ -293,6 +351,8 @@ export default async function CandidatePage({
             <p className="text-sm text-ink-soft">З'являться на етапі 4 разом із вакансіями та воронкою.</p>
           </Card>
         </div>
+      </div>
+      {preview}
       </div>
     </>
   );

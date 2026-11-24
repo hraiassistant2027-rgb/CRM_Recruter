@@ -16,6 +16,8 @@ import {
 } from '@/lib/validation';
 import { translateError } from '@/lib/errors';
 import type { DuplicateRow } from '@/lib/candidates';
+import { extractResumeText } from '@/lib/resume-text';
+import { FIELD_LABELS, parseResumeText, type ResumeFields } from '@/lib/resume-parse';
 import type { FormState } from '@/lib/form-state';
 
 type Supa = Awaited<ReturnType<typeof createClient>>;
@@ -81,7 +83,14 @@ async function findDuplicates(supabase: Supa, c: CandidateInput, exclude: string
 // Збереження файлу резюме: запис у БД від імені користувача (діють права),
 // сам файл — у приватне сховище службовим ключем. Відкат при помилці.
 // ---------------------------------------------------------------------
-async function storeResume(supabase: Supa, candidateId: string, file: File): Promise<string | null> {
+type Stored = { issue: string | null; fields: ResumeFields };
+
+async function storeResume(supabase: Supa, candidateId: string, file: File): Promise<Stored> {
+  const result = await storeResumeInner(supabase, candidateId, file);
+  return typeof result === 'string' ? { issue: result, fields: {} } : { issue: null, fields: result };
+}
+
+async function storeResumeInner(supabase: Supa, candidateId: string, file: File): Promise<string | ResumeFields> {
   const issue = resumeFileIssue(file.name, file.size);
   if (issue) return issue;
 
@@ -89,6 +98,9 @@ async function storeResume(supabase: Supa, candidateId: string, file: File): Pro
   const sha256 = createHash('sha256').update(bytes).digest('hex');
   const ext = file.name.split('.').pop()!.toLowerCase();
   const mime = RESUME_TYPES[ext];
+  // Текст резюме — для пошуку по базі і автозаповнення картки
+  const text = await extractResumeText(bytes, ext);
+  const fields = text ? parseResumeText(text) : {};
   const path = `candidates/${candidateId}/${randomUUID()}-${safeFileName(file.name)}`;
 
   // Ідентифікатор задаємо самі і не просимо базу повернути рядок: правило читання файлів
@@ -104,6 +116,8 @@ async function storeResume(supabase: Supa, candidateId: string, file: File): Pro
       mime_type: mime,
       size_bytes: file.size,
       sha256,
+      extracted_text: text,
+      parse_status: !text ? 'failed' : Object.keys(fields).length ? 'parsed' : 'indexed_only',
     });
 
   if (error) {
@@ -137,7 +151,30 @@ async function storeResume(supabase: Supa, candidateId: string, file: File): Pro
     await admin.from('documents').delete().eq('id', docId);
     return `Файл не збережено: ${translateError(uploadError)}`;
   }
-  return null;
+  return fields;
+}
+
+// Розпізнати дані з резюме до створення картки (файл ще не зберігається)
+export async function extractResumeFields(formData: FormData): Promise<{ fields: ResumeFields; error?: string }> {
+  const file = formData.get('resume');
+  if (!(file instanceof File) || file.size === 0) return { fields: {} };
+  const issue = resumeFileIssue(file.name, file.size);
+  if (issue) return { fields: {}, error: issue };
+  const supabase = await createClient();
+  const { data: user } = await supabase.auth.getUser();
+  if (!user.user) return { fields: {}, error: 'Сесія завершилася. Увійдіть знову.' };
+
+  const ext = file.name.split('.').pop()!.toLowerCase();
+  const text = await extractResumeText(new Uint8Array(await file.arrayBuffer()), ext);
+  if (!text) {
+    return {
+      fields: {},
+      error: ['jpg', 'jpeg', 'png'].includes(ext)
+        ? 'Це зображення — текст з нього поки не розпізнається. Заповніть поля вручну.'
+        : 'Не вдалося прочитати текст (можливо, це скан). Заповніть поля вручну.',
+    };
+  }
+  return { fields: parseResumeText(text) };
 }
 
 // ---------------------------------------------------------------------
@@ -177,7 +214,7 @@ export async function createCandidate(_prev: CandidateFormState, formData: FormD
 
   const file = formData.get('resume');
   if (file instanceof File && file.size > 0) {
-    const uploadIssue = await storeResume(supabase, created.id, file);
+    const { issue: uploadIssue } = await storeResume(supabase, created.id, file);
     if (uploadIssue) {
       revalidatePath('/candidates');
       redirect(`/candidates/${created.id}?notice=${notices.join(',')}&upload_error=${encodeURIComponent(uploadIssue)}`);
@@ -249,10 +286,39 @@ export async function uploadResume(_prev: FormState, formData: FormData): Promis
   if (!(file instanceof File) || file.size === 0) return { error: 'Оберіть файл резюме' };
 
   const supabase = await createClient();
-  const issue = await storeResume(supabase, id.data, file);
+  const { issue, fields } = await storeResume(supabase, id.data, file);
   if (issue) return { error: issue };
+
+  // Дані з резюме заповнюють лише порожні поля картки — нічого не перезаписуємо
+  const { data: current } = await supabase
+    .from('candidates')
+    .select('phone, email, city, desired_salary, current_position, linkedin_url')
+    .eq('id', id.data)
+    .maybeSingle();
+  const patch: Record<string, string | number> = {};
+  if (current) {
+    if (!current.phone && fields.phone) patch.phone = fields.phone;
+    if (!current.email && fields.email) patch.email = fields.email;
+    if (!current.city && fields.city) patch.city = fields.city;
+    if (!current.current_position && fields.current_position) patch.current_position = fields.current_position;
+    if (!current.linkedin_url && fields.linkedin_url) patch.linkedin_url = fields.linkedin_url;
+    if (current.desired_salary == null && fields.desired_salary) {
+      patch.desired_salary = Number(fields.desired_salary);
+      patch.salary_currency = fields.salary_currency ?? 'UAH';
+    }
+  }
+  let filled = '';
+  if (Object.keys(patch).length) {
+    const { error } = await supabase.from('candidates').update(patch).eq('id', id.data);
+    if (!error) {
+      filled = ` З резюме заповнено: ${Object.keys(patch)
+        .filter((k) => k !== 'salary_currency')
+        .map((k) => FIELD_LABELS[k as keyof ResumeFields])
+        .join(', ')}. Перевірте дані.`;
+    }
+  }
   revalidatePath(`/candidates/${id.data}`);
-  return { ok: `Резюме «${file.name}» завантажено` };
+  return { ok: `Резюме завантажено.${filled}` };
 }
 
 export async function deleteDocument(_prev: FormState, formData: FormData): Promise<FormState> {

@@ -14,8 +14,22 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Резюме до 20 МБ завантажуються через серверні дії
   experimental: { serverActions: { bodySizeLimit: '21mb' }, middlewareClientMaxBodySize: '21mb' },
+  // Бібліотеки читання PDF/DOCX працюють лише на сервері, не збираємо їх у пакет
+  serverExternalPackages: ['mammoth', 'unpdf'],
   async headers() {
-    return [{ source: '/(.*)', headers: securityHeaders }];
+    return [
+      // Файли резюме показуються у вбудованому вікні поруч із карткою — лише на нашому ж сайті
+      { source: '/((?!api/documents/).*)', headers: securityHeaders },
+      {
+        source: '/api/documents/:path*',
+        headers: [
+          ...securityHeaders.filter((h) => h.key !== 'X-Frame-Options' && h.key !== 'Content-Security-Policy'),
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'Content-Security-Policy', value: "frame-ancestors 'self'" },
+          { key: 'Cache-Control', value: 'private, no-store' },
+        ],
+      },
+    ];
   },
 };
 

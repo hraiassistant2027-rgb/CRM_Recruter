@@ -1,7 +1,8 @@
 'use client';
 import Link from 'next/link';
-import { useActionState, useRef, useTransition } from 'react';
-import { createCandidate, updateCandidate, type CandidateFormState } from './actions';
+import { useActionState, useRef, useState, useTransition } from 'react';
+import { createCandidate, extractResumeFields, updateCandidate, type CandidateFormState } from './actions';
+import { FIELD_LABELS, type ResumeFields } from '@/lib/resume-parse';
 import { Alert, Button, Field, Input, Select } from '@/components/ui';
 import { LEGAL_BASIS_LABELS, MATCH_LABELS, type CandidateRow } from '@/lib/candidates';
 
@@ -16,6 +17,44 @@ export function CandidateForm({ sources, candidate }: { sources: Source[]; candi
   const confirmRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const [pending, startTransition] = useTransition();
+  const [parsing, startParsing] = useTransition();
+  const [parseNote, setParseNote] = useState<{ kind: 'success' | 'info'; text: string } | null>(null);
+
+  // Після вибору файлу резюме — розпізнаємо дані і заповнюємо лише порожні поля
+  function onResumeChosen(input: HTMLInputElement) {
+    const file = input.files?.[0];
+    setParseNote(null);
+    if (!file || !formRef.current) return;
+    const data = new FormData();
+    data.set('resume', file);
+    startParsing(async () => {
+      const result = await extractResumeFields(data);
+      if (result.error) {
+        setParseNote({ kind: 'info', text: result.error });
+        return;
+      }
+      const form = formRef.current;
+      if (!form) return;
+      const filled: string[] = [];
+      for (const [key, value] of Object.entries(result.fields) as [keyof ResumeFields, string][]) {
+        const el = form.elements.namedItem(key) as HTMLInputElement | HTMLSelectElement | null;
+        if (!el || !value) continue;
+        if (key === 'salary_currency') {
+          if (result.fields.desired_salary) el.value = value;
+          continue;
+        }
+        if (el.value.trim() === '') {
+          el.value = value;
+          filled.push(FIELD_LABELS[key]);
+        }
+      }
+      setParseNote(
+        filled.length
+          ? { kind: 'success', text: `З резюме заповнено: ${filled.join(', ')}. Перевірте дані перед збереженням.` }
+          : { kind: 'info', text: 'Нових даних у резюме не знайдено — заповніть поля вручну.' },
+      );
+    });
+  }
   const fe = state.fieldErrors ?? {};
   const c = candidate;
 
@@ -76,6 +115,27 @@ export function CandidateForm({ sources, candidate }: { sources: Source[]; candi
       )}
 
       {state.error && <Alert>{state.error}</Alert>}
+
+      {!isEdit && (
+        <section className="space-y-2 rounded-xl border border-accent/50 bg-accent-soft/40 p-4">
+          <Field
+            label="Резюме"
+            htmlFor="resume"
+            hint="Оберіть файл — ПІБ, телефон, email, місто і зарплата заповняться автоматично. PDF, DOCX, RTF, TXT (а також DOC, JPG, PNG без розпізнавання) — до 20 МБ"
+          >
+            <input
+              id="resume"
+              name="resume"
+              type="file"
+              accept=".pdf,.doc,.docx,.rtf,.txt,.jpg,.jpeg,.png"
+              onChange={(e) => onResumeChosen(e.currentTarget)}
+              className="block w-full text-sm file:mr-3 file:rounded-lg file:border file:border-line file:bg-white file:px-3 file:py-2 file:text-sm"
+            />
+          </Field>
+          {parsing && <p className="text-sm text-ink-soft">Читаємо резюме…</p>}
+          {parseNote && <Alert kind={parseNote.kind}>{parseNote.text}</Alert>}
+        </section>
+      )}
 
       <section className="grid gap-4 md:grid-cols-2">
         <div className="md:col-span-2">
@@ -169,17 +229,6 @@ export function CandidateForm({ sources, candidate }: { sources: Source[]; candi
             </div>
           </section>
 
-          <section className="space-y-2 rounded-xl border border-line p-4">
-            <Field label="Резюме (необов'язково)" htmlFor="resume" hint="PDF, DOC, DOCX, RTF, TXT, JPG, PNG — до 20 МБ">
-              <input
-                id="resume"
-                name="resume"
-                type="file"
-                accept=".pdf,.doc,.docx,.rtf,.txt,.jpg,.jpeg,.png"
-                className="block w-full text-sm file:mr-3 file:rounded-lg file:border file:border-line file:bg-white file:px-3 file:py-2 file:text-sm"
-              />
-            </Field>
-          </section>
         </>
       )}
 
