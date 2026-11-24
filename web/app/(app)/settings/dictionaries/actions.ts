@@ -95,3 +95,19 @@ export async function moveStage(_prev: FormState, formData: FormData): Promise<F
   revalidatePath('/vacancies', 'layout');
   return { ok: 'Порядок змінено' };
 }
+
+export async function updateHrContact(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = uuidSchema.safeParse(formData.get('id'));
+  if (!id.success) return { error: 'Невірний запис' };
+  const name = String(formData.get('name') ?? '').trim();
+  const email = String(formData.get('email') ?? '').trim().toLowerCase();
+  if (name.length < 2 || name.length > 200) return { error: "Вкажіть ім'я кадровика" };
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: 'Невірний email' };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('hr_contacts').update({ name, email }).eq('id', id.data).select('id');
+  if (error) return { error: translateError(error) };
+  if (!data?.length) return { error: 'Немає права на цю дію' };
+  revalidatePath('/settings/dictionaries');
+  revalidatePath('/');
+  return { ok: 'Збережено' };
+}

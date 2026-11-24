@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { prepareHrHandoff, sendHrHandoff } from '@/app/(app)/hr/actions';
+import { prepareHrHandoff, sendHrHandoff, setHrStatus } from '@/app/(app)/hr/actions';
 import { Alert, Badge, Button, Input, Select } from '@/components/ui';
 
 export type HandoffRow = {
@@ -13,6 +13,10 @@ export type HandoffRow = {
   phone: string | null;
   offerAt: string | null; // уже відформатовано
   lastHandoff: string | null; // "25 лист., кому"
+  docs: 'pending' | 'passed';
+  approval: 'pending' | 'signed';
+  polygraph: string; // «пройдено», «заплановано на …», «не призначено»
+  canEdit: boolean;
 };
 
 function Row({ row, contacts, canSend }: { row: HandoffRow; contacts: { id: string; name: string; email: string }[]; canSend: boolean }) {
@@ -34,6 +38,35 @@ function Row({ row, contacts, canSend }: { row: HandoffRow; contacts: { id: stri
         </span>
         <Badge tone={row.offerAt ? 'ok' : 'warn'}>{row.offerAt ? `оформлення: ${row.offerAt}` : 'дату оформлення не призначено'}</Badge>
         {row.lastHandoff ? <Badge tone="neutral">передано {row.lastHandoff}</Badge> : <Badge tone="danger">не передано кадровику</Badge>}
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 px-2 text-xs">
+        <label className="flex items-center gap-1">
+          <span className="text-ink-soft">Перевірка документів:</span>
+          <select
+            defaultValue={row.docs}
+            disabled={!row.canEdit || busy}
+            onChange={(e) => start(async () => { const r = await setHrStatus(row.applicationId, 'hr_docs_status', e.target.value); if (r.error) setMsg(r); else router.refresh(); })}
+            className={`rounded border border-line px-1 py-0.5 ${row.docs === 'passed' ? 'text-ok' : ''}`}
+          >
+            <option value="pending">очікую</option>
+            <option value="passed">пройдено</option>
+          </select>
+        </label>
+        <span>
+          <span className="text-ink-soft">Поліграф:</span> <span className={row.polygraph === 'пройдено' ? 'text-ok' : ''}>{row.polygraph}</span>
+        </span>
+        <label className="flex items-center gap-1">
+          <span className="text-ink-soft">Лист погодження:</span>
+          <select
+            defaultValue={row.approval}
+            disabled={!row.canEdit || busy}
+            onChange={(e) => start(async () => { const r = await setHrStatus(row.applicationId, 'hr_approval_status', e.target.value); if (r.error) setMsg(r); else router.refresh(); })}
+            className={`rounded border border-line px-1 py-0.5 ${row.approval === 'signed' ? 'text-ok' : ''}`}
+          >
+            <option value="pending">очікую підписання</option>
+            <option value="signed">підписано</option>
+          </select>
+        </label>
       </div>
       {canSend && (
         <div className="mt-2 flex flex-wrap items-center gap-2 px-2">

@@ -28,3 +28,17 @@ select tst.blocked($$insert into public.hr_handoffs (application_id, hr_email) v
                    'керівник-замовник не надсилає кадровикам');
 reset role;
 \echo '=== Тести кадровиків пройдено ==='
+
+\echo '--- 23. Статуси оформлення'
+reset role;
+select tst.ok((select count(*) from public.hr_contacts where email = 'a.v.usataya@gmail.com') = 3, 'три кадровики зі спільною скринькою');
+set role authenticated;
+select tst.login('00000000-0000-0000-0000-0000000000a2');
+select tst.ok(tst.rows($$update public.applications set hr_docs_status = 'passed', hr_approval_status = 'signed'
+  where id = '43000000-0000-0000-0000-000000000001'$$) = 1, 'рекрутер позначає статуси документів і листа погодження');
+select tst.blocked($$update public.applications set hr_docs_status = 'maybe' where id = '43000000-0000-0000-0000-000000000001'$$,
+                   'невідомий статус не приймається');
+select tst.login('00000000-0000-0000-0000-0000000000a1');
+select tst.ok(tst.rows($$update public.hr_contacts set email = 'liza@kan.ua' where name = 'Ліза'$$) = 1, 'адміністратор змінює email кадровика');
+reset role;
+\echo '=== Тести статусів оформлення пройдено ==='

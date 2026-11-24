@@ -48,21 +48,32 @@ export default async function DashboardPage() {
     const { data: apps } = stageIds.length
       ? await sb
           .from('applications')
-          .select('id, candidate_id, vacancy_id, candidates(full_name, phone), vacancies(title)')
+          .select('id, candidate_id, vacancy_id, hr_docs_status, hr_approval_status, candidates(full_name, phone), vacancies(title, recruiter_id, hiring_manager_id)')
           .in('stage_id', stageIds)
           .order('stage_changed_at', { ascending: false })
           .limit(100)
       : { data: [] };
-    type A = { id: string; candidate_id: string; candidates: { full_name: string; phone: string | null } | { full_name: string; phone: string | null }[] | null; vacancies: { title: string } | { title: string }[] | null };
+    type V = { title: string; recruiter_id: string | null; hiring_manager_id: string | null };
+    type A = {
+      id: string;
+      candidate_id: string;
+      hr_docs_status: 'pending' | 'passed';
+      hr_approval_status: 'pending' | 'signed';
+      candidates: { full_name: string; phone: string | null } | { full_name: string; phone: string | null }[] | null;
+      vacancies: V | V[] | null;
+    };
     const list = (apps ?? []) as unknown as A[];
     const ids = list.map((a) => a.id);
     const [{ data: offers }, { data: handoffs }, { data: contacts }, { data: account }] = await Promise.all([
-      ids.length ? sb.from('interviews').select('application_id, starts_at').in('application_id', ids).eq('kind', 'offer').neq('status', 'cancelled').order('starts_at') : Promise.resolve({ data: [] }),
+      ids.length ? sb.from('interviews').select('application_id, kind, starts_at, status').in('application_id', ids).in('kind', ['offer', 'polygraph']).neq('status', 'cancelled').order('starts_at') : Promise.resolve({ data: [] }),
       ids.length ? sb.from('hr_handoffs').select('application_id, hr_email, sent_at').in('application_id', ids).order('sent_at') : Promise.resolve({ data: [] }),
       sb.from('hr_contacts').select('id, name, email').eq('is_active', true).order('name'),
       sb.from('email_accounts').select('status').eq('user_id', session.userId).maybeSingle(),
     ]);
-    const offerAt = new Map(((offers ?? []) as { application_id: string; starts_at: string }[]).map((o) => [o.application_id, o.starts_at]));
+    type Ev = { application_id: string; kind: string; starts_at: string; status: string };
+    const evs = (offers ?? []) as Ev[];
+    const offerAt = new Map(evs.filter((o) => o.kind === 'offer').map((o) => [o.application_id, o.starts_at]));
+    const polyOf = new Map(evs.filter((o) => o.kind === 'polygraph').map((o) => [o.application_id, o]));
     const handed = new Map(((handoffs ?? []) as { application_id: string; hr_email: string; sent_at: string }[]).map((h) => [h.application_id, h]));
     const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? v[0] ?? null : v);
     handoffRows = list.map((a) => {
@@ -76,6 +87,20 @@ export default async function DashboardPage() {
         vacancyTitle: one(a.vacancies)?.title ?? '',
         offerAt: at ? `${formatInterviewDate(at)}, ${formatTime(at)}` : null,
         lastHandoff: h ? `${formatDate(h.sent_at, true)} → ${h.hr_email}` : null,
+        docs: a.hr_docs_status,
+        approval: a.hr_approval_status,
+        polygraph: (() => {
+          const pg = polyOf.get(a.id);
+          if (!pg) return 'не призначено';
+          if (pg.status === 'done') return 'пройдено';
+          if (pg.status === 'no_show') return 'кандидат не з’явився';
+          return `заплановано на ${formatInterviewDate(pg.starts_at)}, ${formatTime(pg.starts_at)}`;
+        })(),
+        canEdit: (() => {
+          const v = one(a.vacancies);
+          const scope = p['applications.update'];
+          return scope === 'all' || (scope === 'own' && !!v && (v.recruiter_id === session.userId || v.hiring_manager_id === session.userId));
+        })(),
       };
     });
     hrContacts = (contacts ?? []) as { id: string; name: string; email: string }[];

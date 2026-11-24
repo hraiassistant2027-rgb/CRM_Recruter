@@ -1,6 +1,6 @@
 'use client';
 import { useActionState } from 'react';
-import { addDictionaryItem, moveStage, setDictionaryItemActive, updateStage } from './actions';
+import { addDictionaryItem, moveStage, setDictionaryItemActive, updateHrContact, updateStage } from './actions';
 import { Alert, Input } from '@/components/ui';
 import { SubmitButton } from '@/components/submit-button';
 import { initialFormState } from '@/lib/form-state';
@@ -81,6 +81,20 @@ export function StageOrderButtons({ id, first, last }: { id: string; first: bool
         ↓
       </button>
       {state.error && <span className="text-xs text-danger">{state.error}</span>}
+    </form>
+  );
+}
+
+export function HrContactForm({ id, name, email }: { id: string; name: string; email: string }) {
+  const [state, action] = useActionState(updateHrContact, initialFormState);
+  return (
+    <form action={action} className="flex flex-wrap items-center gap-2">
+      <input type="hidden" name="id" value={id} />
+      <Input name="name" defaultValue={name} aria-label="Ім'я кадровика" className="min-w-32 flex-1" />
+      <Input name="email" type="email" defaultValue={email} aria-label="Email кадровика" className="min-w-48 flex-[2]" />
+      <SubmitButton variant="secondary" pendingText="…">Зберегти</SubmitButton>
+      {state.error && <span className="w-full text-xs text-danger">{state.error}</span>}
+      {state.ok && <span className="w-full text-xs text-ok">{state.ok}</span>}
     </form>
   );
 }

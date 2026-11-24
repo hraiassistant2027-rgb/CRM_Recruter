@@ -6,8 +6,11 @@ import { translateError } from '@/lib/errors';
 import { GoogleNotConnected, googleFetch, googleSession } from '@/lib/google';
 import { buildRawEmail, textToHtml } from '@/lib/email';
 import { formatInterviewDate, formatTime } from '@/lib/time';
-import { formatSalary } from '@/lib/candidates';
 import type { FormState } from '@/lib/form-state';
+
+// Чернетка листа кадровику з даними для оформлення кандидата
+const DOCS: Record<string, string> = { passed: 'пройдено', pending: 'очікую' };
+const APPROVAL: Record<string, string> = { signed: 'підписано', pending: 'очікую підписання' };
 
 // Чернетка листа кадровику з даними для оформлення кандидата
 export async function prepareHrHandoff(applicationId: string, hrContactId: string): Promise<{ error?: string; to?: string; subject?: string; body?: string }> {
@@ -15,43 +18,68 @@ export async function prepareHrHandoff(applicationId: string, hrContactId: strin
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { error: 'Сесія завершилася' };
-  const { data: app } = await supabase.from('applications').select('id, candidate_id, vacancy_id, recruiter_id').eq('id', applicationId).maybeSingle();
+  const { data: app } = await supabase
+    .from('applications')
+    .select('id, candidate_id, vacancy_id, hr_docs_status, hr_approval_status')
+    .eq('id', applicationId)
+    .maybeSingle();
   if (!app) return { error: 'Відгук не знайдено' };
-  const [{ data: hr }, { data: c }, { data: v }, { data: offer }, { data: me }] = await Promise.all([
+  const [{ data: hr }, { data: c }, { data: v }, { data: events }, { data: me }] = await Promise.all([
     supabase.from('hr_contacts').select('name, email').eq('id', hrContactId).maybeSingle(),
-    supabase.from('candidates').select('full_name, phone, email, city, desired_salary, salary_currency').eq('id', app.candidate_id).maybeSingle(),
-    supabase.from('vacancies').select('title, site_id, salary_min, salary_max, salary_currency').eq('id', app.vacancy_id).maybeSingle(),
-    supabase.from('interviews').select('starts_at, location').eq('application_id', app.id).eq('kind', 'offer').neq('status', 'cancelled').order('starts_at', { ascending: false }).limit(1).maybeSingle(),
+    supabase.from('candidates').select('full_name, phone, email').eq('id', app.candidate_id).maybeSingle(),
+    supabase.from('vacancies').select('title, site_id').eq('id', app.vacancy_id).maybeSingle(),
+    supabase.from('interviews').select('kind, starts_at, location, status').eq('application_id', app.id).in('kind', ['offer', 'polygraph']).neq('status', 'cancelled').order('starts_at', { ascending: false }),
     supabase.from('profiles').select('full_name, phone').eq('id', auth.user.id).maybeSingle(),
   ]);
   if (!hr) return { error: 'Кадровика не знайдено' };
   if (!c || !v) return { error: 'Немає доступу до кандидата' };
   const { data: site } = v.site_id ? await supabase.from('sites').select('name, address').eq('id', v.site_id).maybeSingle() : { data: null };
+  const list = (events ?? []) as { kind: string; starts_at: string; location: string | null; status: string }[];
+  const offer = list.find((e) => e.kind === 'offer');
+  const polygraph = list.find((e) => e.kind === 'polygraph');
 
-  const when = offer ? `${formatInterviewDate(offer.starts_at)}, ${formatTime(offer.starts_at)}` : 'дату ще не призначено';
+  const offerDate = offer ? `${formatInterviewDate(offer.starts_at)}, ${formatTime(offer.starts_at)}` : '[дату оформлення не призначено]';
+  const polygraphText = !polygraph
+    ? 'не призначено'
+    : polygraph.status === 'done'
+      ? 'пройдено'
+      : polygraph.status === 'no_show'
+        ? 'кандидат не з’явився'
+        : `заплановано на ${formatInterviewDate(polygraph.starts_at)}, ${formatTime(polygraph.starts_at)}`;
+
   const lines = [
-    `Добрий день, ${hr.name}!`,
+    `Вітаю, ${hr.name}!`,
     '',
-    'Прошу підготувати оформлення кандидата:',
-    `ПІБ: ${c.full_name}`,
-    `Посада: ${v.title}`,
+    `На ${offerDate} — оформлення кандидата:`,
+    `${c.full_name}, ${v.title}`,
     site ? `Об'єкт: ${site.name}${site.address ? `, ${site.address}` : ''}` : '',
-    `Телефон: ${c.phone ?? '—'}`,
-    `Email: ${c.email ?? '—'}`,
-    c.city ? `Місто: ${c.city}` : '',
-    `Запрошення на оформлення: ${when}`,
-    offer?.location ? `Місце: ${offer.location}` : '',
-    c.desired_salary != null ? `Бажана зарплата кандидата: ${formatSalary(c.desired_salary, c.salary_currency)}` : '',
+    `Телефон: ${c.phone ?? '—'}${c.email ? `, email: ${c.email}` : ''}`,
+    offer?.location ? `Місце оформлення: ${offer.location}` : '',
+    '',
+    'Статуси:',
+    `Перевірка документів — ${DOCS[app.hr_docs_status] ?? 'очікую'}`,
+    `Перевірка поліграф — ${polygraphText}`,
+    `Лист погодження — ${APPROVAL[app.hr_approval_status] ?? 'очікую підписання'}`,
     '',
     `Рекрутер: ${me?.full_name ?? ''}${me?.phone ? `, ${me.phone}` : ''}`,
-    '',
-    'Дякую!',
   ].filter((l, i, arr) => l !== '' || (arr[i - 1] ?? '') !== '');
   return {
     to: hr.email,
-    subject: `Оформлення кандидата: ${c.full_name} — ${v.title}${offer ? `, ${formatInterviewDate(offer.starts_at)}` : ''}`,
+    subject: `Оформлення: ${c.full_name} — ${v.title}${offer ? `, ${formatInterviewDate(offer.starts_at)}` : ''}`,
     body: lines.join('\n'),
   };
+}
+
+export async function setHrStatus(applicationId: string, field: 'hr_docs_status' | 'hr_approval_status', value: string): Promise<FormState> {
+  if (!uuidSchema.safeParse(applicationId).success) return { error: 'Невірний відгук' };
+  const allowed = field === 'hr_docs_status' ? ['pending', 'passed'] : field === 'hr_approval_status' ? ['pending', 'signed'] : [];
+  if (!allowed.includes(value)) return { error: 'Невірний статус' };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('applications').update({ [field]: value }).eq('id', applicationId).select('id');
+  if (error) return { error: translateError(error) };
+  if (!data?.length) return { error: 'Немає права змінювати цей відгук' };
+  revalidatePath('/');
+  return { ok: 'Збережено' };
 }
 
 export async function sendHrHandoff(input: { applicationId: string; hrContactId: string; subject: string; body: string }): Promise<FormState> {
