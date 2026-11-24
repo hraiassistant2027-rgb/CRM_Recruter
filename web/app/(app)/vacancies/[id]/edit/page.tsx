@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requirePermission } from '@/lib/auth';
+import { canOn } from '@/lib/permissions';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { uuidSchema } from '@/lib/validation';
 import { VACANCY_COLUMNS, type VacancyRow } from '@/lib/vacancies';
@@ -21,6 +23,8 @@ export default async function EditVacancyPage({ params }: { params: Promise<{ id
     loadOptions(supabase),
   ]);
   if (!vacancy) notFound();
+  const mine = vacancy.recruiter_id === session.userId || vacancy.hiring_manager_id === session.userId;
+  if (!canOn(session.permissions, 'vacancies.manage', mine)) redirect(`/vacancies/${id}`);
   return (
     <>
       <PageHeader title={`Редагування: ${vacancy.title}`} actions={<Link href={`/vacancies/${id}`} className="text-sm text-ink-soft underline">← До вакансії</Link>} />

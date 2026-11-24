@@ -77,4 +77,29 @@ select tst.ok(tst.rows($$update public.vacancies set headcount = 2 where id = '4
               'рекрутер редагує свою вакансію');
 reset role;
 
+\echo '--- 17б. Воронка чужої вакансії'
+insert into public.candidates (id, full_name, owner_id) values
+  ('42000000-0000-0000-0000-000000000002', 'Воронка Тест Другий', '00000000-0000-0000-0000-0000000000a3');
+insert into public.applications (id, candidate_id, vacancy_id, recruiter_id, stage_id)
+select '43000000-0000-0000-0000-000000000002', '42000000-0000-0000-0000-000000000002',
+       '41000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-0000000000a3', s.id
+from public.pipeline_stages s join public.pipelines p on p.id = s.pipeline_id and p.is_default where s.code = 'new';
+set role authenticated;
+select tst.login('00000000-0000-0000-0000-0000000000a2');
+select tst.ok((select count(*) from public.applications where id = '43000000-0000-0000-0000-000000000002') = 1,
+              'рекрутер бачить воронку чужої вакансії');
+select tst.blocked($$select public.move_application('43000000-0000-0000-0000-000000000002',
+  (select s.id from public.pipeline_stages s join public.pipelines p on p.id = s.pipeline_id and p.is_default where s.code = 'offer'))$$,
+  'рекрутер не переміщує кандидатів у чужій вакансії');
+select tst.blocked($$insert into public.applications (candidate_id, vacancy_id, recruiter_id, stage_id)
+  select '42000000-0000-0000-0000-000000000001', '41000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-0000000000a3', s.id
+  from public.pipeline_stages s join public.pipelines p on p.id = s.pipeline_id and p.is_default where s.code = 'new'$$,
+  'рекрутер не додає кандидатів у чужу вакансію');
+select tst.login('00000000-0000-0000-0000-0000000000a1');
+select public.move_application('43000000-0000-0000-0000-000000000002',
+  (select s.id from public.pipeline_stages s join public.pipelines p on p.id = s.pipeline_id and p.is_default where s.code = 'first_contact'));
+select tst.ok((select s.code from public.applications a join public.pipeline_stages s on s.id = a.stage_id
+               where a.id = '43000000-0000-0000-0000-000000000002') = 'first_contact', 'адміністратор змінює будь-яку воронку');
+reset role;
+
 \echo '=== Тести воронки пройдено ==='

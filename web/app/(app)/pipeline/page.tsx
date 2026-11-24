@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requirePermission } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { can } from '@/lib/permissions';
+import { can, canOn } from '@/lib/permissions';
 import { Card, PageHeader, Select } from '@/components/ui';
 import { PipelineBoard } from '@/components/pipeline-board';
 import { loadBoard } from '../vacancies/load';
@@ -15,10 +15,10 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
   const supabase = await createClient();
   const { data } = await supabase
     .from('vacancies')
-    .select('id, title, pipeline_id, status')
+    .select('id, title, pipeline_id, status, recruiter_id, hiring_manager_id')
     .in('status', ['open', 'on_hold', 'draft'])
     .order('opened_at', { ascending: false });
-  const vacancies = (data ?? []) as { id: string; title: string; pipeline_id: string; status: string }[];
+  const vacancies = (data ?? []) as { id: string; title: string; pipeline_id: string; status: string; recruiter_id: string | null; hiring_manager_id: string | null }[];
   const wanted = Array.isArray(sp.vacancy) ? sp.vacancy[0] : sp.vacancy;
   const current = vacancies.find((v) => v.id === wanted) ?? vacancies[0];
   const board = current ? await loadBoard(supabase, current.id, current.pipeline_id) : null;
@@ -66,7 +66,10 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
               stages={board.stages}
               cards={board.cards}
               reasons={board.reasons}
-              canMove={can(session.permissions, 'applications.update')}
+              canMove={
+                !!current &&
+                canOn(session.permissions, 'applications.update', current.recruiter_id === session.userId || current.hiring_manager_id === session.userId)
+              }
             />
           )}
         </>

@@ -226,7 +226,9 @@ select f.id, t.id, array['next_action_at'] from public.pipeline_stages f, public
 where f.code = 'resume_processed' and t.code = 'first_contact' and f.pipeline_id = t.pipeline_id;
 set role authenticated;
 
-select tst.login('00000000-0000-0000-0000-0000000000a2');
+-- Правила етапів перевіряємо від імені SUPER ADMIN: відгук у вакансії іншого рекрутера
+-- (з етапу 4 рекрутер змінює лише свої воронки — це окремо в 40_pipeline_tests)
+select tst.login('00000000-0000-0000-0000-0000000000a1');
 select tst.blocked($$update public.applications set stage_id = '50000000-0000-0000-0000-000000000002'
                      where id = '40000000-0000-0000-0000-000000000002'$$,
                    'етап з чужої воронки заборонений');

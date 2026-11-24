@@ -6,7 +6,7 @@ import { BulkResumeUpload } from '@/components/bulk-resume-upload';
 import { CandidateForm } from '../../candidates/candidate-form';
 import { requirePermission } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { can } from '@/lib/permissions';
+import { can, canOn } from '@/lib/permissions';
 import { uuidSchema } from '@/lib/validation';
 import { formatDate } from '@/lib/candidates';
 import { PRIORITY_LABELS, VACANCY_COLUMNS, VACANCY_STATUS_LABELS, VACANCY_STATUS_TONE, salaryRange, type VacancyRow } from '@/lib/vacancies';
@@ -49,9 +49,10 @@ export default async function VacancyPage({
   const userName = new Map(((users ?? []) as { id: string; full_name: string }[]).map((u) => [u.id, u.full_name]));
   const p = session.permissions;
   // Права «свої/усі» остаточно перевіряє база; тут — лише що показувати
-  const canEdit = can(p, 'vacancies.manage');
-  const canMove = can(p, 'applications.update');
-  const canAdd = can(p, 'applications.create') && ['open', 'on_hold', 'draft'].includes(v.status);
+  const mine = v.recruiter_id === session.userId || v.hiring_manager_id === session.userId;
+  const canEdit = canOn(p, 'vacancies.manage', mine);
+  const canMove = canOn(p, 'applications.update', mine);
+  const canAdd = canOn(p, 'applications.create', mine) && ['open', 'on_hold', 'draft'].includes(v.status);
   const one = (k: string) => (Array.isArray(sp[k]) ? sp[k]![0] : (sp[k] as string | undefined));
   const notice = one('notice');
   const noticeCandidate = one('candidate');

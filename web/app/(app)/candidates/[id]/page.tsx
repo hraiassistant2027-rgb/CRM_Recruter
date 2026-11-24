@@ -7,7 +7,7 @@ import { docxToSafeHtml } from '@/lib/resume-text';
 import { resumeDisplayName } from '@/lib/resume-parse';
 import { requirePermission } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { can } from '@/lib/permissions';
+import { can, canOn } from '@/lib/permissions';
 import { uuidSchema } from '@/lib/validation';
 import { Alert, Badge, Card, PageHeader } from '@/components/ui';
 import {
@@ -93,15 +93,20 @@ export default async function CandidatePage({
         supabase.from('applications').select('id, vacancy_id, stage_id, stage_changed_at, rejection_reason_id, rejection_comment, created_at').eq('candidate_id', id).order('created_at', { ascending: false }),
         supabase.from('pipeline_stages').select('id, name, color, kind'),
         supabase.from('rejection_reasons').select('id, name'),
-        supabase.from('vacancies').select('id, title, status').order('opened_at', { ascending: false }).limit(500),
+        supabase.from('vacancies').select('id, title, status, recruiter_id, hiring_manager_id').order('opened_at', { ascending: false }).limit(500),
       ])
     : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
   const apps = (appsRes.data ?? []) as App[];
   const stageById = new Map(((stagesRes.data ?? []) as { id: string; name: string; color: string; kind: string }[]).map((s) => [s.id, s]));
   const reasonById = new Map(((reasonsRes.data ?? []) as { id: string; name: string }[]).map((r) => [r.id, r.name]));
-  const allVacancies = (vacanciesRes.data ?? []) as { id: string; title: string; status: string }[];
+  const allVacancies = (vacanciesRes.data ?? []) as { id: string; title: string; status: string; recruiter_id: string | null; hiring_manager_id: string | null }[];
   const vacancyTitle = new Map(allVacancies.map((v) => [v.id, v.title]));
-  const openVacancies = allVacancies.filter((v) => ['open', 'on_hold', 'draft'].includes(v.status) && !apps.some((a) => a.vacancy_id === v.id));
+  const openVacancies = allVacancies.filter(
+    (v) =>
+      ['open', 'on_hold', 'draft'].includes(v.status) &&
+      !apps.some((a) => a.vacancy_id === v.id) &&
+      canOn(session.permissions, 'applications.create', v.recruiter_id === session.userId || v.hiring_manager_id === session.userId),
+  );
   const { data: histData } = apps.length
     ? await supabase.from('application_stage_history').select('id, application_id, to_stage_id, changed_by, changed_at, comment').in('application_id', apps.map((a) => a.id)).order('changed_at', { ascending: false })
     : { data: [] };

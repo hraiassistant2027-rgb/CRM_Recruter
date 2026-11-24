@@ -15,6 +15,11 @@ export function can(perms: Permissions, code: string): boolean {
   return code in perms;
 }
 
+// Чи має користувач право на конкретний запис: «усі» або «свої», якщо запис його
+export function canOn(perms: Permissions, code: string, isMine: boolean): boolean {
+  return perms[code] === 'all' || (perms[code] === 'own' && isMine);
+}
+
 export type MenuItemRow = {
   id: string;
   parent_id: string | null;
