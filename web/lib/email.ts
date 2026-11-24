@@ -133,11 +133,32 @@ export function emailsIn(header: string | undefined): string[] {
   return [...header.matchAll(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g)].map((m) => m[0].toLowerCase());
 }
 
-// Текст відповіді без цитати попереднього листа
+// Розкодування HTML-сутностей (Gmail повертає короткий опис листа в такому вигляді)
+export function decodeEntities(text: string): string {
+  return text
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&#x27;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&');
+}
+
+// Текст відповіді без цитати попереднього листа.
+// Заголовок цитати («…, 24 лист. 2026 р. о 12:57 Ім'я <email> пише:») Gmail часто переносить на 2 рядки.
+const QUOTE_END = /(wrote|пише|написав|написала|писал|написал|пишет)\s*:\s*$/i;
+const QUOTE_DATE_LINE = /\d{4}.*<[^>\s]+@[^>\s]+>\s*$/;
+
 export function stripQuoted(text: string): string {
   const lines = text.replace(/\r/g, '').split('\n');
-  const cut = lines.findIndex(
-    (l) => /^>/.test(l) || /(wrote|пише|написав|написала|писал|написал|пишет):\s*$/i.test(l) || /^-{2,}\s*(Original Message|Пересланий|Исходное)/i.test(l),
-  );
+  const cut = lines.findIndex((l, i) => {
+    const next = (lines[i + 1] ?? '').trim();
+    return (
+      /^>/.test(l) ||
+      QUOTE_END.test(l) ||
+      (QUOTE_DATE_LINE.test(l) && (next === '' || QUOTE_END.test(next) || next.startsWith('>'))) ||
+      /^-{2,}\s*(Original Message|Пересланий|Исходное)/i.test(l)
+    );
+  });
   return (cut > 0 ? lines.slice(0, cut) : lines).join('\n').trim();
 }

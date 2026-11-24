@@ -7,6 +7,7 @@ import { translateError } from '@/lib/errors';
 import { GoogleNotConnected, decryptToken, googleFetch, googleSession, revokeToken, type GoogleSession } from '@/lib/google';
 import {
   bodyOf,
+  decodeEntities,
   buildRawEmail,
   emailsIn,
   fillTemplate,
@@ -226,7 +227,7 @@ async function storeGmailMessages(
       subject: (headerOf(msg.payload, 'Subject') ?? '').slice(0, 500),
       body_text: plain,
       body_html: null, // HTML від сторонніх відправників не зберігаємо — показуємо лише текст
-      snippet: (msg.snippet ?? plain).slice(0, 200),
+      snippet: (plain || decodeEntities(msg.snippet ?? '')).replace(/\s+/g, ' ').slice(0, 200),
       status: outgoing ? 'sent' : 'received',
       sent_by: null,
       sent_at: outgoing ? at : null,

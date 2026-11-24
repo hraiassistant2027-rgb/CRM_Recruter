@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bodyOf, buildRawEmail, emailsIn, fillTemplate, findPlaceholders, firstNameOf, htmlToText, stripQuoted, textToHtml } from './email';
+import { bodyOf, decodeEntities, buildRawEmail, emailsIn, fillTemplate, findPlaceholders, firstNameOf, htmlToText, stripQuoted, textToHtml } from './email';
 
 describe('шаблони листів', () => {
   it('ім’я з ПІБ у порядку Прізвище Ім’я По батькові', () => {
@@ -50,5 +50,10 @@ describe('розбір вхідних листів', () => {
     });
     expect(body.text).toBe('Дякую, буду!');
     expect(stripQuoted('Дякую, буду!\n\nпн, 24 лист. 2026 р. о 10:00 Ганна <hr@gmail.com> пише:\n> Запрошуємо')).toBe('Дякую, буду!');
+    // Gmail переніс «пише:» на наступний рядок
+    expect(stripQuoted('Дякую, завжди буду рада.\n\nвт, 24 лист. 2026 р. о 12:57 Usata Hanna <hr.ai.assistant.2027@gmail.com>\nпише:\n\n> Добрий день')).toBe(
+      'Дякую, завжди буду рада.',
+    );
+    expect(decodeEntities('Ганна &lt;hr@gmail.com&gt; пише')).toBe('Ганна <hr@gmail.com> пише');
   });
 });
