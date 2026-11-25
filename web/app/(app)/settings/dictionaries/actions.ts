@@ -111,3 +111,16 @@ export async function updateHrContact(_prev: FormState, formData: FormData): Pro
   revalidatePath('/');
   return { ok: 'Збережено' };
 }
+
+export async function updateSourceColor(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = uuidSchema.safeParse(formData.get('id'));
+  const color = String(formData.get('color') ?? '');
+  if (!id.success || !/^#[0-9a-fA-F]{6}$/.test(color)) return { error: 'Невірний колір' };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('sources').update({ color }).eq('id', id.data).select('id');
+  if (error) return { error: translateError(error) };
+  if (!data?.length) return { error: 'Немає права на цю дію' };
+  revalidatePath('/settings/dictionaries');
+  revalidatePath('/');
+  return { ok: 'Збережено' };
+}

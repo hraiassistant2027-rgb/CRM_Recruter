@@ -54,3 +54,19 @@ select tst.ok(tst.rows($$update public.app_settings set value = '{}' where key =
 reset role;
 select tst.ok((select count(*) from public.menu_items where target_ref = 'resume_bank') = 1, 'пункт меню «Банк резюме» додано');
 \echo '=== Тести банку резюме пройдено ==='
+
+\echo '--- 25. Джерела кандидатів'
+reset role;
+select tst.ok((select color from public.sources where name = 'Work.ua') = '#2563EB'
+          and (select color from public.sources where name = 'robota.ua') = '#DC2626'
+          and (select color from public.sources where name = 'Рекомендація') = '#16A34A', 'кольори джерел: синій, червоний, зелений');
+update public.candidates set source_id = (select id from public.sources where name = 'Work.ua')
+where id = '31000000-0000-0000-0000-000000000001';
+set role authenticated;
+select tst.login('00000000-0000-0000-0000-0000000000a2');
+select tst.ok((select cnt from public.candidate_source_counts() where source_id = (select id from public.sources where name = 'Work.ua')) >= 1,
+              'статистика кандидатів за джерелами');
+select tst.login('00000000-0000-0000-0000-0000000000a7');
+select tst.ok(coalesce((select sum(cnt) from public.candidate_source_counts()), 0) = 0, 'керівник без вакансій не бачить чужих кандидатів у статистиці');
+reset role;
+\echo '=== Тести джерел пройдено ==='

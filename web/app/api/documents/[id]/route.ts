@@ -18,7 +18,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const { data: doc } = await supabase
     .from('documents')
-    .select('id, candidate_id, storage_bucket, storage_path, original_name, mime_type, created_at, deleted_at')
+    .select('id, candidate_id, storage_bucket, storage_path, original_name, mime_type, created_at, deleted_at, preview_path')
     .eq('id', id)
     .maybeSingle();
   if (!doc || doc.deleted_at) return new NextResponse('Файл не знайдено або немає доступу', { status: 404 });
@@ -36,11 +36,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (candidate) fileName = resumeDisplayName(candidate.full_name, doc.original_name, index, doc.created_at);
   }
 
-  const admin = createAdminClient();
-  const { data: blob, error } = await admin.storage.from(doc.storage_bucket).download(doc.storage_path);
-  if (error || !blob) return new NextResponse('Не вдалося відкрити файл', { status: 502 });
-
   const download = request.nextUrl.searchParams.get('download') === '1';
+  // PDF-копія Word-документа для перегляду в оригінальному вигляді
+  const preview = !download && request.nextUrl.searchParams.get('preview') === '1' && doc.preview_path;
+  const admin = createAdminClient();
+  const { data: blob, error } = await admin.storage.from(doc.storage_bucket).download(preview ? doc.preview_path! : doc.storage_path);
+  if (error || !blob) return new NextResponse('Не вдалося відкрити файл', { status: 502 });
+  if (preview) fileName = fileName.replace(/\.[a-z0-9]+$/i, '.pdf');
   await supabase.rpc('log_event', {
     p_action: download ? 'download_file' : 'view_file',
     p_entity: 'documents',

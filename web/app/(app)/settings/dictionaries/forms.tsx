@@ -1,6 +1,6 @@
 'use client';
 import { useActionState } from 'react';
-import { addDictionaryItem, moveStage, setDictionaryItemActive, updateHrContact, updateStage } from './actions';
+import { addDictionaryItem, moveStage, setDictionaryItemActive, updateHrContact, updateSourceColor, updateStage } from './actions';
 import { Alert, Input } from '@/components/ui';
 import { SubmitButton } from '@/components/submit-button';
 import { initialFormState } from '@/lib/form-state';
@@ -95,6 +95,25 @@ export function HrContactForm({ id, name, email }: { id: string; name: string; e
       <SubmitButton variant="secondary" pendingText="…">Зберегти</SubmitButton>
       {state.error && <span className="w-full text-xs text-danger">{state.error}</span>}
       {state.ok && <span className="w-full text-xs text-ok">{state.ok}</span>}
+    </form>
+  );
+}
+
+export function SourceColor({ id, color }: { id: string; color: string }) {
+  const [state, action] = useActionState(updateSourceColor, initialFormState);
+  return (
+    <form action={action} className="flex items-center">
+      <input type="hidden" name="id" value={id} />
+      <input
+        type="color"
+        name="color"
+        defaultValue={color}
+        aria-label="Колір джерела на дашборді"
+        title="Колір на дашборді"
+        onChange={(e) => e.currentTarget.form?.requestSubmit()}
+        className="h-6 w-8 cursor-pointer rounded border border-line"
+      />
+      {state.error && <span className="ml-1 text-xs text-danger">{state.error}</span>}
     </form>
   );
 }

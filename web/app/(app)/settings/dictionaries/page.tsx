@@ -3,11 +3,11 @@ import Link from 'next/link';
 import { requirePermission } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { Badge, Card, PageHeader } from '@/components/ui';
-import { AddItemForm, HrContactForm, ToggleItem } from './forms';
+import { AddItemForm, HrContactForm, SourceColor, ToggleItem } from './forms';
 
 export const metadata: Metadata = { title: 'Довідники' };
 
-type Item = { id: string; name: string; is_active: boolean; address?: string | null; side?: string; email?: string };
+type Item = { id: string; name: string; is_active: boolean; address?: string | null; side?: string; email?: string; color?: string };
 
 function Section({ title, hint, kind, items, extraLabel }: { title: string; hint: string; kind: string; items: Item[]; extraLabel?: string }) {
   return (
@@ -28,6 +28,7 @@ function Section({ title, hint, kind, items, extraLabel }: { title: string; hint
             </span>
             )}
             <span className="flex shrink-0 items-center gap-2">
+              {kind === 'sources' && i.color && <SourceColor id={i.id} color={i.color} />}
               {!i.is_active && <Badge>вимкнено</Badge>}
               <ToggleItem kind={kind} id={i.id} active={i.is_active} />
             </span>
@@ -46,7 +47,7 @@ export default async function DictionariesPage() {
   const [sites, departments, sources, reasons, hr] = await Promise.all([
     supabase.from('sites').select('id, name, address, is_active').order('name'),
     supabase.from('departments').select('id, name, is_active').order('name'),
-    supabase.from('sources').select('id, name, is_active').order('sort_order'),
+    supabase.from('sources').select('id, name, is_active, color').order('sort_order'),
     supabase.from('rejection_reasons').select('id, name, side, is_active').order('sort_order'),
     supabase.from('hr_contacts').select('id, name, email, is_active').order('name'),
   ]);
@@ -62,7 +63,7 @@ export default async function DictionariesPage() {
         <Section title="Кадровики" hint="Кому передавати кандидатів на оформлення (етап «Офер»). Ім'я і email можна змінити й натиснути «Зберегти»; одна скринька може бути в кількох кадровиків" kind="hr_contacts" items={(hr.data ?? []) as Item[]} extraLabel="Email кадровика" />
         <Section title="Об'єкти" hint="Будівельні об'єкти для вакансій" kind="sites" items={(sites.data ?? []) as Item[]} extraLabel="Адреса (необов'язково)" />
         <Section title="Підрозділи" hint="Відділи та служби компанії" kind="departments" items={(departments.data ?? []) as Item[]} />
-        <Section title="Джерела кандидатів" hint="Звідки прийшов кандидат" kind="sources" items={(sources.data ?? []) as Item[]} />
+        <Section title="Джерела кандидатів" hint="Звідки прийшов кандидат. Кольорова позначка — колір джерела у статистиці на головній" kind="sources" items={(sources.data ?? []) as Item[]} />
         <Section title="Причини відмови компанії" hint="Етап «Відмова»" kind="company_reasons" items={r.filter((i) => i.side === 'company')} />
         <Section title="Причини відмови кандидата" hint="Етап «Кандидат відмовився»" kind="candidate_reasons" items={r.filter((i) => i.side === 'candidate')} />
       </div>

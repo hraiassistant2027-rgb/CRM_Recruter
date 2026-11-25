@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { Download, ExternalLink, Eye, Pencil, X } from 'lucide-react';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { docxToSafeHtml } from '@/lib/resume-text';
+import { ensurePreview } from '@/lib/preview';
 import { resumeDisplayName } from '@/lib/resume-parse';
 import { requirePermission } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -43,7 +44,7 @@ import { Mail, MailOpen } from 'lucide-react';
 
 export const metadata: Metadata = { title: 'Картка кандидата' };
 
-type Doc = { id: string; storage_bucket: string; storage_path: string; original_name: string; size_bytes: number | null; parse_status: string; created_at: string; uploaded_by: string | null };
+type Doc = { id: string; storage_bucket: string; storage_path: string; preview_path: string | null; source_ref: string | null; original_name: string; size_bytes: number | null; parse_status: string; created_at: string; uploaded_by: string | null };
 type Consent = { id: string; legal_basis: string; source: string; given_at: string; expires_at: string | null; withdrawn_at: string | null };
 type Note = { id: string; body: string; created_at: string; author_id: string };
 type Experience = { id: string; company: string | null; position: string | null; start_date: string | null; end_date: string | null; description: string | null };
@@ -81,7 +82,7 @@ export default async function CandidatePage({
   if (!c) notFound();
 
   const [docs, consents, notes, experience, education, profiles, source] = await Promise.all([
-    supabase.from('documents').select('id, storage_bucket, storage_path, original_name, size_bytes, parse_status, created_at, uploaded_by').eq('candidate_id', id).is('deleted_at', null).order('created_at', { ascending: false }),
+    supabase.from('documents').select('id, storage_bucket, storage_path, preview_path, source_ref, original_name, size_bytes, parse_status, created_at, uploaded_by').eq('candidate_id', id).is('deleted_at', null).order('created_at', { ascending: false }),
     supabase.from('consents').select('id, legal_basis, source, given_at, expires_at, withdrawn_at').eq('candidate_id', id).order('given_at', { ascending: false }),
     supabase.from('notes').select('id, body, created_at, author_id').eq('candidate_id', id).order('created_at', { ascending: false }).limit(100),
     supabase.from('candidate_experience').select('id, company, position, start_date, end_date, description').eq('candidate_id', id).order('sort_order'),
@@ -189,7 +190,19 @@ export default async function CandidatePage({
   const viewing = docList.find((d) => d.id === viewId) ?? null;
   const viewExt = viewing?.original_name.split('.').pop()?.toLowerCase() ?? '';
   let docxHtml: string | null = null;
-  if (viewing && viewExt === 'docx') {
+  // Оригінальний вигляд: файл із Банку резюме — прямо з Google Диска; Word/RTF — PDF-копія
+  const { data: viewerGoogle } = viewing
+    ? await supabase.from('email_accounts').select('status, scopes').eq('user_id', session.userId).maybeSingle()
+    : { data: null };
+  const viewerScopes = ((viewerGoogle as { status: string; scopes: string[] } | null)?.status === 'active'
+    ? (viewerGoogle as { scopes: string[] }).scopes
+    : []) ?? [];
+  const driveFileId = viewing?.source_ref?.startsWith('drive:') && viewerScopes.some((sc) => sc.includes('drive')) ? viewing.source_ref.slice(6) : null;
+  let previewPath = viewing?.preview_path ?? null;
+  if (viewing && !driveFileId && !previewPath && ['doc', 'docx', 'rtf'].includes(viewExt) && viewerScopes.some((sc) => sc.endsWith('drive.file'))) {
+    previewPath = await ensurePreview(viewing, session.userId);
+  }
+  if (viewing && viewExt === 'docx' && !previewPath && !driveFileId) {
     const { data: blob } = await createAdminClient().storage.from(viewing.storage_bucket).download(viewing.storage_path);
     if (blob) {
       docxHtml = await docxToSafeHtml(new Uint8Array(await blob.arrayBuffer()));
@@ -216,7 +229,11 @@ export default async function CandidatePage({
             </Link>
           </span>
         </div>
-        {['pdf', 'txt'].includes(viewExt) ? (
+        {driveFileId ? (
+          <iframe src={`https://drive.google.com/file/d/${driveFileId}/preview`} title={docName(viewing)} className="h-[80vh] w-full" allow="autoplay" />
+        ) : previewPath ? (
+          <iframe src={`/api/documents/${viewing.id}?preview=1`} title={docName(viewing)} className="h-[80vh] w-full" />
+        ) : ['pdf', 'txt'].includes(viewExt) ? (
           <iframe src={`/api/documents/${viewing.id}`} title={docName(viewing)} className="h-[80vh] w-full" />
         ) : ['jpg', 'jpeg', 'png'].includes(viewExt) ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -230,7 +247,7 @@ export default async function CandidatePage({
           />
         ) : (
           <div className="p-6 text-sm text-ink-soft">
-            Для формату .{viewExt} перегляд у браузері недоступний. Завантажте файл кнопкою вгорі.
+            Щоб переглядати файли .{viewExt} в оригінальному вигляді, підключіть Google у профілі (з дозволом на Google Диск). Поки що файл можна завантажити кнопкою вгорі.
           </div>
         )}
       </div>

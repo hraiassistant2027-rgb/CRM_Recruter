@@ -107,6 +107,23 @@ export default async function DashboardPage() {
     gmailReady = (account as { status: string } | null)?.status === 'active';
   }
 
+  // Кандидати в базі за джерелами (для блоку «Кандидатів у базі»)
+  let sourceStats: { name: string; color: string; count: number }[] = [];
+  if (candidates !== null) {
+    const sb = await createClient();
+    const [{ data: counts }, { data: sources }] = await Promise.all([
+      sb.rpc('candidate_source_counts'),
+      sb.from('sources').select('id, name, color, sort_order').order('sort_order'),
+    ]);
+    const byId = new Map(((counts ?? []) as { source_id: string | null; cnt: number }[]).map((c) => [c.source_id ?? 'none', Number(c.cnt)]));
+    sourceStats = ((sources ?? []) as { id: string; name: string; color: string }[])
+      .map((s) => ({ name: s.name, color: s.color, count: byId.get(s.id) ?? 0 }))
+      .filter((s) => s.count > 0)
+      .sort((a, b) => b.count - a.count);
+    const none = byId.get('none') ?? 0;
+    if (none) sourceStats.push({ name: 'Без джерела', color: '#D1D5DB', count: none });
+  }
+
   const stats = [
     { label: 'Кандидатів у базі', value: candidates, href: '/candidates' },
     { label: 'Відкритих вакансій', value: openVacancies, href: '/vacancies' },
@@ -120,9 +137,20 @@ export default async function DashboardPage() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {stats.map((s) => (
             <Link key={s.label} href={s.href}>
-              <Card className="transition-colors hover:border-accent">
+              <Card className="h-full transition-colors hover:border-accent">
                 <p className="text-sm text-ink-soft">{s.label}</p>
                 <p className="mt-2 text-3xl font-semibold">{s.value}</p>
+                {s.href === '/candidates' && sourceStats.length > 0 && (
+                  <ul className="mt-3 space-y-1 text-sm">
+                    {sourceStats.map((src) => (
+                      <li key={src.name} className="flex items-center gap-2">
+                        <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: src.color }} aria-hidden />
+                        <span className="flex-1 truncate">{src.name}</span>
+                        <span className="font-medium tabular-nums">{src.count}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </Card>
             </Link>
           ))}

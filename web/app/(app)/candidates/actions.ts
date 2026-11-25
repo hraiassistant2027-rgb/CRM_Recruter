@@ -18,6 +18,7 @@ import { translateError } from '@/lib/errors';
 import { insertApplication } from '@/lib/applications';
 import type { DuplicateRow } from '@/lib/candidates';
 import { extractResumeText } from '@/lib/resume-text';
+import { PREVIEW_EXTS, convertForUser } from '@/lib/google-convert';
 import { FIELD_LABELS, firstLines, parseResumeText, type ResumeFields } from '@/lib/resume-parse';
 import type { FormState } from '@/lib/form-state';
 
@@ -99,10 +100,17 @@ async function storeResumeInner(supabase: Supa, candidateId: string, file: File,
   const sha256 = createHash('sha256').update(bytes).digest('hex');
   const ext = file.name.split('.').pop()!.toLowerCase();
   const mime = RESUME_TYPES[ext];
-  // Текст резюме — для пошуку по базі і автозаповнення картки
-  const text = await extractResumeText(bytes, ext);
-  const fields = parseResumeText(text ?? '', file.name);
   const path = `candidates/${candidateId}/${randomUUID()}-${safeFileName(file.name)}`;
+  // Текст резюме — для пошуку по базі і автозаповнення картки. Фото, скани і .doc читає Google;
+  // для Word/RTF Google ще й робить PDF-копію, щоб резюме показувалося в оригінальному вигляді.
+  const local = await extractResumeText(bytes, ext);
+  const needText = !local || local.length < 80;
+  const needPdf = PREVIEW_EXTS.includes(ext);
+  const { data: me } = await supabase.auth.getUser();
+  const converted = needText || needPdf ? await convertForUser(me.user?.id, bytes, ext, { text: needText, pdf: needPdf }) : { text: null, pdf: null };
+  const text = (local && local.length >= 80 ? local : converted.text ?? local) ?? null;
+  const fields = parseResumeText(text ?? '', file.name);
+  const previewPath = converted.pdf ? `${path}.preview.pdf` : null;
 
   // Ідентифікатор задаємо самі і не просимо базу повернути рядок: правило читання файлів
   // перевіряє запис, який у межах цієї ж команди ще не видно, і відхилило б вставку
@@ -119,6 +127,7 @@ async function storeResumeInner(supabase: Supa, candidateId: string, file: File,
       sha256,
       extracted_text: text,
       source_ref: sourceRef,
+      preview_path: previewPath,
       parse_status: !text ? 'failed' : Object.keys(fields).length ? 'parsed' : 'indexed_only',
     });
 
@@ -153,6 +162,10 @@ async function storeResumeInner(supabase: Supa, candidateId: string, file: File,
     await admin.from('documents').delete().eq('id', docId);
     return `Файл не збережено: ${translateError(uploadError)}`;
   }
+  if (converted.pdf && previewPath) {
+    const { error: previewError } = await admin.storage.from('resumes').upload(previewPath, converted.pdf, { contentType: 'application/pdf', upsert: true });
+    if (previewError) await admin.from('documents').update({ preview_path: null }).eq('id', docId);
+  }
   return fields;
 }
 
@@ -169,7 +182,9 @@ export async function extractResumeFields(
   if (!user.user) return { fields: {}, error: 'Сесія завершилася. Увійдіть знову.' };
 
   const ext = file.name.split('.').pop()!.toLowerCase();
-  const text = await extractResumeText(new Uint8Array(await file.arrayBuffer()), ext);
+  const raw = new Uint8Array(await file.arrayBuffer());
+  const local = await extractResumeText(raw, ext);
+  const text = local && local.length >= 80 ? local : (await convertForUser(user.user.id, raw, ext, { text: true, pdf: false })).text ?? local;
   if (!text) {
     const fromFile = parseResumeText('', file.name);
     if (fromFile.full_name) {
@@ -178,8 +193,8 @@ export async function extractResumeFields(
     return {
       fields: {},
       error: ['jpg', 'jpeg', 'png'].includes(ext)
-        ? 'Це зображення — текст з нього поки не розпізнається. Заповніть поля вручну.'
-        : 'Не вдалося прочитати текст (можливо, це скан). Заповніть поля вручну.',
+        ? 'Текст на фото не розпізнано. Щоб CRM читала фото і скани, підключіть Google у профілі; інакше заповніть поля вручну.'
+        : 'Не вдалося прочитати текст. Якщо це скан — підключіть Google у профілі, щоб CRM його розпізнавала; інакше заповніть поля вручну.',
     };
   }
   const fields = parseResumeText(text, file.name);
@@ -463,7 +478,8 @@ export async function importResume(formData: FormData): Promise<ImportResult> {
 
   // 2. Розпізнавання
   const ext = file.name.split('.').pop()!.toLowerCase();
-  const text = await extractResumeText(bytes, ext);
+  const localText = await extractResumeText(bytes, ext);
+  const text = localText && localText.length >= 80 ? localText : (await convertForUser(auth.user.id, bytes, ext, { text: true, pdf: false })).text ?? localText;
   const fields = parseResumeText(text ?? '', file.name);
   const raw: Record<string, string> = {
     full_name: fields.full_name ?? `Без імені (${file.name.slice(0, 80)})`,
