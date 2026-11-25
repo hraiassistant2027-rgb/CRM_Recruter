@@ -171,6 +171,13 @@ const optionalMoney = z
   .transform((v) => (v === '' ? null : Number(v.replace(/\s/g, '').replace(',', '.'))))
   .refine((v) => v === null || (Number.isFinite(v) && v >= 0 && v < 1e9), { message: 'Сума — додатне число' });
 
+const optionalEnum = <T extends readonly [string, ...string[]]>(values: T) =>
+  z
+    .string()
+    .trim()
+    .transform((v) => (v === '' ? null : v))
+    .refine((v): v is T[number] | null => v === null || (values as readonly string[]).includes(v), { message: 'Оберіть значення зі списку' });
+
 export const VACANCY_STATUSES = ['draft', 'open', 'on_hold', 'closed', 'cancelled'] as const;
 export const VACANCY_PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const;
 
@@ -197,6 +204,22 @@ export const vacancySchema = z
       .trim()
       .refine((v) => /^\d{4}-\d{2}-\d{2}$/.test(v), { message: 'Вкажіть дату відкриття' }),
     requirements: optionalText(10000, 'Задовгий опис'),
+    legal_entity_id: optionalUuid,
+    project_id: optionalUuid,
+    work_place: optionalEnum(['office', 'site', 'remote'] as const),
+    request_type: optionalEnum(['new', 'replacement', 'expansion', 'maternity'] as const),
+    difficulty_class: optionalEnum(['A', 'B', 'C', 'D'] as const),
+    planned_close_days: z
+      .string()
+      .trim()
+      .transform((v) => (v === '' ? null : Number(v)))
+      .refine((v) => v === null || (Number.isInteger(v) && v >= 1 && v <= 730), { message: 'Ціле число днів від 1 до 730' }),
+    request_adjusted_at: z
+      .string()
+      .trim()
+      .transform((v) => (v === '' ? null : v))
+      .refine((v) => v === null || /^\d{4}-\d{2}-\d{2}$/.test(v), { message: 'Невірна дата' }),
+    report_note: optionalText(500, 'Задовгий коментар'),
   })
   .refine((v) => v.salary_min === null || v.salary_max === null || v.salary_max >= v.salary_min, {
     message: 'Максимальна зарплата не може бути меншою за мінімальну',

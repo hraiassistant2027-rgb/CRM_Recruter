@@ -12,6 +12,8 @@ const KINDS = {
   company_reasons: { table: 'rejection_reasons', extra: null, side: 'company' },
   candidate_reasons: { table: 'rejection_reasons', extra: null, side: 'candidate' },
   hr_contacts: { table: 'hr_contacts', extra: 'email' },
+  legal_entities: { table: 'legal_entities', extra: null },
+  projects: { table: 'projects', extra: null },
 } as const;
 type Kind = keyof typeof KINDS;
 
@@ -109,6 +111,7 @@ export async function updateHrContact(_prev: FormState, formData: FormData): Pro
   if (!data?.length) return { error: 'Немає права на цю дію' };
   revalidatePath('/settings/dictionaries');
   revalidatePath('/');
+  revalidatePath('/reports');
   return { ok: 'Збережено' };
 }
 
@@ -116,11 +119,13 @@ export async function updateSourceColor(_prev: FormState, formData: FormData): P
   const id = uuidSchema.safeParse(formData.get('id'));
   const color = String(formData.get('color') ?? '');
   if (!id.success || !/^#[0-9a-fA-F]{6}$/.test(color)) return { error: 'Невірний колір' };
+  const table = formData.get('kind') === 'legal_entities' ? 'legal_entities' : 'sources';
   const supabase = await createClient();
-  const { data, error } = await supabase.from('sources').update({ color }).eq('id', id.data).select('id');
+  const { data, error } = await supabase.from(table).update({ color }).eq('id', id.data).select('id');
   if (error) return { error: translateError(error) };
   if (!data?.length) return { error: 'Немає права на цю дію' };
   revalidatePath('/settings/dictionaries');
   revalidatePath('/');
+  revalidatePath('/reports');
   return { ok: 'Збережено' };
 }

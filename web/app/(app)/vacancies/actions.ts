@@ -9,12 +9,14 @@ import { insertApplication } from '@/lib/applications';
 import { createGoogleEvent } from '@/lib/calendar-events';
 import { kyivToDate } from '@/lib/time';
 import type { FormState } from '@/lib/form-state';
+import { CLASS_INFO } from '@/lib/vacancies';
 
 export type VacancyFormState = FormState & { fieldErrors?: Record<string, string> };
 
 const VACANCY_FIELDS = [
   'title', 'site_id', 'department_id', 'hiring_manager_name', 'hiring_manager_id', 'recruiter_id', 'headcount',
   'salary_min', 'salary_max', 'salary_currency', 'priority', 'status', 'opened_at', 'requirements',
+  'legal_entity_id', 'project_id', 'work_place', 'request_type', 'difficulty_class', 'planned_close_days', 'request_adjusted_at', 'report_note',
 ] as const;
 
 function readVacancy(formData: FormData) {
@@ -44,6 +46,8 @@ export async function saveVacancy(_prev: VacancyFormState, formData: FormData): 
     ...v,
     // Рекрутер за замовчуванням — той, хто створює вакансію (інакше рекрутер не зможе її редагувати)
     recruiter_id: v.recruiter_id ?? auth.user?.id ?? null,
+    // Планова тривалість закриття: якщо не вказано вручну — норма за класом вакансії
+    planned_close_days: v.planned_close_days ?? (v.difficulty_class ? CLASS_INFO[v.difficulty_class].days : null),
     closed_at: ['closed', 'cancelled'].includes(v.status) ? new Date().toISOString().slice(0, 10) : null,
   };
 

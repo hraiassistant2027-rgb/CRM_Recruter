@@ -1,9 +1,9 @@
 'use client';
 import Link from 'next/link';
-import { useActionState, useTransition } from 'react';
+import { useActionState, useState, useTransition } from 'react';
 import { saveVacancy, type VacancyFormState } from './actions';
 import { Alert, Button, Field, Input, Select } from '@/components/ui';
-import { PRIORITY_LABELS, VACANCY_STATUS_LABELS, type VacancyRow } from '@/lib/vacancies';
+import { CLASS_INFO, PRIORITY_LABELS, REQUEST_TYPE_LABELS, VACANCY_STATUS_LABELS, WORK_PLACE_LABELS, type VacancyRow } from '@/lib/vacancies';
 
 type Option = { id: string; name: string };
 
@@ -15,9 +15,13 @@ export function VacancyForm({
   sites,
   departments,
   users,
+  legalEntities,
+  projects,
   currentUserId,
 }: {
   vacancy?: VacancyRow;
+  legalEntities: Option[];
+  projects: Option[];
   sites: Option[];
   departments: Option[];
   users: Option[];
@@ -27,6 +31,7 @@ export function VacancyForm({
   const [pending, startTransition] = useTransition();
   const fe = state.fieldErrors ?? {};
   const v = vacancy;
+  const [plannedDays, setPlannedDays] = useState(v?.planned_close_days != null ? String(v.planned_close_days) : '');
 
   return (
     <form
@@ -132,6 +137,74 @@ export function VacancyForm({
           <Field label="Вимоги та умови" htmlFor="requirements" error={fe.requirements}>
             <textarea id="requirements" name="requirements" rows={6} defaultValue={v?.requirements ?? ''} className={textareaClass} />
           </Field>
+        </div>
+      </section>
+
+      <section className="space-y-4 rounded-xl border border-line bg-white p-4">
+        <div>
+          <h2 className="font-semibold">Для звіту по вакансіях</h2>
+          <p className="text-sm text-ink-soft">Ці поля потрапляють у розділ «Звіти та аналітика».</p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          <Field label="Юридична особа" htmlFor="legal_entity_id" error={fe.legal_entity_id} hint={legalEntities.length ? undefined : 'Додайте юрособи в Налаштування → Довідники'}>
+            <Select id="legal_entity_id" name="legal_entity_id" defaultValue={v?.legal_entity_id ?? ''}>
+              <option value="">— не вказано —</option>
+              {legalEntities.map((o) => (
+                <option key={o.id} value={o.id}>{o.name}</option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Проект" htmlFor="project_id" error={fe.project_id}>
+            <Select id="project_id" name="project_id" defaultValue={v?.project_id ?? ''}>
+              <option value="">— не вказано —</option>
+              {projects.map((o) => (
+                <option key={o.id} value={o.id}>{o.name}</option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Місце роботи" htmlFor="work_place" error={fe.work_place}>
+            <Select id="work_place" name="work_place" defaultValue={v?.work_place ?? ''}>
+              <option value="">— не вказано —</option>
+              {Object.entries(WORK_PLACE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Нова / заміна" htmlFor="request_type" error={fe.request_type}>
+            <Select id="request_type" name="request_type" defaultValue={v?.request_type ?? ''}>
+              <option value="">— не вказано —</option>
+              {Object.entries(REQUEST_TYPE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Клас вакансії" htmlFor="difficulty_class" error={fe.difficulty_class}>
+            <Select
+              id="difficulty_class"
+              name="difficulty_class"
+              defaultValue={v?.difficulty_class ?? ''}
+              onChange={(e) => {
+                const info = CLASS_INFO[e.target.value];
+                if (info) setPlannedDays(String(info.days));
+              }}
+            >
+              <option value="">— не вказано —</option>
+              {Object.entries(CLASS_INFO).map(([value, info]) => (
+                <option key={value} value={value}>{value} — {info.label} ({info.days} дн.)</option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Планова тривалість закриття, днів" htmlFor="planned_close_days" error={fe.planned_close_days} hint="Підставляється за класом, можна змінити">
+            <Input id="planned_close_days" name="planned_close_days" inputMode="numeric" value={plannedDays} onChange={(e) => setPlannedDays(e.target.value)} />
+          </Field>
+          <Field label="Дата коригування заявки" htmlFor="request_adjusted_at" error={fe.request_adjusted_at}>
+            <Input id="request_adjusted_at" name="request_adjusted_at" type="date" defaultValue={v?.request_adjusted_at ?? ''} />
+          </Field>
+          <div className="md:col-span-2">
+            <Field label="Коментар у звіт" htmlFor="report_note" error={fe.report_note} hint="Напр.: «Передано 5 кандидатів», «Чекаємо погодження». Якщо порожньо — звіт порахує сам.">
+              <Input id="report_note" name="report_note" defaultValue={v?.report_note ?? ''} />
+            </Field>
+          </div>
         </div>
       </section>
 

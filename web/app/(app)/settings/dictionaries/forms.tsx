@@ -99,11 +99,12 @@ export function HrContactForm({ id, name, email }: { id: string; name: string; e
   );
 }
 
-export function SourceColor({ id, color }: { id: string; color: string }) {
+export function SourceColor({ id, color, kind = 'sources' }: { id: string; color: string; kind?: string }) {
   const [state, action] = useActionState(updateSourceColor, initialFormState);
   return (
     <form action={action} className="flex items-center">
       <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="kind" value={kind} />
       <input
         type="color"
         name="color"
