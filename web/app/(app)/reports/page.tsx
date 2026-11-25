@@ -85,12 +85,13 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         }
       />
 
-      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-5">
+      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-6">
         <Stat label="Вакансій у звіті" value={rows.length} />
         <Stat label="Посад (к-ть)" value={s.positions} />
         <Stat label="В роботі" value={s.open} />
         <Stat label="Закрито" value={s.closed} tone="text-ok" />
         <Stat label="Прострочено" value={s.overdue} tone={s.overdue ? 'text-danger' : undefined} />
+        <Stat label="Середній строк закриття" value={s.avgCloseDays != null ? `${s.avgCloseDays} дн.` : '—'} />
       </div>
 
       <Card className="mb-4">
@@ -161,7 +162,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           <table className="w-full min-w-[1400px] text-sm">
             <thead className="border-b border-line bg-surface text-left text-[11px] uppercase tracking-wide text-ink-soft">
               <tr>
-                <th className="py-3 pl-5 pr-3 font-medium">Вакансія</th>
+                <th className="px-3 py-3 font-medium">Вакансія</th>
                 <th className="px-2 py-3 text-center font-medium">К-ть</th>
                 <th className="px-3 py-3 font-medium">Місце</th>
                 <th className="px-3 py-3 font-medium">Нова / заміна</th>
@@ -180,21 +181,16 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             <tbody className="divide-y divide-line">
               {rows.map((r) => (
                 <tr key={r.id} className={`align-top hover:bg-surface/60 ${r.closed ? 'bg-ok-soft/30' : ''}`}>
-                  <td
-                    className="py-3 pl-5 pr-3"
-                    title={r.legalEntity?.name ?? 'Юр. особу не вказано'}
-                    style={{ boxShadow: `inset 6px 0 0 ${r.legalEntity?.color ?? 'var(--color-line)'}` }}
-                  >
+                  <td className="px-3 py-3">
                     <div className="flex items-start gap-2">
-                      {r.closed ? (
-                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-ok" aria-label="Закрита" />
-                      ) : (
-                        <span className="mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 border-line" aria-hidden />
-                      )}
-                      <div className="min-w-0">
-                        <Link href={`/vacancies/${r.id}`} className="font-medium hover:underline">{r.title}</Link>
-                        {r.legalEntity && <div className="text-xs text-ink-soft">{r.legalEntity.name}</div>}
-                      </div>
+                      <span
+                        className="mt-0.5 h-4 w-4 shrink-0 rounded"
+                        style={{ background: r.legalEntity?.color ?? 'var(--color-line)' }}
+                        title={r.legalEntity?.name ?? 'Юр. особу не вказано'}
+                        aria-label={r.legalEntity?.name ?? 'Юр. особу не вказано'}
+                      />
+                      <Link href={`/vacancies/${r.id}`} className="min-w-0 font-medium hover:underline">{r.title}</Link>
+                      {r.closed && <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-ok" aria-label="Закрита" />}
                     </div>
                   </td>
                   <td className="px-2 py-3 text-center">
@@ -221,10 +217,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         </div>
       )}
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-[2fr_1fr]">
+      <div className="mt-6">
         <Card>
           <h2 className="mb-3 font-medium">Класи вакансій</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {Object.entries(CLASS_INFO).map(([k, info]) => (
               <div key={k} className="flex gap-3 rounded-lg border border-line p-3">
                 <ClassBadge cls={k} />
@@ -236,28 +232,6 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
               </div>
             ))}
           </div>
-        </Card>
-        <Card>
-          <h2 className="mb-3 font-medium">Юридичні особи</h2>
-          {usedEntities.length === 0 ? (
-            <p className="text-sm text-ink-soft">
-              Ще не додано. <Link href="/settings/dictionaries" className="underline">Налаштування → Довідники</Link>
-            </p>
-          ) : (
-            <ul className="space-y-1.5 text-sm">
-              {usedEntities.map((e) => (
-                <li key={e.id} className="flex items-center gap-2">
-                  <span className="h-3 w-3 rounded-sm" style={{ background: e.color }} aria-hidden />
-                  {e.name}
-                </li>
-              ))}
-            </ul>
-          )}
-          {s.avgCloseDays != null && (
-            <p className="mt-4 border-t border-line pt-3 text-sm">
-              Середній строк закриття: <b>{s.avgCloseDays} {plural(s.avgCloseDays, 'день', 'дні', 'днів')}</b>
-            </p>
-          )}
         </Card>
       </div>
     </>
