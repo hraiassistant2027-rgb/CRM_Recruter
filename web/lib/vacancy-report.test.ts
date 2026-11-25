@@ -63,9 +63,10 @@ describe('звіт по вакансіях', () => {
     expect(shortName('Іваненко Марія Петрівна')).toBe('Іваненко М.');
     expect(plural(5, 'кандидат', 'кандидати', 'кандидатів')).toBe('кандидатів');
     expect(plural(22, 'день', 'дні', 'днів')).toBe('дні');
-    const [r] = buildReport({ ...ctx, vacancies: [{ ...base, title: 'Інженер; ПТО' }], applications: [], interviews: [] });
-    const csv = reportCsv([r]);
-    expect(csv.startsWith('﻿')).toBe(true);
-    expect(csv).toContain('"Інженер; ПТО"');
+    const [r] = buildReport({ ...ctx, vacancies: [base], applications: [], interviews: [] });
+    const [row] = reportSheetRows([r]);
+    expect(row[0]).toEqual({ fill: '#93C5FD' });
+    expect(row).not.toContain('ТОВ КАН');
+    expect(row[8]).toBe('01.10.2026');
   });
 });
