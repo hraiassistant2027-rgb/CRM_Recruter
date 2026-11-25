@@ -30,13 +30,15 @@ export default async function VacanciesPage({ searchParams }: { searchParams: Pr
   else if (status !== 'all') query = query.eq('status', status);
   if (mine) query = query.eq('recruiter_id', session.userId);
 
-  const [{ data }, { data: counts }, { data: stages }, { data: sites }, { data: users }] = await Promise.all([
+  const [{ data }, { data: counts }, { data: stages }, { data: sites }, { data: users }, { data: entities }] = await Promise.all([
     query,
     supabase.rpc('vacancy_stage_counts'),
     supabase.from('pipeline_stages').select('id, kind'),
     supabase.from('sites').select('id, name'),
     supabase.from('profiles').select('id, full_name'),
+    supabase.from('legal_entities').select('id, color'),
   ]);
+  const entityColor = new Map(((entities ?? []) as { id: string; color: string }[]).map((e) => [e.id, e.color]));
   const vacancies = (data ?? []) as VacancyRow[];
   const kindOf = new Map(((stages ?? []) as { id: string; kind: string }[]).map((s) => [s.id, s.kind]));
   const siteName = new Map(((sites ?? []) as { id: string; name: string }[]).map((s) => [s.id, s.name]));
@@ -111,10 +113,17 @@ export default async function VacanciesPage({ searchParams }: { searchParams: Pr
                 return (
                   <tr key={v.id} className="hover:bg-surface/60">
                     <td className="px-4 py-3">
-                      <Link href={`/vacancies/${v.id}`} className="font-medium hover:underline">
-                        {v.title}
-                      </Link>
-                      <div className="mt-1 flex flex-wrap gap-1">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: (v.legal_entity_id && entityColor.get(v.legal_entity_id)) || '#D1D5DB' }}
+                          aria-hidden
+                        />
+                        <Link href={`/vacancies/${v.id}`} className="font-medium hover:underline">
+                          {v.title}
+                        </Link>
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-1 pl-[18px]">
                         <Badge tone={VACANCY_STATUS_TONE[v.status]}>{VACANCY_STATUS_LABELS[v.status]}</Badge>
                         {(v.priority === 'high' || v.priority === 'urgent') && (
                           <Badge tone={v.priority === 'urgent' ? 'danger' : 'warn'}>{PRIORITY_LABELS[v.priority]}</Badge>
