@@ -124,6 +124,24 @@ export default async function DashboardPage() {
     if (none) sourceStats.push({ name: 'Без джерела', color: '#D1D5DB', count: none });
   }
 
+  // Відкриті вакансії з кольором юрособи, згруповані по кольорах (порядок — як у довіднику юросіб)
+  let vacancyList: { id: string; title: string; color: string }[] = [];
+  if (openVacancies !== null) {
+    const sb = await createClient();
+    const [{ data: vacs }, { data: entities }] = await Promise.all([
+      sb.from('vacancies').select('id, title, legal_entity_id').eq('status', 'open').limit(500),
+      sb.from('legal_entities').select('id, color, sort_order, name').order('sort_order').order('name'),
+    ]);
+    const order = new Map(((entities ?? []) as { id: string; color: string }[]).map((e, i) => [e.id, { i, color: e.color }]));
+    vacancyList = ((vacs ?? []) as { id: string; title: string; legal_entity_id: string | null }[])
+      .map((v) => {
+        const e = v.legal_entity_id ? order.get(v.legal_entity_id) : undefined;
+        return { id: v.id, title: v.title, color: e?.color ?? '#D1D5DB', rank: e?.i ?? Number.MAX_SAFE_INTEGER };
+      })
+      .sort((a, b) => a.rank - b.rank || a.title.localeCompare(b.title, 'uk'))
+      .map(({ id, title, color }) => ({ id, title, color }));
+  }
+
   const stats = [
     { label: 'Кандидатів у базі', value: candidates, href: '/candidates' },
     { label: 'Відкритих вакансій', value: openVacancies, href: '/vacancies' },
@@ -147,6 +165,16 @@ export default async function DashboardPage() {
                         <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: src.color }} aria-hidden />
                         <span className="flex-1 truncate">{src.name}</span>
                         <span className="font-medium tabular-nums">{src.count}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {s.href === '/vacancies' && vacancyList.length > 0 && (
+                  <ul className="mt-3 max-h-64 space-y-1 overflow-y-auto pr-1 text-sm">
+                    {vacancyList.map((v) => (
+                      <li key={v.id} className="flex items-center gap-2">
+                        <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: v.color }} aria-hidden />
+                        <span className="flex-1 truncate" title={v.title}>{v.title}</span>
                       </li>
                     ))}
                   </ul>
