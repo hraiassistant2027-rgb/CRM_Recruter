@@ -186,7 +186,7 @@ export default async function DashboardPage() {
       )}
       {can(p, 'applications.read') && (
         <Card className="mt-6">
-          <div className="mb-1 grid gap-1 px-2 md:grid-cols-[minmax(0,26rem)_auto] md:items-end md:gap-x-8">
+          <div className="mb-1 grid max-w-4xl gap-1 px-2 md:grid-cols-[minmax(0,1fr)_18rem] md:items-end md:gap-x-6">
             <h2 className="font-medium">Кандидати на оформлення</h2>
             <span className="text-xs text-ink-soft">Статус готовності перевірок кандидата</span>
           </div>

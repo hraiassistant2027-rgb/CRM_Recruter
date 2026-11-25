@@ -28,7 +28,7 @@ function Row({ row, contacts, canSend }: { row: HandoffRow; contacts: { id: stri
 
   return (
     <li className={`py-3 text-sm ${row.lastHandoff ? '' : 'bg-accent-soft/30'}`}>
-      <div className="grid gap-3 px-2 md:grid-cols-[minmax(0,26rem)_auto] md:items-start md:gap-x-8">
+      <div className="grid gap-3 px-2 md:grid-cols-[minmax(0,1fr)_18rem] md:items-start md:gap-x-6">
         <div className="min-w-0 space-y-1.5">
           <div className="flex flex-wrap items-baseline gap-x-2">
             <Link href={`/candidates/${row.candidateId}`} className="font-medium hover:underline">
@@ -46,14 +46,14 @@ function Row({ row, contacts, canSend }: { row: HandoffRow; contacts: { id: stri
             {row.lastHandoff ? <Badge tone="neutral">передано {row.lastHandoff}</Badge> : <Badge tone="danger">не передано кадровику</Badge>}
           </div>
         </div>
-        <div className="grid grid-cols-[auto_auto] items-center gap-x-2 gap-y-1.5 text-xs">
+        <div className="grid grid-cols-[9rem_minmax(0,1fr)] items-center gap-x-2 gap-y-1.5 text-xs">
           <span className="text-ink-soft">Перевірка документів:</span>
           <select
             aria-label="Перевірка документів"
             defaultValue={row.docs}
             disabled={!row.canEdit || busy}
             onChange={(e) => start(async () => { const r = await setHrStatus(row.applicationId, 'hr_docs_status', e.target.value); if (r.error) setMsg(r); else router.refresh(); })}
-            className={`rounded border border-line px-1 py-0.5 ${row.docs === 'passed' ? 'text-ok' : ''}`}
+            className={`w-full rounded border border-line px-1 py-0.5 ${row.docs === 'passed' ? 'text-ok' : ''}`}
           >
             <option value="pending">очікую</option>
             <option value="passed">пройдено</option>
@@ -66,7 +66,7 @@ function Row({ row, contacts, canSend }: { row: HandoffRow; contacts: { id: stri
             defaultValue={row.approval}
             disabled={!row.canEdit || busy}
             onChange={(e) => start(async () => { const r = await setHrStatus(row.applicationId, 'hr_approval_status', e.target.value); if (r.error) setMsg(r); else router.refresh(); })}
-            className={`rounded border border-line px-1 py-0.5 ${row.approval === 'signed' ? 'text-ok' : ''}`}
+            className={`w-full rounded border border-line px-1 py-0.5 ${row.approval === 'signed' ? 'text-ok' : ''}`}
           >
             <option value="pending">очікую підписання</option>
             <option value="signed">підписано</option>
@@ -158,7 +158,7 @@ export function HrHandoffList({ rows, contacts, canSend, gmailReady }: { rows: H
           Список кадровиків порожній — адміністратор додає їх у Налаштування → Довідники → Кадровики.
         </p>
       )}
-      <ul className="divide-y divide-line">
+      <ul className="max-w-4xl divide-y divide-line">
         {rows.map((r) => (
           <Row key={r.applicationId} row={r} contacts={contacts} canSend={canSend && gmailReady} />
         ))}
