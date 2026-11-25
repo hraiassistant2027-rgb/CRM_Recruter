@@ -28,7 +28,7 @@ function Row({ row, contacts, canSend }: { row: HandoffRow; contacts: { id: stri
 
   return (
     <li className={`py-3 text-sm ${row.lastHandoff ? '' : 'bg-accent-soft/30'}`}>
-      <div className="grid gap-3 px-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+      <div className="grid gap-3 px-2 md:grid-cols-[minmax(0,26rem)_auto] md:items-start md:gap-x-8">
         <div className="min-w-0 space-y-1.5">
           <div className="flex flex-wrap items-baseline gap-x-2">
             <Link href={`/candidates/${row.candidateId}`} className="font-medium hover:underline">
