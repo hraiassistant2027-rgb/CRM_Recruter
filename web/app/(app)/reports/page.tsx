@@ -5,6 +5,7 @@ import { requirePermission } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { Card, PageHeader, Select } from '@/components/ui';
 import { EntityColorPicker } from '@/components/entity-color-picker';
+import { ReportTabs } from './tabs';
 import { formatDate } from '@/lib/candidates';
 import { CLASS_INFO } from '@/lib/vacancies';
 import { loadVacancyReport, readFilters } from '@/lib/vacancy-report-load';
@@ -76,6 +77,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 
   return (
     <>
+      <ReportTabs active="vacancies" />
       <PageHeader
         title="Звіт по вакансіях"
         description="Збирається автоматично з вакансій, воронки кандидатів і календаря"
