@@ -115,13 +115,24 @@ function titleCase(word: string): string {
     .join('-');
 }
 
+// Word/PDF інколи «склеюють» сусідні абзаци: «2026Афонська Наталія», «бухгалтераНаталія» — розділяємо
+export function unglue(line: string): string {
+  return line
+    .replace(/(\d)(\p{L})/gu, '$1 $2')
+    .replace(/(\p{L})(\d)/gu, '$1 $2')
+    .replace(/(\p{Ll})(\p{Lu}\p{Ll})/gu, '$1 $2');
+}
+
 function cleanLines(text: string): string[] {
   return text
     .replace(/\r/g, '\n')
     .split('\n')
-    .map((l) => l.replace(/\s+/g, ' ').trim())
+    .map((l) => unglue(l.replace(/\s+/g, ' ').trim()))
     .filter(Boolean);
 }
+
+// Work.ua: «Резюме від 25 листопада 2026 Афонська Наталія» / «Резюме от 25 ноября 2026 …»
+const WORKUA_HEADER = /^(?:резюме|resume)\s+(?:від|от|from)\s+\d{1,2}\s+\p{L}+\s+\d{4}(?:\s*р\.?)?\s*(.*)$/iu;
 
 export function findEmail(text: string): string | undefined {
   return text.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/)?.[0]?.toLowerCase();
@@ -148,6 +159,13 @@ export function findLinkedIn(text: string): string | undefined {
 
 export function findName(text: string, fileName?: string): string | undefined {
   const lines = cleanLines(text).slice(0, 40);
+  // 0. Шапка Work.ua: ПІБ стоїть одразу після дати резюме (або в наступному рядку)
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(WORKUA_HEADER);
+    if (!m) continue;
+    const n = (m[1] && nameFromLine(m[1])) || (lines[i + 1] && nameFromLine(lines[i + 1]));
+    if (n) return n;
+  }
   // 1. Підписане поле: «ПІБ: …», «Ім'я: …»
   for (const line of lines) {
     const labeled = line.match(/^(?:ПІБ|ПІП|ФІО|ФИО|Прізвище,? ім'я(?:,? по батькові)?|Ім'я|Имя|Name|Full name)\s*[:—-]\s*(.+)$/i);
@@ -190,16 +208,29 @@ export function findName(text: string, fileName?: string): string | undefined {
 export function nameFromFileName(fileName: string): string | undefined {
   const base = fileName
     .replace(/\.[a-z0-9]{2,5}$/i, '')
-    .replace(/[_.+]+/g, ' ')
-    .replace(/(?<!\p{L})(резюме|резюме_|cv|resume|curriculum|vitae|копія|копия|copy|final|new|нове|оновлене|updated)(?!\p{L})/giu, ' ')
-    .replace(/\d+/g, ' ')
-    .replace(/[()\[\]-]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  if (!base) return undefined;
+    .replace(/[_+]+/g, ' ')
+    .replace(/(?<!\p{L})(workua|work ua|robota ua|robotaua|rabota ua|резюме|cv|resume|curriculum|vitae|копія|копия|copy|final|new|нове|оновлене|updated)(?!\p{L})/giu, ' ')
+    .replace(/\d+/g, ' ');
   // Назви файлів часто з малої літери: «іваненко петро»
-  const words = base.split(' ').map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w));
-  return nameFromLine(words.slice(0, 3).join(' ')) ?? (words.length > 2 ? nameFromLine(words.slice(0, 2).join(' ')) : undefined);
+  const cap = (w: string) => (w ? w[0].toUpperCase() + w.slice(1) : w);
+  // Файл ділимо на частини за комами й тире: «Бухгалтер, помічник бухгалтера, Наталія Афонська 8809874»
+  const segments = base
+    .split(/\s*[,;—–]\s*|\s+-\s+|[()\[\]]/)
+    .map((p) => p.replace(/[.-]+/g, ' ').replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+  // Спершу — частини, де є відоме ім'я чи по батькові; з кінця, бо Work.ua ставить ПІБ наприкінці
+  for (const strict of [true, false]) {
+    for (const seg of [...segments].reverse()) {
+      const words = seg.split(' ').map(cap);
+      const tries = [words, words.slice(-3), words.slice(-2), words.slice(0, 3), words.slice(0, 2)];
+      for (const t of tries) {
+        if (t.length < 2) continue;
+        const n = nameFromLine(t.join(' '), strict);
+        if (n) return n;
+      }
+    }
+  }
+  return undefined;
 }
 
 // Деякі PDF кодують кириличні «і», «а», «о»… латинськими літерами — повертаємо кирилицю
@@ -273,7 +304,18 @@ export function findSalary(text: string): Pick<ResumeFields, 'desired_salary' | 
 }
 
 export function findPosition(text: string): string | undefined {
-  for (const line of cleanLines(text).slice(0, 40)) {
+  const lines = cleanLines(text).slice(0, 40);
+  // Work.ua: після рядка «Резюме від … ПІБ» іде бажана посада
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(WORKUA_HEADER);
+    if (!m) continue;
+    let next = lines[i + 1];
+    if (next && !m[1] && nameFromLine(next)) next = lines[i + 2];
+    if (next && !/^(вид зайнятості|вид занятости|зарплата|вік|возраст|місто|город)/i.test(next) && next.length <= 120) {
+      return next.replace(/,?\s*\d[\d\s]*\s*(грн|uah|\$|usd|eur|€).*$/i, '').trim();
+    }
+  }
+  for (const line of lines) {
     const m = line.match(/^(?:бажана посада|посада|желаемая должность|должность|position|desired position|job title)\s*[:—-]\s*(.{2,80})$/i);
     if (m) return m[1].replace(/,?\s*\d[\d\s]*\s*(грн|uah|\$|usd|eur|€).*$/i, '').trim();
   }
