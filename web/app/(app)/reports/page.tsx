@@ -4,6 +4,7 @@ import { CheckCircle2, Download } from 'lucide-react';
 import { requirePermission } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { Card, PageHeader, Select } from '@/components/ui';
+import { EntityColorPicker } from '@/components/entity-color-picker';
 import { formatDate } from '@/lib/candidates';
 import { CLASS_INFO } from '@/lib/vacancies';
 import { loadVacancyReport, readFilters } from '@/lib/vacancy-report-load';
@@ -71,7 +72,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const { rows, entities, projects, users } = await loadVacancyReport(supabase, f);
   const s = summarize(rows);
   const qs = new URLSearchParams(Object.entries(f).filter(([, v]) => v !== '') as [string, string][]).toString();
-  const usedEntities = entities.filter((e) => e.is_active || rows.some((r) => r.legalEntity?.name === e.name));
+  const usedEntities = entities.filter((e) => e.is_active || e.id === f.entity);
 
   return (
     <>
@@ -104,15 +105,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
               <option value="closed">Закриті</option>
             </Select>
           </label>
-          <label className="block">
+          <div className="block">
             <span className="mb-1.5 block text-xs font-medium text-ink-soft">Юр. особа</span>
-            <Select name="entity" defaultValue={f.entity}>
-              <option value="">Усі</option>
-              {usedEntities.map((e) => (
-                <option key={e.id} value={e.id}>{e.name}</option>
-              ))}
-            </Select>
-          </label>
+            <EntityColorPicker name="entity" entities={usedEntities} defaultValue={f.entity} emptyLabel="Усі" />
+          </div>
           <label className="block">
             <span className="mb-1.5 block text-xs font-medium text-ink-soft">Проект</span>
             <Select name="project" defaultValue={f.project}>
@@ -186,8 +182,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                       <span
                         className="mt-0.5 h-4 w-4 shrink-0 rounded"
                         style={{ background: r.legalEntity?.color ?? 'var(--color-line)' }}
-                        title={r.legalEntity?.name ?? 'Юр. особу не вказано'}
-                        aria-label={r.legalEntity?.name ?? 'Юр. особу не вказано'}
+                        aria-hidden
                       />
                       <Link href={`/vacancies/${r.id}`} className="min-w-0 font-medium hover:underline">{r.title}</Link>
                       {r.closed && <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-ok" aria-label="Закрита" />}

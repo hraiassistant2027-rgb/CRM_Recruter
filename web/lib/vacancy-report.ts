@@ -184,24 +184,34 @@ export function summarize(rows: ReportRow[]): ReportSummary {
   };
 }
 
-// CSV для Excel (крапка з комою — роздільник, який Excel в українській локалі відкриває одразу)
-export function reportCsv(rows: ReportRow[]): string {
-  const head = [
-    'Юр. особа', 'Закрита', 'Вакансія', 'К-ть', 'Місце роботи', 'Нова/заміна', 'Проект', 'Клас', 'Дата відкриття',
-    'Дата коригування', 'Планова тривалість, дн', 'Днів в роботі', 'Залишилось днів', 'Кандидат / коментар',
-    'Дата оформлення', 'Строк закриття, дн', 'Рекрутер',
-  ];
-  const esc = (v: string | number | null | undefined) => {
-    const s = v == null ? '' : String(v);
-    return /[;"\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
-  const lines = rows.map((r) =>
-    [
-      r.legalEntity?.name, r.closed ? 'так' : '', r.title, r.headcount, r.workPlace, r.requestType, r.project, r.difficultyClass,
-      r.openedAt, r.adjustedAt, r.plannedDays, r.daysInWork, r.daysLeft, r.candidates, r.startDate, r.closeDays, r.recruiter,
-    ]
-      .map(esc)
-      .join(';'),
-  );
-  return '﻿' + [head.join(';'), ...lines].join('\r\n');
+// Рядки для вивантаження в Excel: юрособа — лише кольорова клітинка (назва юрособи у звіті не показується)
+export const REPORT_HEADER = [
+  '', 'Закрита', 'Вакансія', 'К-ть', 'Місце роботи', 'Нова/заміна', 'Проект', 'Клас', 'Дата відкриття',
+  'Дата коригування', 'Планова тривалість, дн', 'Днів в роботі', 'Залишилось днів', 'Кандидат / коментар',
+  'Дата оформлення', 'Строк закриття, дн', 'Рекрутер',
+];
+export const REPORT_WIDTHS = [3, 8, 34, 6, 13, 13, 10, 7, 13, 13, 12, 11, 12, 34, 14, 12, 16];
+
+const ddmmyyyy = (d: string | null) => (d ? `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}` : null);
+
+export function reportSheetRows(rows: ReportRow[]): (string | number | null | { fill: string })[][] {
+  return rows.map((r) => [
+    r.legalEntity ? { fill: r.legalEntity.color } : null,
+    r.closed ? '✓' : null,
+    r.title,
+    r.headcount,
+    r.workPlace,
+    r.requestType,
+    r.project,
+    r.difficultyClass,
+    ddmmyyyy(r.openedAt),
+    ddmmyyyy(r.adjustedAt),
+    r.plannedDays,
+    r.daysInWork,
+    r.daysLeft,
+    r.candidates,
+    ddmmyyyy(r.startDate),
+    r.closeDays,
+    r.recruiter,
+  ]);
 }

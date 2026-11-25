@@ -28,21 +28,28 @@ function Row({ row, contacts, canSend }: { row: HandoffRow; contacts: { id: stri
 
   return (
     <li className={`py-3 text-sm ${row.lastHandoff ? '' : 'bg-accent-soft/30'}`}>
-      <div className="flex flex-wrap items-center gap-2 px-2">
-        <Link href={`/candidates/${row.candidateId}`} className="font-medium hover:underline">
-          {row.candidateName}
-        </Link>
-        <span className="text-xs text-ink-soft">
-          {row.vacancyTitle}
-          {row.phone ? ` · ${row.phone}` : ''}
-        </span>
-        <Badge tone={row.offerAt ? 'ok' : 'warn'}>{row.offerAt ? `оформлення: ${row.offerAt}` : 'дату оформлення не призначено'}</Badge>
-        {row.lastHandoff ? <Badge tone="neutral">передано {row.lastHandoff}</Badge> : <Badge tone="danger">не передано кадровику</Badge>}
-      </div>
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 px-2 text-xs">
-        <label className="flex items-center gap-1">
+      <div className="grid gap-3 px-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+        <div className="min-w-0 space-y-1.5">
+          <div className="flex flex-wrap items-baseline gap-x-2">
+            <Link href={`/candidates/${row.candidateId}`} className="font-medium hover:underline">
+              {row.candidateName}
+            </Link>
+            <span className="text-xs text-ink-soft">
+              {row.vacancyTitle}
+              {row.phone ? ` · ${row.phone}` : ''}
+            </span>
+          </div>
+          <div>
+            <Badge tone={row.offerAt ? 'ok' : 'warn'}>{row.offerAt ? `оформлення: ${row.offerAt}` : 'дату оформлення не призначено'}</Badge>
+          </div>
+          <div>
+            {row.lastHandoff ? <Badge tone="neutral">передано {row.lastHandoff}</Badge> : <Badge tone="danger">не передано кадровику</Badge>}
+          </div>
+        </div>
+        <div className="grid grid-cols-[auto_auto] items-center gap-x-2 gap-y-1.5 text-xs">
           <span className="text-ink-soft">Перевірка документів:</span>
           <select
+            aria-label="Перевірка документів"
             defaultValue={row.docs}
             disabled={!row.canEdit || busy}
             onChange={(e) => start(async () => { const r = await setHrStatus(row.applicationId, 'hr_docs_status', e.target.value); if (r.error) setMsg(r); else router.refresh(); })}
@@ -51,13 +58,11 @@ function Row({ row, contacts, canSend }: { row: HandoffRow; contacts: { id: stri
             <option value="pending">очікую</option>
             <option value="passed">пройдено</option>
           </select>
-        </label>
-        <span>
-          <span className="text-ink-soft">Поліграф:</span> <span className={row.polygraph === 'пройдено' ? 'text-ok' : ''}>{row.polygraph}</span>
-        </span>
-        <label className="flex items-center gap-1">
+          <span className="text-ink-soft">Поліграф:</span>
+          <span className={row.polygraph === 'пройдено' ? 'text-ok' : ''}>{row.polygraph}</span>
           <span className="text-ink-soft">Лист погодження:</span>
           <select
+            aria-label="Лист погодження"
             defaultValue={row.approval}
             disabled={!row.canEdit || busy}
             onChange={(e) => start(async () => { const r = await setHrStatus(row.applicationId, 'hr_approval_status', e.target.value); if (r.error) setMsg(r); else router.refresh(); })}
@@ -66,10 +71,10 @@ function Row({ row, contacts, canSend }: { row: HandoffRow; contacts: { id: stri
             <option value="pending">очікую підписання</option>
             <option value="signed">підписано</option>
           </select>
-        </label>
+        </div>
       </div>
       {canSend && (
-        <div className="mt-2 flex flex-wrap items-center gap-2 px-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2 px-2">
           <Select value={hrId} onChange={(e) => { setHrId(e.target.value); setDraft(null); setMsg(null); }} aria-label="Кадровик" className="max-w-xs">
             <option value="">Оберіть кадровика…</option>
             {contacts.map((c) => (

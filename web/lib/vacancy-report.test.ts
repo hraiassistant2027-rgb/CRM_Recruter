@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildReport, plural, reportCsv, shortName, summarize, type ReportVacancy } from './vacancy-report';
+import { buildReport, plural, reportSheetRows, shortName, summarize, type ReportVacancy } from './vacancy-report';
 
 const base: ReportVacancy = {
   id: 'v1', title: 'Прораб', headcount: 1, status: 'open', opened_at: '2026-10-01', closed_at: null, recruiter_id: 'u1',
@@ -59,7 +59,7 @@ describe('звіт по вакансіях', () => {
     expect(n.candidates).toBe('Чекаємо погодження');
   });
 
-  it('допоміжні функції і CSV', () => {
+  it('допоміжні функції і рядки для Excel', () => {
     expect(shortName('Іваненко Марія Петрівна')).toBe('Іваненко М.');
     expect(plural(5, 'кандидат', 'кандидати', 'кандидатів')).toBe('кандидатів');
     expect(plural(22, 'день', 'дні', 'днів')).toBe('дні');

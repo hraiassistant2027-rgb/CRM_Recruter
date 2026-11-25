@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useActionState, useState, useTransition } from 'react';
 import { saveVacancy, type VacancyFormState } from './actions';
 import { Alert, Button, Field, Input, Select } from '@/components/ui';
+import { EntityColorPicker } from '@/components/entity-color-picker';
 import { CLASS_INFO, PRIORITY_LABELS, REQUEST_TYPE_LABELS, VACANCY_STATUS_LABELS, WORK_PLACE_LABELS, type VacancyRow } from '@/lib/vacancies';
 
 type Option = { id: string; name: string };
@@ -20,7 +21,7 @@ export function VacancyForm({
   currentUserId,
 }: {
   vacancy?: VacancyRow;
-  legalEntities: Option[];
+  legalEntities: { id: string; color: string }[];
   projects: Option[];
   sites: Option[];
   departments: Option[];
@@ -146,14 +147,15 @@ export function VacancyForm({
           <p className="text-sm text-ink-soft">Ці поля потрапляють у розділ «Звіти та аналітика».</p>
         </div>
         <div className="grid gap-4 md:grid-cols-3">
-          <Field label="Юридична особа" htmlFor="legal_entity_id" error={fe.legal_entity_id} hint={legalEntities.length ? undefined : 'Додайте юрособи в Налаштування → Довідники'}>
-            <Select id="legal_entity_id" name="legal_entity_id" defaultValue={v?.legal_entity_id ?? ''}>
-              <option value="">— не вказано —</option>
-              {legalEntities.map((o) => (
-                <option key={o.id} value={o.id}>{o.name}</option>
-              ))}
-            </Select>
-          </Field>
+          <div className="md:col-span-3">
+            <span className="mb-1.5 block text-sm font-medium">Юридична особа (колір)</span>
+            {legalEntities.length ? (
+              <EntityColorPicker name="legal_entity_id" entities={legalEntities} defaultValue={v?.legal_entity_id ?? ''} emptyLabel="Не вказано" />
+            ) : (
+              <p className="text-xs text-ink-soft">Додайте юрособи з кольорами в Налаштування → Довідники</p>
+            )}
+            {fe.legal_entity_id && <p className="mt-1 text-xs text-danger">{fe.legal_entity_id}</p>}
+          </div>
           <Field label="Проект" htmlFor="project_id" error={fe.project_id}>
             <Select id="project_id" name="project_id" defaultValue={v?.project_id ?? ''}>
               <option value="">— не вказано —</option>
