@@ -61,12 +61,13 @@ export type VacancyRow = {
   planned_close_days: number | null;
   request_adjusted_at: string | null;
   report_note: string | null;
+  custom: Record<string, string | number | boolean | string[] | null> | null;
   created_at: string;
   updated_at: string;
 };
 
 export const VACANCY_COLUMNS =
-  'id, title, site_id, department_id, hiring_manager_name, hiring_manager_id, recruiter_id, headcount, salary_min, salary_max, salary_currency, requirements, opened_at, closed_at, priority, status, pipeline_id, legal_entity_id, project_id, work_place, request_type, difficulty_class, planned_close_days, request_adjusted_at, report_note, created_at, updated_at';
+  'id, title, site_id, department_id, hiring_manager_name, hiring_manager_id, recruiter_id, headcount, salary_min, salary_max, salary_currency, requirements, opened_at, closed_at, priority, status, pipeline_id, legal_entity_id, project_id, work_place, request_type, difficulty_class, planned_close_days, request_adjusted_at, report_note, custom, created_at, updated_at';
 
 export type BoardCard = {
   id: string;

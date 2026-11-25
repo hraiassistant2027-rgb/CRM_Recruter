@@ -1,4 +1,6 @@
 'use server';
+import { CUSTOM_MARKER, readCustomValues, type CustomValues } from '@/lib/custom-fields';
+import { loadFields } from '@/lib/custom-fields-load';
 import { createHash, randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -39,6 +41,15 @@ function readCandidate(formData: FormData) {
   for (const key of CANDIDATE_FIELDS) raw[key] = String(formData.get(key) ?? '');
   if (!raw.salary_currency) raw.salary_currency = 'UAH';
   return candidateSchema.safeParse(raw);
+}
+
+// Власні поля картки (конструктор): перевірка і злиття зі збереженими значеннями
+async function readCustom(supabase: Awaited<ReturnType<typeof createClient>>, formData: FormData, existing: CustomValues | null) {
+  if (formData.get(CUSTOM_MARKER) !== '1') return { values: null, errors: null };
+  const defs = await loadFields(supabase, 'candidates');
+  const r = readCustomValues(formData, defs, existing);
+  if (!r) return { values: null, errors: null };
+  return { values: r.values, errors: Object.keys(r.errors).length ? r.errors : null };
 }
 
 function fieldErrorsOf(issues: { path: PropertyKey[]; message: string }[]): Record<string, string> {
@@ -219,12 +230,18 @@ export async function createCandidate(_prev: CandidateFormState, formData: FormD
   }
 
   const supabase = await createClient();
+  const custom = await readCustom(supabase, formData, null);
+  if (custom.errors) return { error: 'Перевірте виділені поля', fieldErrors: custom.errors };
   if (formData.get('confirm_duplicates') !== 'yes') {
     const duplicates = await findDuplicates(supabase, parsed.data, null);
     if (duplicates.length) return { duplicates };
   }
 
-  const { data: created, error } = await supabase.from('candidates').insert(toRow(parsed.data)).select('id').single();
+  const { data: created, error } = await supabase
+    .from('candidates')
+    .insert({ ...toRow(parsed.data), ...(custom.values ? { custom: custom.values } : {}) })
+    .select('id')
+    .single();
   if (error) return { error: translateError(error) };
 
   const { error: consentError } = await supabase.from('consents').insert({
@@ -268,12 +285,19 @@ export async function updateCandidate(_prev: CandidateFormState, formData: FormD
   if (!parsed.success) return { error: 'Перевірте виділені поля', fieldErrors: fieldErrorsOf(parsed.error.issues) };
 
   const supabase = await createClient();
+  const { data: current } = await supabase.from('candidates').select('custom').eq('id', id.data).maybeSingle();
+  const custom = await readCustom(supabase, formData, (current?.custom as CustomValues | null) ?? null);
+  if (custom.errors) return { error: 'Перевірте виділені поля', fieldErrors: custom.errors };
   if (formData.get('confirm_duplicates') !== 'yes') {
     const duplicates = (await findDuplicates(supabase, parsed.data, id.data)).filter((d) => d.match_type === 'exact');
     if (duplicates.length) return { duplicates };
   }
 
-  const { data, error } = await supabase.from('candidates').update(toRow(parsed.data)).eq('id', id.data).select('id');
+  const { data, error } = await supabase
+    .from('candidates')
+    .update({ ...toRow(parsed.data), ...(custom.values ? { custom: custom.values } : {}) })
+    .eq('id', id.data)
+    .select('id');
   if (error) return { error: translateError(error) };
   if (!data?.length) return { error: 'Немає права редагувати цього кандидата' };
 

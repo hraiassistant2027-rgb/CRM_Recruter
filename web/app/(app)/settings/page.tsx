@@ -15,7 +15,8 @@ export default async function SettingsPage() {
     { title: 'Довідники', text: 'Кадровики, об\'єкти, підрозділи, джерела кандидатів, причини відмов', href: '/settings/dictionaries', allowed: true, stage: null },
     { title: 'Банк резюме', text: 'Папка архіву резюме на Google Диску для пошуку', href: '/settings/resume-bank', allowed: true, stage: null },
     { title: 'Етапи воронки', text: 'Назви, кольори, норма днів на етапі, вимкнення етапів', href: '/settings/pipeline', allowed: true, stage: null },
-    { title: 'Конструктор ролей', text: 'Створення нових ролей і детальні права доступу до модулів і полів', href: null, allowed: true, stage: 8 },
+    { title: 'Ролі та права доступу', text: 'Створення нових ролей і налаштування, що кожна роль бачить і може робити', href: '/settings/roles', allowed: can(p, 'roles.manage'), stage: null },
+    { title: 'Конструктор CRM', text: 'Власні поля в картках кандидата і вакансії', href: '/builder', allowed: can(p, 'builder.edit'), stage: null },
   ].filter((s) => s.allowed);
 
   return (

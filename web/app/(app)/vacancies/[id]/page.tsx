@@ -11,6 +11,8 @@ import { uuidSchema } from '@/lib/validation';
 import { formatDate } from '@/lib/candidates';
 import { PRIORITY_LABELS, VACANCY_COLUMNS, VACANCY_STATUS_LABELS, VACANCY_STATUS_TONE, salaryRange, type VacancyRow } from '@/lib/vacancies';
 import { Alert, Badge, Card, PageHeader } from '@/components/ui';
+import { CustomFieldValues } from '@/components/custom-field-inputs';
+import { loadFields } from '@/lib/custom-fields-load';
 import { PipelineBoard } from '@/components/pipeline-board';
 import { AddCandidate } from './add-candidate';
 import { loadBoard } from '../load';
@@ -40,11 +42,12 @@ export default async function VacancyPage({
   const { data: v } = await supabase.from('vacancies').select(VACANCY_COLUMNS).eq('id', id).maybeSingle<VacancyRow>();
   if (!v) notFound();
 
-  const [board, { data: site }, { data: department }, { data: users }] = await Promise.all([
+  const [board, { data: site }, { data: department }, { data: users }, customFields] = await Promise.all([
     can(session.permissions, 'applications.read') ? loadBoard(supabase, v.id, v.pipeline_id) : Promise.resolve(null),
     v.site_id ? supabase.from('sites').select('name, address').eq('id', v.site_id).maybeSingle() : Promise.resolve({ data: null }),
     v.department_id ? supabase.from('departments').select('name').eq('id', v.department_id).maybeSingle() : Promise.resolve({ data: null }),
     supabase.from('profiles').select('id, full_name'),
+    loadFields(supabase, 'vacancies'),
   ]);
   const { data: gAccount } = await supabase.from('email_accounts').select('status').eq('user_id', session.userId).maybeSingle();
   const googleReady = gAccount?.status === 'active';
@@ -124,6 +127,11 @@ export default async function VacancyPage({
             )}
           </dl>
           {v.requirements && <p className="mt-4 whitespace-pre-wrap rounded-lg bg-surface p-3 text-sm">{v.requirements}</p>}
+          {customFields.length > 0 && (
+            <div className="mt-4 border-t border-line pt-4">
+              <CustomFieldValues fields={customFields} values={v.custom} />
+            </div>
+          )}
         </Card>
         {canAdd && (
           <Card>

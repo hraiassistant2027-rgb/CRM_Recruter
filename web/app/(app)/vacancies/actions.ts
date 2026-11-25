@@ -10,6 +10,8 @@ import { createGoogleEvent } from '@/lib/calendar-events';
 import { kyivToDate } from '@/lib/time';
 import type { FormState } from '@/lib/form-state';
 import { CLASS_INFO } from '@/lib/vacancies';
+import { CUSTOM_MARKER, readCustomValues, type CustomValues } from '@/lib/custom-fields';
+import { loadFields } from '@/lib/custom-fields-load';
 
 export type VacancyFormState = FormState & { fieldErrors?: Record<string, string> };
 
@@ -42,8 +44,20 @@ export async function saveVacancy(_prev: VacancyFormState, formData: FormData): 
 
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
+  let customValues: CustomValues | null = null;
+  if (formData.get(CUSTOM_MARKER) === '1') {
+    let existing: CustomValues | null = null;
+    if (existingId && uuidSchema.safeParse(existingId).success) {
+      const { data: cur } = await supabase.from('vacancies').select('custom').eq('id', existingId).maybeSingle();
+      existing = (cur?.custom as CustomValues | null) ?? null;
+    }
+    const r = readCustomValues(formData, await loadFields(supabase, 'vacancies'), existing);
+    if (r && Object.keys(r.errors).length) return { error: 'Перевірте виділені поля', fieldErrors: r.errors };
+    customValues = r?.values ?? null;
+  }
   const row = {
     ...v,
+    ...(customValues ? { custom: customValues } : {}),
     // Рекрутер за замовчуванням — той, хто створює вакансію (інакше рекрутер не зможе її редагувати)
     recruiter_id: v.recruiter_id ?? auth.user?.id ?? null,
     // Планова тривалість закриття: якщо не вказано вручну — норма за класом вакансії

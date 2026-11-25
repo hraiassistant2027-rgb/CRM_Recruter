@@ -11,6 +11,8 @@ import { createClient } from '@/lib/supabase/server';
 import { can, canOn } from '@/lib/permissions';
 import { uuidSchema } from '@/lib/validation';
 import { Alert, Badge, Card, PageHeader } from '@/components/ui';
+import { CustomFieldValues } from '@/components/custom-field-inputs';
+import { loadFields } from '@/lib/custom-fields-load';
 import {
   CANDIDATE_COLUMNS,
   LEGAL_BASIS_LABELS,
@@ -81,7 +83,7 @@ export default async function CandidatePage({
   const { data: c } = await supabase.from('candidates').select(CANDIDATE_COLUMNS).eq('id', id).maybeSingle<CandidateRow>();
   if (!c) notFound();
 
-  const [docs, consents, notes, experience, education, profiles, source] = await Promise.all([
+  const [docs, consents, notes, experience, education, profiles, source, customFields] = await Promise.all([
     supabase.from('documents').select('id, storage_bucket, storage_path, preview_path, source_ref, original_name, size_bytes, parse_status, created_at, uploaded_by').eq('candidate_id', id).is('deleted_at', null).order('created_at', { ascending: false }),
     supabase.from('consents').select('id, legal_basis, source, given_at, expires_at, withdrawn_at').eq('candidate_id', id).order('given_at', { ascending: false }),
     supabase.from('notes').select('id, body, created_at, author_id').eq('candidate_id', id).order('created_at', { ascending: false }).limit(100),
@@ -89,6 +91,7 @@ export default async function CandidatePage({
     supabase.from('candidate_education').select('id, institution, degree, speciality, year_end').eq('candidate_id', id).order('sort_order'),
     supabase.from('profiles').select('id, full_name'),
     c.source_id ? supabase.from('sources').select('name').eq('id', c.source_id).maybeSingle() : Promise.resolve({ data: null }),
+    loadFields(supabase, 'candidates'),
   ]);
   const names = new Map(((profiles.data ?? []) as { id: string; full_name: string }[]).map((p) => [p.id, p.full_name]));
 
@@ -336,6 +339,11 @@ export default async function CandidatePage({
               <Row label="Оновлено">{formatDate(c.updated_at, true)}</Row>
             </dl>
             {c.summary && <p className="mt-4 whitespace-pre-wrap rounded-lg bg-surface p-3 text-sm">{c.summary}</p>}
+            {customFields.length > 0 && (
+              <div className="mt-4 border-t border-line pt-4">
+                <CustomFieldValues fields={customFields} values={c.custom} />
+              </div>
+            )}
           </Card>
 
           {((experience.data ?? []).length > 0 || (education.data ?? []).length > 0) && (

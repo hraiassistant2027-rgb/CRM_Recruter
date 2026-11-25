@@ -72,13 +72,14 @@ export type CandidateRow = {
   summary: string | null;
   owner_id: string | null;
   review_status: string;
+  custom: Record<string, string | number | boolean | string[] | null> | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
 };
 
 export const CANDIDATE_COLUMNS =
-  'id, full_name, phone, email, city, linkedin_url, current_position, source_id, total_experience_months, desired_salary, salary_currency, available_from, skills, summary, owner_id, review_status, created_at, updated_at, deleted_at';
+  'id, full_name, phone, email, city, linkedin_url, current_position, source_id, total_experience_months, desired_salary, salary_currency, available_from, skills, summary, owner_id, review_status, custom, created_at, updated_at, deleted_at';
 
 export type DuplicateRow = {
   candidate_id: string;

@@ -1,6 +1,7 @@
 import 'server-only';
 import { createClient } from '@/lib/supabase/server';
 import type { BoardCard, Stage } from '@/lib/vacancies';
+import { loadFields } from '@/lib/custom-fields-load';
 
 type Supa = Awaited<ReturnType<typeof createClient>>;
 
@@ -53,16 +54,18 @@ export async function loadBoard(supabase: Supa, vacancyId: string, pipelineId: s
 }
 
 export async function loadOptions(supabase: Supa) {
-  const [{ data: sites }, { data: departments }, { data: users }, { data: entities }, { data: projects }] = await Promise.all([
+  const [{ data: sites }, { data: departments }, { data: users }, { data: entities }, { data: projects }, customFields] = await Promise.all([
     supabase.from('sites').select('id, name').eq('is_active', true).order('name'),
     supabase.from('departments').select('id, name').eq('is_active', true).order('name'),
     supabase.from('profiles').select('id, full_name').eq('is_active', true).order('full_name'),
     supabase.from('legal_entities').select('id, color').eq('is_active', true).order('sort_order').order('name'),
     supabase.from('projects').select('id, name').eq('is_active', true).order('sort_order').order('name'),
+    loadFields(supabase, 'vacancies'),
   ]);
   return {
     sites: (sites ?? []) as { id: string; name: string }[],
     departments: (departments ?? []) as { id: string; name: string }[],
+    customFields,
     legalEntities: (entities ?? []) as { id: string; color: string }[],
     projects: (projects ?? []) as { id: string; name: string }[],
     users: ((users ?? []) as { id: string; full_name: string }[]).map((u) => ({ id: u.id, name: u.full_name })),

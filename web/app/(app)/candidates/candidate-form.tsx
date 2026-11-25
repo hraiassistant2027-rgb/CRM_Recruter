@@ -6,6 +6,8 @@ import { createCandidate, extractResumeFields, updateCandidate, type CandidateFo
 import { addApplication } from '../vacancies/actions';
 import { FIELD_LABELS, type ResumeFields } from '@/lib/resume-parse';
 import { Alert, Button, Field, Input, Select } from '@/components/ui';
+import { CustomFieldInputs } from '@/components/custom-field-inputs';
+import type { FieldDef } from '@/lib/custom-fields';
 import { LEGAL_BASIS_LABELS, MATCH_LABELS, type CandidateRow } from '@/lib/candidates';
 
 type Source = { id: string; name: string };
@@ -18,7 +20,9 @@ export function CandidateForm({
   candidate,
   vacancyId,
   cancelHref,
+  customFields = [],
 }: {
+  customFields?: FieldDef[];
   sources: Source[];
   candidate?: CandidateRow;
   vacancyId?: string;
@@ -284,6 +288,8 @@ export function CandidateForm({
 
         </>
       )}
+
+      <CustomFieldInputs fields={customFields} values={candidate?.custom} errors={fe} />
 
       <div className="flex flex-wrap gap-3">
         <Button type="submit" disabled={pending}>

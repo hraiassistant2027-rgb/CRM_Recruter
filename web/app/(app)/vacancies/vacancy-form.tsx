@@ -4,6 +4,8 @@ import { useActionState, useState, useTransition } from 'react';
 import { saveVacancy, type VacancyFormState } from './actions';
 import { Alert, Button, Field, Input, Select } from '@/components/ui';
 import { EntityColorPicker } from '@/components/entity-color-picker';
+import { CustomFieldInputs } from '@/components/custom-field-inputs';
+import type { FieldDef } from '@/lib/custom-fields';
 import { CLASS_INFO, PRIORITY_LABELS, REQUEST_TYPE_LABELS, VACANCY_STATUS_LABELS, WORK_PLACE_LABELS, type VacancyRow } from '@/lib/vacancies';
 
 type Option = { id: string; name: string };
@@ -19,7 +21,9 @@ export function VacancyForm({
   legalEntities,
   projects,
   currentUserId,
+  customFields = [],
 }: {
+  customFields?: FieldDef[];
   vacancy?: VacancyRow;
   legalEntities: { id: string; color: string }[];
   projects: Option[];
@@ -209,6 +213,8 @@ export function VacancyForm({
           </div>
         </div>
       </section>
+
+      <CustomFieldInputs fields={customFields} values={v?.custom} errors={fe} />
 
       <div className="flex flex-wrap gap-3">
         <Button type="submit" disabled={pending}>

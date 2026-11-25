@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { loadFields } from '@/lib/custom-fields-load';
+import { formatCustomValue, type CustomValues } from '@/lib/custom-fields';
 import Link from 'next/link';
 import { Plus, Search, Upload } from 'lucide-react';
 import { requirePermission } from '@/lib/auth';
@@ -67,6 +69,13 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
     supabase.from('profiles').select('id, full_name'),
   ]);
   const rows = (data ?? []) as SearchRow[];
+  // Власні поля, які адміністратор позначив «показувати в списку»
+  const listFields = (await loadFields(supabase, 'candidates')).filter((f) => f.show_in_list).slice(0, 4);
+  const customById = new Map<string, CustomValues>();
+  if (listFields.length && rows.length) {
+    const { data: cv } = await supabase.from('candidates').select('id, custom').in('id', rows.map((r) => r.id));
+    for (const row of (cv ?? []) as { id: string; custom: CustomValues | null }[]) customById.set(row.id, row.custom ?? {});
+  }
   const total = rows[0]?.total_count ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const sourceName = new Map((sources ?? []).map((s: { id: string; name: string }) => [s.id, s.name]));
@@ -179,6 +188,9 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
                 <th className="px-4 py-3 font-medium">Контакти</th>
                 <th className="px-4 py-3 font-medium">Джерело</th>
                 <th className="px-4 py-3 font-medium">Відповідальний</th>
+                {listFields.map((f) => (
+                  <th key={f.id} className="px-4 py-3 font-medium">{f.name}</th>
+                ))}
                 <th className="px-4 py-3 font-medium">Оновлено</th>
               </tr>
             </thead>
@@ -202,6 +214,9 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
                   </td>
                   <td className="px-4 py-3">{(r.source_id && sourceName.get(r.source_id)) || '—'}</td>
                   <td className="px-4 py-3">{(r.owner_id && ownerName.get(r.owner_id)) || '—'}</td>
+                  {listFields.map((f) => (
+                    <td key={f.id} className="px-4 py-3 text-xs">{formatCustomValue(f, customById.get(r.id)?.[f.code])}</td>
+                  ))}
                   <td className="px-4 py-3 text-xs text-ink-soft">{formatDate(trash ? r.deleted_at : r.updated_at)}</td>
                 </tr>
               ))}

@@ -7,6 +7,7 @@ import { uuidSchema } from '@/lib/validation';
 import { CANDIDATE_COLUMNS, type CandidateRow } from '@/lib/candidates';
 import { Card, PageHeader } from '@/components/ui';
 import { CandidateForm } from '../../candidate-form';
+import { loadFields } from '@/lib/custom-fields-load';
 
 export const metadata: Metadata = { title: 'Редагування кандидата' };
 
@@ -16,9 +17,10 @@ export default async function EditCandidatePage({ params }: { params: Promise<{ 
   if (!uuidSchema.safeParse(id).success) notFound();
 
   const supabase = await createClient();
-  const [{ data: candidate }, { data: sources }] = await Promise.all([
+  const [{ data: candidate }, { data: sources }, customFields] = await Promise.all([
     supabase.from('candidates').select(CANDIDATE_COLUMNS).eq('id', id).is('deleted_at', null).maybeSingle<CandidateRow>(),
     supabase.from('sources').select('id, name').eq('is_active', true).order('sort_order'),
+    loadFields(supabase, 'candidates'),
   ]);
   if (!candidate) notFound();
 
@@ -29,7 +31,7 @@ export default async function EditCandidatePage({ params }: { params: Promise<{ 
         actions={<Link href={`/candidates/${id}`} className="text-sm text-ink-soft underline">← До картки</Link>}
       />
       <Card>
-        <CandidateForm sources={sources ?? []} candidate={candidate} />
+        <CandidateForm sources={sources ?? []} candidate={candidate} customFields={customFields} />
       </Card>
     </>
   );
