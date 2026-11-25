@@ -1,4 +1,6 @@
 'use server';
+import { enrichCandidate, describeEnrich } from '@/lib/resume-enrich';
+import { parseResumeStructure } from '@/lib/resume-structure';
 import { CUSTOM_MARKER, readCustomValues, type CustomValues } from '@/lib/custom-fields';
 import { loadFields } from '@/lib/custom-fields-load';
 import { createHash, randomUUID } from 'node:crypto';
@@ -96,14 +98,19 @@ async function findDuplicates(supabase: Supa, c: CandidateInput, exclude: string
 // Збереження файлу резюме: запис у БД від імені користувача (діють права),
 // сам файл — у приватне сховище службовим ключем. Відкат при помилці.
 // ---------------------------------------------------------------------
-type Stored = { issue: string | null; fields: ResumeFields };
+type Stored = { issue: string | null; fields: ResumeFields; enriched: string | null };
 
 async function storeResume(supabase: Supa, candidateId: string, file: File, sourceRef: string | null = null): Promise<Stored> {
   const result = await storeResumeInner(supabase, candidateId, file, sourceRef);
-  return typeof result === 'string' ? { issue: result, fields: {} } : { issue: null, fields: result };
+  return typeof result === 'string' ? { issue: result, fields: {}, enriched: null } : { issue: null, ...result };
 }
 
-async function storeResumeInner(supabase: Supa, candidateId: string, file: File, sourceRef: string | null): Promise<string | ResumeFields> {
+async function storeResumeInner(
+  supabase: Supa,
+  candidateId: string,
+  file: File,
+  sourceRef: string | null,
+): Promise<string | { fields: ResumeFields; enriched: string | null }> {
   const issue = resumeFileIssue(file.name, file.size);
   if (issue) return issue;
 
@@ -177,7 +184,9 @@ async function storeResumeInner(supabase: Supa, candidateId: string, file: File,
     const { error: previewError } = await admin.storage.from('resumes').upload(previewPath, converted.pdf, { contentType: 'application/pdf', upsert: true });
     if (previewError) await admin.from('documents').update({ preview_path: null }).eq('id', docId);
   }
-  return fields;
+  // Етап 9: досвід, освіта, навички, «про себе», стаж і джерело — лише в порожні місця картки
+  const enriched = describeEnrich(await enrichCandidate(supabase, candidateId, text, file.name).catch(() => null));
+  return { fields, enriched };
 }
 
 // Розпізнати дані з резюме до створення картки (файл ще не зберігається)
@@ -209,6 +218,13 @@ export async function extractResumeFields(
     };
   }
   const fields = parseResumeText(text, file.name);
+  const structure = parseResumeStructure(text, file.name);
+  if (structure.totalMonths) fields.experience_years = String(Math.round((structure.totalMonths / 12) * 10) / 10);
+  if (structure.source) {
+    const { data: src } = await supabase.from('sources').select('id, name').eq('is_active', true);
+    const match = ((src ?? []) as { id: string; name: string }[]).find((x) => x.name.toLowerCase() === structure.source!.toLowerCase());
+    if (match) fields.source_id = match.id;
+  }
   // Якщо ПІБ не знайдено — показуємо (лише цьому користувачу) початок тексту, щоб зрозуміти причину
   return fields.full_name ? { fields } : { fields, preview: firstLines(text) };
 }
@@ -346,7 +362,7 @@ export async function uploadResume(_prev: FormState, formData: FormData): Promis
   if (!(file instanceof File) || file.size === 0) return { error: 'Оберіть файл резюме' };
 
   const supabase = await createClient();
-  const { issue, fields } = await storeResume(supabase, id.data, file);
+  const { issue, fields, enriched } = await storeResume(supabase, id.data, file);
   if (issue) return { error: issue };
 
   // Дані з резюме заповнюють лише порожні поля картки — нічого не перезаписуємо
@@ -378,7 +394,7 @@ export async function uploadResume(_prev: FormState, formData: FormData): Promis
     }
   }
   revalidatePath(`/candidates/${id.data}`);
-  return { ok: `Резюме завантажено.${filled}` };
+  return { ok: `Резюме завантажено.${filled}${enriched ? ` ${enriched}.` : ''}` };
 }
 
 export async function deleteDocument(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -567,4 +583,26 @@ export async function importResume(formData: FormData): Promise<ImportResult> {
     name: input.full_name,
     addedToVacancy: v.added,
   };
+}
+
+// Етап 9: «Оновити з резюме» в картці — заново розібрати останнє резюме (досвід і освіта замінюються,
+// інші поля заповнюються лише якщо порожні)
+export async function refillFromResume(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = uuidSchema.safeParse(formData.get('candidate_id'));
+  if (!id.success) return { error: 'Невірний кандидат' };
+  const supabase = await createClient();
+  const { data: doc } = await supabase
+    .from('documents')
+    .select('extracted_text, original_name')
+    .eq('candidate_id', id.data)
+    .is('deleted_at', null)
+    .not('extracted_text', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!doc?.extracted_text) return { error: 'У картці немає резюме з розпізнаним текстом' };
+  const r = await enrichCandidate(supabase, id.data, doc.extracted_text, doc.original_name, { replaceLists: true });
+  if (!r) return { error: 'Не вдалося оновити картку (перевірте права на редагування кандидата)' };
+  revalidatePath(`/candidates/${id.data}`);
+  return { ok: describeEnrich(r) ?? 'У резюме не знайдено розділів «Досвід роботи», «Освіта» чи «Навички» у звичному вигляді' };
 }

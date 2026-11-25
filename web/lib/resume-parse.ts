@@ -11,6 +11,8 @@ export type ResumeFields = {
   salary_currency?: 'UAH' | 'USD' | 'EUR';
   current_position?: string;
   linkedin_url?: string;
+  experience_years?: string;
+  source_id?: string;
 };
 
 const UP = 'A-ZА-ЯІЇЄҐЁЫЭЪ';
@@ -118,9 +120,9 @@ function titleCase(word: string): string {
 // Word/PDF інколи «склеюють» сусідні абзаци: «2026Афонська Наталія», «бухгалтераНаталія» — розділяємо
 export function unglue(line: string): string {
   return line
-    .replace(/(\d)(\p{L})/gu, '$1 $2')
-    .replace(/(\p{L})(\d)/gu, '$1 $2')
-    .replace(/(\p{Ll})(\p{Lu}\p{Ll})/gu, '$1 $2');
+    .replace(/(\d)([A-ZА-ЯІЇЄҐ][a-zа-яіїєґ'’ʼ]{2,})/g, '$1 $2')
+    .replace(/(\p{Ll}{3,})(\d{4})/gu, '$1 $2')
+    .replace(/([а-яіїєґ'’ʼ]{5})([А-ЯІЇЄҐ][а-яіїєґ])/g, '$1 $2');
 }
 
 function cleanLines(text: string): string[] {
@@ -356,6 +358,8 @@ export const FIELD_LABELS: Record<keyof ResumeFields, string> = {
   salary_currency: 'валюта',
   current_position: 'посада',
   linkedin_url: 'LinkedIn',
+  experience_years: 'досвід',
+  source_id: 'джерело',
 };
 
 // Назва файлу резюме за ПІБ кандидата і датою завантаження:

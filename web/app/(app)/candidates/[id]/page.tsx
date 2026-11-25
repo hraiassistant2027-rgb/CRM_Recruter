@@ -12,6 +12,7 @@ import { can, canOn } from '@/lib/permissions';
 import { uuidSchema } from '@/lib/validation';
 import { Alert, Badge, Card, PageHeader } from '@/components/ui';
 import { CustomFieldValues } from '@/components/custom-field-inputs';
+import { RefillFromResume } from './refill-button';
 import { loadFields } from '@/lib/custom-fields-load';
 import {
   CANDIDATE_COLUMNS,
@@ -346,39 +347,53 @@ export default async function CandidatePage({
             )}
           </Card>
 
-          {((experience.data ?? []).length > 0 || (education.data ?? []).length > 0) && (
-            <Card>
-              {(experience.data ?? []).length > 0 && (
-                <>
-                  <h2 className="mb-3 font-medium">Досвід роботи</h2>
+          {(() => {
+            const exp = (experience.data ?? []) as Experience[];
+            const edu = (education.data ?? []) as Education[];
+            const hasText = ((docs.data ?? []) as { parse_status: string }[]).some((d) => d.parse_status !== 'failed');
+            if (!exp.length && !edu.length && !(canUpdate && hasText)) return null;
+            const monthYear = (d: string | null) => (d ? `${d.slice(5, 7)}.${d.slice(0, 4)}` : '');
+            return (
+              <Card>
+                <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                  <h2 className="font-medium">Досвід роботи та освіта</h2>
+                  {canUpdate && hasText && <RefillFromResume candidateId={c.id} hasLists={exp.length + edu.length > 0} />}
+                </div>
+                {!exp.length && !edu.length && (
+                  <p className="text-sm text-ink-soft">Ще не заповнено. Натисніть «Заповнити з резюме» — система візьме дані з останнього резюме.</p>
+                )}
+                {exp.length > 0 && (
                   <ul className="mb-4 space-y-3 text-sm">
-                    {(experience.data as Experience[]).map((e) => (
-                      <li key={e.id}>
-                        <div className="font-medium">{[e.position, e.company].filter(Boolean).join(' — ')}</div>
+                    {exp.map((e) => (
+                      <li key={e.id} className="border-l-2 border-accent pl-3">
+                        <div className="font-medium">{e.position ?? 'Посада не вказана'}</div>
+                        {e.company && <div>{e.company}</div>}
                         <div className="text-xs text-ink-soft">
-                          {formatDate(e.start_date)} — {e.end_date ? formatDate(e.end_date) : 'дотепер'}
+                          {e.start_date ? `${monthYear(e.start_date)} — ${e.end_date ? monthYear(e.end_date) : 'дотепер'}` : ''}
                         </div>
-                        {e.description && <p className="mt-1 whitespace-pre-wrap">{e.description}</p>}
+                        {e.description && <p className="mt-1 whitespace-pre-wrap text-ink-soft">{e.description}</p>}
                       </li>
                     ))}
                   </ul>
-                </>
-              )}
-              {(education.data ?? []).length > 0 && (
-                <>
-                  <h2 className="mb-3 font-medium">Освіта</h2>
-                  <ul className="space-y-2 text-sm">
-                    {(education.data as Education[]).map((e) => (
-                      <li key={e.id}>
-                        {[e.institution, e.speciality, e.degree].filter(Boolean).join(', ')}
-                        {e.year_end ? ` (${e.year_end})` : ''}
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-            </Card>
-          )}
+                )}
+                {edu.length > 0 && (
+                  <>
+                    <h3 className="mb-2 text-sm font-medium">Освіта</h3>
+                    <ul className="space-y-2 text-sm">
+                      {edu.map((e) => (
+                        <li key={e.id}>
+                          <div>{e.institution}</div>
+                          <div className="text-xs text-ink-soft">
+                            {[e.speciality, e.degree, e.year_end ? `${e.year_end}` : null].filter(Boolean).join(' · ')}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </Card>
+            );
+          })()}
 
           {canMail && (
             <Card>

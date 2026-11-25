@@ -68,7 +68,7 @@ export function CandidateForm({
       }
       const noName = !result.fields.full_name;
       const base = filled.length
-        ? `З резюме заповнено: ${filled.join(', ')}.${noName ? ' ПІБ не розпізнано — впишіть вручну.' : ''} Перевірте дані перед збереженням.`
+        ? `З резюме заповнено: ${filled.join(', ')}.${noName ? ' ПІБ не розпізнано — впишіть вручну.' : ''} Перевірте дані перед збереженням. Досвід роботи, освіту й навички система додасть у картку після збереження.`
         : 'Нових даних у резюме не знайдено — заповніть поля вручну.';
       setParseNote({
         kind: filled.length && !noName && !result.error ? 'success' : 'info',
