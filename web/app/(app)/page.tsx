@@ -179,7 +179,30 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <PageHeader title={`Вітаємо, ${firstNameOf(session.profile.full_name)}!`} description="Короткий огляд рекрутингу" />
+      <PageHeader
+        title={`Вітаємо, ${firstNameOf(session.profile.full_name)}!`}
+        description="Короткий огляд рекрутингу"
+        actions={
+          homehub ? (
+            <nav className="inline-flex gap-1 rounded-2xl bg-white p-1 shadow-card" aria-label="Вигляд дашборда">
+              <a
+                href="/?homehub=0"
+                aria-current={!showHomehub ? 'page' : undefined}
+                className={`rounded-xl px-4 py-2 text-sm font-semibold ${!showHomehub ? 'bg-accent text-on-accent' : 'text-ink-soft hover:bg-panel'}`}
+              >
+                Лише KAN Talent
+              </a>
+              <a
+                href="/"
+                aria-current={showHomehub ? 'page' : undefined}
+                className={`rounded-xl px-4 py-2 text-sm font-semibold ${showHomehub ? 'bg-accent text-on-accent' : 'text-ink-soft hover:bg-panel'}`}
+              >
+                KAN + HomeHub
+              </a>
+            </nav>
+          ) : undefined
+        }
+      />
       {storage && storage.ratio >= 0.8 && (
         <div className="mb-4">
           <Alert>
@@ -188,16 +211,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </Alert>
         </div>
       )}
-      {homehub && (
-        <div className="mb-3 flex justify-end">
-          <Link href={showHomehub ? '/?homehub=0' : '/'} scroll={false} className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-ink shadow-card hover:bg-panel">
-            {showHomehub ? 'Лише KAN Talent' : 'Показати поруч HomeHub'}
-          </Link>
-        </div>
-      )}
       <div className={showHomehub ? 'grid items-start gap-5 2xl:gap-6 lg:grid-cols-2' : ''}>
         <div className="min-w-0 space-y-5">
-          {showHomehub && <WorkspaceHeading name={current?.name ?? 'KAN Talent'} icon={current?.icon ?? '/logo-icon.png'} />}
+          {showHomehub && <WorkspaceHeading name={current?.name ?? 'KAN Talent'} icon={current?.icon ?? '/logo-icon.png'} note="Ваш поточний простір" />}
           <WorkspaceStats ws={curCode} current={curCode} permissions={p} compact={showHomehub} />
           {canCharts && (
             <DashboardOverview

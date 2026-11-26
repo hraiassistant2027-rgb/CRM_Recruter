@@ -53,51 +53,53 @@ export function KpiTile({ label, value, caption }: { label: string; value: strin
 // ---------------------------------------------------------------------
 // Горизонтальні смуги з віссю і сіткою: «Час роботи над поточними вакансіями»
 // ---------------------------------------------------------------------
+const ROWS_PER_COLUMN = 6;
+
 export function HBarChart({ items, unit = 'днів' }: { items: { id: string; label: string; value: number; color: string; href?: string }[]; unit?: string }) {
-  if (!items.length) return <p className="text-sm text-ink-soft">Відкритих вакансій немає.</p>;
+  // Фіксована висота: по 6 смуг у стовпчику; більше — наступний стовпчик поруч праворуч
+  if (!items.length) return <div className="flex h-[16.5rem] items-center justify-center text-sm text-ink-soft">Відкритих вакансій немає.</div>;
   const ticks = niceTicks(Math.max(...items.map((i) => i.value)));
   const top = ticks[ticks.length - 1] || 1;
+  const columns: (typeof items)[] = [];
+  for (let i = 0; i < items.length; i += ROWS_PER_COLUMN) columns.push(items.slice(i, i + ROWS_PER_COLUMN));
+  const multi = columns.length > 1;
+  const labelW = multi ? '6.5rem' : '9.5rem';
   return (
-    <div>
-      <div className="relative">
-        {/* сітка */}
-        <div className="pointer-events-none absolute inset-y-0 left-[9.5rem] right-10" aria-hidden>
-          {ticks.map((t) => (
-            <span key={t} className="absolute inset-y-0 border-l border-dashed border-line" style={{ left: `${(t / top) * 100}%` }} />
-          ))}
+    <div className="flex h-[16.5rem] gap-6 overflow-x-auto">
+      {columns.map((col, ci) => (
+        <div key={ci} className="flex min-w-[15rem] flex-1 flex-col">
+          <div className="relative flex-1">
+            {/* сітка */}
+            <div className="pointer-events-none absolute inset-y-0 right-9" style={{ left: labelW }} aria-hidden>
+              {ticks.map((t) => (
+                <span key={t} className="absolute inset-y-0 border-l border-dashed border-line" style={{ left: `${(t / top) * 100}%` }} />
+              ))}
+            </div>
+            <ul className="relative flex h-full flex-col justify-start gap-3 py-1">
+              {col.map((v) => (
+                <li key={v.id} title={`${v.label}: ${v.value} ${unit}`} className="grid h-6 items-center text-xs" style={{ gridTemplateColumns: `${labelW} minmax(0,1fr) 2.25rem` }}>
+                  {v.href ? (
+                    <a href={v.href} className="truncate pr-3 text-right text-ink-soft hover:text-ink hover:underline">{v.label}</a>
+                  ) : (
+                    <span className="truncate pr-3 text-right text-ink-soft">{v.label}</span>
+                  )}
+                  <span className="relative h-6">
+                    <span className="bar-3d absolute inset-y-0 left-0 rounded-r-lg" style={{ width: `${Math.max(1, (v.value / top) * 100)}%`, backgroundColor: v.color }} />
+                  </span>
+                  <span className="pl-2 font-medium tabular-nums text-ink">{v.value}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          {/* вісь */}
+          <div className="relative mr-9 mt-1 h-4 border-t border-line text-[10px] text-ink-soft" style={{ marginLeft: labelW }} aria-hidden>
+            {ticks.map((t) => (
+              <span key={t} className="absolute -translate-x-1/2 pt-0.5" style={{ left: `${(t / top) * 100}%` }}>{t}</span>
+            ))}
+            <span className="absolute -right-9 pt-0.5">{unit}</span>
+          </div>
         </div>
-        <ul className="relative max-h-80 space-y-3 overflow-y-auto py-1 pr-1">
-          {items.map((v) => (
-            <li key={v.id} title={`${v.label}: ${v.value} ${unit}`} className="group grid grid-cols-[9.5rem_minmax(0,1fr)_2.5rem] items-center text-xs">
-              {v.href ? (
-                <a href={v.href} className="truncate pr-3 text-right text-ink-soft hover:text-ink hover:underline" title={v.label}>{v.label}</a>
-              ) : (
-                <span className="truncate pr-3 text-right text-ink-soft" title={v.label}>{v.label}</span>
-              )}
-              <span className="relative h-6">
-                <span
-                  className="bar-3d absolute inset-y-0 left-0 rounded-r-lg transition-[filter] group-hover:brightness-105"
-                  style={{ width: `${Math.max(1, (v.value / top) * 100)}%`, backgroundColor: v.color }}
-                />
-                <span
-                  className="pointer-events-none absolute top-0.5 z-10 ml-2 hidden whitespace-nowrap rounded-md bg-ink px-2 py-1 text-[11px] text-white shadow-lg group-hover:block"
-                  style={{ left: `${Math.min(85, (v.value / top) * 100)}%` }}
-                >
-                  {v.label}: {v.value} {unit}
-                </span>
-              </span>
-              <span className="pl-2 font-medium tabular-nums text-ink">{v.value}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-      {/* вісь */}
-      <div className="relative ml-[9.5rem] mr-10 mt-1 h-4 border-t border-line text-[10px] text-ink-soft" aria-hidden>
-        {ticks.map((t) => (
-          <span key={t} className="absolute -translate-x-1/2 pt-0.5" style={{ left: `${(t / top) * 100}%` }}>{t}</span>
-        ))}
-        <span className="absolute -right-10 pt-0.5">{unit}</span>
-      </div>
+      ))}
     </div>
   );
 }
@@ -107,7 +109,7 @@ export function HBarChart({ items, unit = 'днів' }: { items: { id: string; l
 // ---------------------------------------------------------------------
 export function FunnelChart({ rows }: { rows: FunnelRow[] }) {
   const first = rows[0]?.reached ?? 0;
-  if (!first) return <p className="text-sm text-ink-soft">Кандидатів у воронці ще немає.</p>;
+  if (!first) return <div className="flex items-center justify-center text-sm text-ink-soft" style={{ height: `${Math.max(4, rows.length) * 2.5}rem` }}>Кандидатів у воронці ще немає.</div>;
   const ticks = niceTicks(Math.max(...rows.map((r) => r.reached)), 4);
   const top = ticks[ticks.length - 1] || 1;
   return (
@@ -173,7 +175,7 @@ export function FunnelChart({ rows }: { rows: FunnelRow[] }) {
 // ---------------------------------------------------------------------
 export function PieChart({ items, empty, label }: { items: Slice[]; empty: string; label: string }) {
   const total = items.reduce((s, i) => s + i.count, 0);
-  if (!total) return <p className="py-6 text-center text-sm text-ink-soft">{empty}</p>;
+  if (!total) return <div className="flex aspect-[540/260] w-full items-center justify-center text-sm text-ink-soft">{empty}</div>;
   const W = 540;
   const H = 260;
   const cx = W / 2;

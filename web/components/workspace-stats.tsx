@@ -89,7 +89,7 @@ export async function WorkspaceStats({
           <Link
             key={s.label}
             href={href(s.path)}
-            className={`group block min-w-0 rounded-3xl transition-shadow hover:shadow-card ${compact ? 'p-4' : 'p-6'} ${i === 1 ? 'bg-soft' : 'bg-white'}`}
+            className={`group flex h-[15.5rem] min-w-0 flex-col overflow-hidden rounded-3xl transition-shadow hover:shadow-card ${compact ? 'p-4' : 'p-6'} ${i === 1 ? 'bg-soft' : 'bg-white'}`}
           >
             <p className={`flex flex-wrap items-center gap-x-2 gap-y-1 font-bold leading-snug text-ink ${compact ? 'text-sm' : 'text-base'}`}>
               {s.label}
@@ -100,9 +100,9 @@ export async function WorkspaceStats({
               {!compact && <span className="pb-1 text-xs leading-tight text-ink-soft">{CAPTION[s.path]}</span>}
             </p>
             {s.path === '/candidates' && sourceStats.length > 0 && (
-              <ul className={`space-y-1.5 ${compact ? 'mt-4 text-xs' : 'mt-5 text-sm'}`}>
+              <ul className={`grid min-h-0 flex-1 auto-cols-[minmax(8.5rem,1fr)] grid-flow-col grid-rows-5 content-start gap-x-4 gap-y-1.5 overflow-x-auto ${compact ? 'mt-4 text-xs' : 'mt-5 text-sm'}`}>
                 {sourceStats.map((src) => (
-                  <li key={src.name} className="flex items-center gap-2">
+                  <li key={src.name} className="flex min-w-0 items-center gap-2">
                     <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: src.color }} aria-hidden />
                     <span className="flex-1 truncate">{src.name}</span>
                     <span className="font-semibold tabular-nums">{src.count}</span>
@@ -111,9 +111,9 @@ export async function WorkspaceStats({
               </ul>
             )}
             {s.path === '/vacancies' && vacancyList.length > 0 && (
-              <ul className={`space-y-1.5 overflow-y-auto pr-1 ${compact ? 'mt-4 max-h-48 text-xs' : 'mt-5 max-h-64 text-sm'}`}>
+              <ul className={`grid min-h-0 flex-1 auto-cols-[minmax(8.5rem,1fr)] grid-flow-col grid-rows-5 content-start gap-x-4 gap-y-1.5 overflow-x-auto ${compact ? 'mt-4 text-xs' : 'mt-5 text-sm'}`}>
                 {vacancyList.map((v) => (
-                  <li key={v.id} className="flex items-center gap-2">
+                  <li key={v.id} className="flex min-w-0 items-center gap-2">
                     <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: v.color }} aria-hidden />
                     <span className="flex-1 truncate" title={v.title}>{v.title}</span>
                   </li>
