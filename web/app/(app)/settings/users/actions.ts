@@ -204,3 +204,14 @@ export async function setUserWorkspaces(_prev: FormState, formData: FormData): P
   revalidatePath('/settings/users');
   return { ok: 'Доступ до просторів збережено' };
 }
+
+// Видалення користувача — лише Супер адміністратор (перевіряє база). Записи користувача залишаються в CRM.
+export async function deleteUser(_prev: FormState, formData: FormData): Promise<FormState> {
+  const userId = uuidSchema.safeParse(formData.get('user_id'));
+  if (!userId.success) return { error: 'Невірний користувач' };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('admin_delete_user', { p_user: userId.data });
+  if (error) return { error: translateError(error) };
+  revalidatePath('/settings/users');
+  return { ok: 'Користувача видалено' };
+}

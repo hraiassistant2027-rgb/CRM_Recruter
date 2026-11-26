@@ -44,6 +44,8 @@ export default async function UsersPage() {
     memberOf.set(m.user_id, [...(memberOf.get(m.user_id) ?? []), m.workspace_id]);
   }
   const userRows = (users ?? []) as UserRow[];
+  // Видаляти користувачів може лише Супер адміністратор
+  const isSuperAdmin = userRows.some((u) => u.id === session.userId && u.role_codes.includes('super_admin'));
   const roleRows = (roles ?? []) as RoleRow[];
   const roleName = new Map(roleRows.map((r) => [r.code, r.name]));
 
@@ -83,7 +85,7 @@ export default async function UsersPage() {
                   )}
                 </p>
               </div>
-              <UserActions user={u} roles={roleRows} canRoles={canRoles} isSelf={u.id === session.userId} />
+              <UserActions user={u} roles={roleRows} canRoles={canRoles} isSelf={u.id === session.userId} canDelete={isSuperAdmin} />
             </div>
             {workspaces.length > 1 && (
               <div className="mt-3 border-t border-line pt-3">

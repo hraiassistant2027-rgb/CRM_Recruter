@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: 'Ролі та права' };
 type Role = { id: string; code: string; name: string; description: string | null; is_system: boolean };
 
 export default async function RolesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  await requirePermission('roles.manage');
+  const session = await requirePermission('roles.manage');
   const sp = await searchParams;
   const one = (k: string) => (Array.isArray(sp[k]) ? sp[k]![0] : (sp[k] as string | undefined));
   const supabase = await createClient();
@@ -29,6 +29,10 @@ export default async function RolesPage({ searchParams }: { searchParams: Promis
     if (selected && r.role_id === selected.id) granted[r.permission_code] = r.scope;
   }
   const notice = one('notice');
+  const { data: me } = await supabase.from('user_roles').select('roles(code)').eq('user_id', session.userId);
+  const isSuperAdmin = ((me ?? []) as { roles: { code: string } | { code: string }[] | null }[]).some((r) =>
+    (Array.isArray(r.roles) ? r.roles : r.roles ? [r.roles] : []).some((x) => x.code === 'super_admin'),
+  );
 
   return (
     <>
@@ -79,6 +83,7 @@ export default async function RolesPage({ searchParams }: { searchParams: Promis
                 granted={granted}
                 locked={selected.code === 'super_admin'}
                 usersCount={usersBy.get(selected.id) ?? 0}
+                canDelete={!['super_admin', 'admin'].includes(selected.code) && (!selected.is_system || isSuperAdmin)}
               />
             </>
           ) : (

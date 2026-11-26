@@ -1,6 +1,6 @@
 'use client';
 import { useActionState, useState } from 'react';
-import { inviteUser, resetUserMfa, setUserActive, setUserRoles, setUserWorkspaces } from './actions';
+import { deleteUser, inviteUser, resetUserMfa, setUserActive, setUserRoles, setUserWorkspaces } from './actions';
 import { Alert, Button, Field, Input, Select } from '@/components/ui';
 import { SubmitButton } from '@/components/submit-button';
 import { initialFormState } from '@/lib/form-state';
@@ -35,12 +35,13 @@ export function InviteForm({ roles }: { roles: RoleRow[] }) {
   );
 }
 
-export function UserActions({ user, roles, canRoles, isSelf }: { user: UserRow; roles: RoleRow[]; canRoles: boolean; isSelf: boolean }) {
+export function UserActions({ user, roles, canRoles, isSelf, canDelete = false }: { user: UserRow; roles: RoleRow[]; canRoles: boolean; isSelf: boolean; canDelete?: boolean }) {
   const [editing, setEditing] = useState(false);
   const [activeState, activeAction] = useActionState(setUserActive, initialFormState);
   const [rolesState, rolesAction] = useActionState(setUserRoles, initialFormState);
   const [mfaState, mfaAction] = useActionState(resetUserMfa, initialFormState);
-  const message = [activeState, rolesState, mfaState].find((s) => s.error || s.ok);
+  const [delState, delAction] = useActionState(deleteUser, initialFormState);
+  const message = [activeState, rolesState, mfaState, delState].find((s) => s.error || s.ok);
 
   return (
     <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
@@ -72,6 +73,24 @@ export function UserActions({ user, roles, canRoles, isSelf }: { user: UserRow; 
             <input type="hidden" name="active" value={user.is_active ? 'false' : 'true'} />
             <SubmitButton variant={user.is_active ? 'danger' : 'secondary'} pendingText="…">
               {user.is_active ? 'Заблокувати' : 'Розблокувати'}
+            </SubmitButton>
+          </form>
+        )}
+        {canDelete && !isSelf && (
+          <form
+            action={delAction}
+            onSubmit={(e) => {
+              if (
+                !confirm(
+                  `Видалити користувача ${user.full_name} назавжди?\n\nОбліковий запис, ролі й підключення Google буде видалено. Кандидати, вакансії й нотатки, які він створив, залишаться в CRM. Скасувати це неможливо.`,
+                )
+              )
+                e.preventDefault();
+            }}
+          >
+            <input type="hidden" name="user_id" value={user.id} />
+            <SubmitButton variant="danger" pendingText="Видаляємо…">
+              Видалити
             </SubmitButton>
           </form>
         )}

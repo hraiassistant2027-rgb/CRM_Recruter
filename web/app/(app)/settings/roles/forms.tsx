@@ -45,12 +45,14 @@ export function RoleEditor({
   granted,
   locked,
   usersCount,
+  canDelete = false,
 }: {
   role: { id: string; name: string; description: string | null; is_system: boolean };
   perms: PermRow[];
   granted: Record<string, string>;
   locked: boolean;
   usersCount: number;
+  canDelete?: boolean;
 }) {
   const [state, action] = useActionState(updateRole, initialFormState);
   const [delState, delAction] = useActionState(deleteRole, initialFormState);
@@ -108,8 +110,14 @@ export function RoleEditor({
         {state.ok && <Alert kind="success">{state.ok}</Alert>}
         <Button type="submit" disabled={pending}>{pending ? 'Зберігаємо…' : 'Зберегти роль'}</Button>
       </form>
-      {!role.is_system && (
-        <form action={delAction} className="border-t border-line pt-4">
+      {canDelete && (
+        <form
+          action={delAction}
+          onSubmit={(e) => {
+            if (!confirm(`Видалити роль «${role.name}» назавжди?`)) e.preventDefault();
+          }}
+          className="border-t border-line pt-4"
+        >
           <input type="hidden" name="id" value={role.id} />
           <p className="mb-2 text-xs text-ink-soft">
             {usersCount ? `Роль має ${usersCount} користувачів — видалити можна після зміни їм ролі.` : 'Роль нікому не призначена — її можна видалити.'}
