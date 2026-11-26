@@ -14,12 +14,16 @@ export function confirmLink(hashedToken: string, type: LinkType): string {
   return `${appUrl()}/auth/confirm?${qs.toString()}`;
 }
 
+let lastSenderError: string | null = null;
+
 async function senderSession(preferredUserId?: string): Promise<GoogleSession | null> {
+  lastSenderError = null;
   if (preferredUserId) {
     try {
       return await googleSession(preferredUserId);
-    } catch {
-      /* пробуємо системного відправника */
+    } catch (e) {
+      // Запам'ятовуємо причину (напр., Google скасував доступ) і пробуємо системного відправника
+      lastSenderError = e instanceof Error ? e.message : null;
     }
   }
   const admin = createAdminClient();
@@ -43,7 +47,14 @@ export async function sendSystemEmail(input: {
   preferredSenderId?: string;
 }): Promise<{ sent: boolean; from?: string; error?: string }> {
   const session = await senderSession(input.preferredSenderId);
-  if (!session) return { sent: false, error: 'Немає підключеної скриньки Google для службових листів' };
+  if (!session) {
+    return {
+      sent: false,
+      error: lastSenderError
+        ? `${lastSenderError}. Відкрийте «Профіль» → відключіть і знову підключіть Google`
+        : 'Немає підключеної скриньки Google для службових листів — підключіть Google у «Профілі»',
+    };
+  }
 
   const text = `${input.paragraphs.join('\n\n')}\n\n${input.link.label}: ${input.link.url}\n\nЯкщо ви не очікували цього листа, просто проігноруйте його.\n\nKAN Talent`;
   const html =

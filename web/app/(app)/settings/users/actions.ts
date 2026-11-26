@@ -73,7 +73,7 @@ export async function inviteUser(_prev: FormState, formData: FormData): Promise<
     const { error: roleError } = role
       ? await supabase.from('user_roles').insert({ user_id: data.user.id, role_id: role.id, granted_by: me })
       : { error: { message: 'role not found' } };
-    if (roleError) roleNote = ' Роль призначити не вдалося — зробіть це вручну в списку.';
+    if (roleError) roleNote = ` Роль призначити не вдалося (${translateError(roleError)}) — зробіть це вручну в списку.`;
   } else {
     roleNote = ' Роль призначить SUPER ADMIN.';
   }
