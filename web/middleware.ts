@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
 // Сторінки, доступні без входу
-const PUBLIC_PATHS = ['/login', '/reset-password', '/auth', '/privacy'];
+const PUBLIC_PATHS = ['/login', '/reset-password', '/auth', '/privacy', '/api/health'];
 
 function isPublic(path: string): boolean {
   return PUBLIC_PATHS.some((p) => path === p || path.startsWith(`${p}/`));

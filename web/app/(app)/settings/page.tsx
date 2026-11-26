@@ -3,12 +3,15 @@ import Link from 'next/link';
 import { requirePermission } from '@/lib/auth';
 import { can } from '@/lib/permissions';
 import { Badge, Card, PageHeader } from '@/components/ui';
+import { createClient } from '@/lib/supabase/server';
+import { formatBytes, loadStorageUsage } from '@/lib/storage-usage';
 
 export const metadata: Metadata = { title: 'Налаштування' };
 
 export default async function SettingsPage() {
   const session = await requirePermission('settings.manage');
   const p = session.permissions;
+  const usage = await loadStorageUsage(await createClient());
 
   const sections = [
     { title: 'Користувачі та ролі', text: 'Запрошення, призначення ролей, блокування, скидання двофакторної перевірки', href: '/settings/users', allowed: can(p, 'users.manage'), stage: null },
@@ -22,6 +25,27 @@ export default async function SettingsPage() {
   return (
     <>
       <PageHeader title="Налаштування" />
+      {usage && (
+        <Card className="mb-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="font-medium">Сховище резюме</h2>
+            <span className="text-sm text-ink-soft">
+              {formatBytes(usage.bytes)} з {formatBytes(usage.limit)} · файлів: {usage.files}
+            </span>
+          </div>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-line" role="progressbar" aria-valuenow={Math.round(usage.ratio * 100)} aria-valuemin={0} aria-valuemax={100} aria-label="Зайнято місця">
+            <div
+              className={`h-full rounded-full ${usage.ratio >= 0.9 ? 'bg-danger' : usage.ratio >= 0.8 ? 'bg-accent-strong' : 'bg-ok'}`}
+              style={{ width: `${Math.min(100, Math.max(1, usage.ratio * 100))}%` }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-ink-soft">
+            {usage.ratio >= 0.8
+              ? 'Місце закінчується — варто перейти на тариф Supabase Pro (100 ГБ). Банк резюме на Google Диску сюди не рахується.'
+              : 'Резюме, завантажені в CRM, разом з їх переглядом. Банк резюме на Google Диску сюди не рахується.'}
+          </p>
+        </Card>
+      )}
       <div className="grid gap-4 md:grid-cols-2">
         {sections.map((s) =>
           s.href ? (

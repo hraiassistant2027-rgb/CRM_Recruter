@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
+import { formatBytes, loadStorageUsage } from '@/lib/storage-usage';
 import Link from 'next/link';
 import { requireSession } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { can } from '@/lib/permissions';
-import { Badge, Card, PageHeader } from '@/components/ui';
+import { Alert, Badge, Card, PageHeader } from '@/components/ui';
 import { firstNameOf } from '@/lib/email';
 import { loadAgenda } from '@/lib/interviews-load';
 import { KIND_LABELS } from '@/lib/interviews';
@@ -23,6 +24,8 @@ async function countOf(table: string, filter?: (q: any) => any): Promise<number 
 
 export default async function DashboardPage() {
   const session = await requireSession();
+  // Попередження адміністраторам, коли сховище файлів майже заповнене
+  const storage = can(session.permissions, 'settings.manage') ? await loadStorageUsage(await createClient()) : null;
   const p = session.permissions;
 
   // Реальні цифри з бази (з урахуванням прав користувача). Повний дашборд — етап 7.
@@ -151,6 +154,14 @@ export default async function DashboardPage() {
   return (
     <>
       <PageHeader title={`Вітаємо, ${firstNameOf(session.profile.full_name)}!`} description="Короткий огляд рекрутингу" />
+      {storage && storage.ratio >= 0.8 && (
+        <div className="mb-4">
+          <Alert>
+            Сховище резюме заповнене на {Math.round(storage.ratio * 100)}% ({formatBytes(storage.bytes)} з {formatBytes(storage.limit)}).{' '}
+            <Link href="/settings" className="underline">Деталі в налаштуваннях</Link> — коли місце закінчиться, нові резюме не завантажуватимуться.
+          </Alert>
+        </div>
+      )}
       {stats.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {stats.map((s) => (
