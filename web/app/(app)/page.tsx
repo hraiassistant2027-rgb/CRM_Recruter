@@ -12,15 +12,7 @@ import { addDays, dateToKyiv, formatInterviewDate, formatTime, kyivToDate, today
 import { HrHandoffList, type HandoffRow } from '@/components/hr-handoff';
 import { formatDate } from '@/lib/candidates';
 import { WorkspaceStats } from '@/components/workspace-stats';
-import { CATEGORICAL, Donut, FunnelChart, OpenVacancyBars, type FunnelRow, type Slice } from '@/components/dashboard-charts';
-
-type Overview = {
-  funnel: FunnelRow[];
-  reasons: { name: string; side: 'company' | 'candidate'; count: number }[];
-  sources: Slice[];
-  open_vacancies: { id: string; title: string; days: number; color: string }[];
-  avg_open_days: number | null;
-};
+import { DashboardOverview } from '@/components/dashboard-overview';
 import { getWorkspaces } from '@/lib/workspace-server';
 import type { WorkspaceCode } from '@/lib/workspace';
 
@@ -43,17 +35,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const canCharts = can(p, 'analytics.read') || can(p, 'applications.read');
   const vacRaw = Array.isArray(sp.vacancy) ? sp.vacancy[0] : sp.vacancy;
   const vacancyFilter = vacRaw && /^[0-9a-f-]{36}$/i.test(vacRaw) ? vacRaw : null;
-  let overview: Overview | null = null;
-  let vacancyOptions: { id: string; title: string }[] = [];
-  if (canCharts) {
-    const sb = await createClient();
-    const [{ data: ov }, { data: vs }] = await Promise.all([
-      sb.rpc('dashboard_overview', { p_vacancy: vacancyFilter }),
-      sb.from('vacancies').select('id, title, status').neq('status', 'draft').order('opened_at', { ascending: false }).limit(300),
-    ]);
-    overview = (ov as Overview | null) ?? null;
-    vacancyOptions = (vs ?? []) as { id: string; title: string }[];
-  }
 
   const today = todayKyiv();
   const agenda = can(p, 'applications.read')
@@ -142,69 +123,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
       )}
       <WorkspaceStats ws={curCode} current={curCode} permissions={p} />
-      {overview && (
-        <>
-          <Card className="mt-6">
-            <div className="grid gap-6 lg:grid-cols-[14rem_minmax(0,1fr)]">
-              <div>
-                <h2 className="font-medium">Тривалість роботи над поточними вакансіями</h2>
-                <p className="text-xs text-ink-soft">Відкриті вакансії і вакансії на паузі</p>
-                <div className="mt-4 rounded-xl border border-line p-4 text-center">
-                  <div className="text-xs text-ink-soft">Середній час роботи</div>
-                  <div className="mt-1 text-3xl font-semibold tabular-nums">{overview.avg_open_days != null ? `${overview.avg_open_days} дн.` : '—'}</div>
-                </div>
-              </div>
-              <div>
-                <h3 className="mb-2 text-sm font-medium">Днів у роботі по вакансіях</h3>
-                <OpenVacancyBars items={overview.open_vacancies} />
-              </div>
-            </div>
-          </Card>
-
-          <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <h2 className="font-medium">Воронка, відмови і джерела</h2>
-              <p className="text-xs text-ink-soft">За весь період</p>
-            </div>
-            <form method="get" className="flex flex-wrap items-center gap-2">
-              {sp.homehub === '1' && <input type="hidden" name="homehub" value="1" />}
-              <label htmlFor="dash-vacancy" className="text-sm text-ink-soft">Вакансія</label>
-              <select id="dash-vacancy" name="vacancy" defaultValue={vacancyFilter ?? ''} className="max-w-64 rounded-lg border border-line bg-white px-3 py-1.5 text-sm">
-                <option value="">Усі вакансії</option>
-                {vacancyOptions.map((v) => (
-                  <option key={v.id} value={v.id}>{v.title}</option>
-                ))}
-              </select>
-              <button type="submit" className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-on-accent hover:bg-accent-strong">Показати</button>
-            </form>
-          </div>
-          <div className="mt-3 grid gap-4 xl:grid-cols-[3fr_2fr_2fr]">
-            <Card>
-              <h3 className="font-medium">Воронка рекрутингу</h3>
-              <p className="mb-3 text-xs text-ink-soft">
-                <span className="mr-3 inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-[#4caf50]" aria-hidden />пройшли етап або ще на ньому</span>
-                <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-[#ef5350]" aria-hidden />вибули на етапі</span>
-              </p>
-              <FunnelChart rows={overview.funnel} />
-            </Card>
-            <Card>
-              <h3 className="mb-3 font-medium">Причини відмов</h3>
-              <Donut
-                label="Причини відмов"
-                empty="Відмов ще немає."
-                items={overview.reasons.map((r, i) => ({
-                  name: r.side === 'candidate' ? `${r.name} (відмовився кандидат)` : r.name,
-                  count: r.count,
-                  color: CATEGORICAL[i % CATEGORICAL.length],
-                }))}
-              />
-            </Card>
-            <Card>
-              <h3 className="mb-3 font-medium">Джерела кандидатів</h3>
-              <Donut label="Джерела кандидатів" empty="Кандидатів у вакансіях ще немає." items={overview.sources} />
-            </Card>
-          </div>
-        </>
+      {canCharts && (
+        <div className="mt-6">
+          <DashboardOverview ws={curCode} current={curCode} vacancy={vacancyFilter} filterHiddenFields={sp.homehub === '1' ? { homehub: '1' } : {}} />
+        </div>
       )}
       {can(p, 'applications.read') && (
         <Card className="mt-6">
@@ -274,6 +196,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           {showHomehub && (
             <div className="mt-4">
               <WorkspaceStats ws="homehub" current={curCode} permissions={p} />
+              {canCharts && (
+                <div className="mt-5">
+                  <DashboardOverview ws="homehub" current={curCode} vacancy={null} showFilter={false} />
+                </div>
+              )}
               <p className="mt-3 text-xs text-ink-soft">Клік на картку відкриє розділ у просторі HomeHub.</p>
             </div>
           )}
