@@ -99,11 +99,11 @@ export default async function RecruitersPage({ searchParams }: { searchParams: P
           <form method="get" className="ml-auto flex flex-wrap items-end gap-2">
             <label className="block">
               <span className="mb-1 block text-xs text-ink-soft">З</span>
-              <input type="date" name="from" defaultValue={f.from} className="rounded-xl border border-line bg-white px-3 py-1.5 text-sm" />
+              <input type="date" name="from" defaultValue={f.from} className="rounded-xl border border-field-line bg-field px-3 py-1.5 text-sm focus:bg-white" />
             </label>
             <label className="block">
               <span className="mb-1 block text-xs text-ink-soft">по</span>
-              <input type="date" name="to" defaultValue={f.to} className="rounded-xl border border-line bg-white px-3 py-1.5 text-sm" />
+              <input type="date" name="to" defaultValue={f.to} className="rounded-xl border border-field-line bg-field px-3 py-1.5 text-sm focus:bg-white" />
             </label>
             <button type="submit" className="rounded-xl border border-line bg-white px-3 py-1.5 text-sm hover:bg-surface">Показати</button>
           </form>

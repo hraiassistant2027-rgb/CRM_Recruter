@@ -140,11 +140,11 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           </label>
           <label className="block">
             <span className="mb-1.5 block text-xs font-medium text-ink-soft">Відкрито з</span>
-            <input type="date" name="from" defaultValue={f.from} className="rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm" />
+            <input type="date" name="from" defaultValue={f.from} className="rounded-xl border border-field-line bg-field px-3.5 py-2.5 text-sm focus:bg-white" />
           </label>
           <label className="block">
             <span className="mb-1.5 block text-xs font-medium text-ink-soft">по</span>
-            <input type="date" name="to" defaultValue={f.to} className="rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm" />
+            <input type="date" name="to" defaultValue={f.to} className="rounded-xl border border-field-line bg-field px-3.5 py-2.5 text-sm focus:bg-white" />
           </label>
           <button type="submit" className="rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-on-accent hover:bg-accent-strong">Показати</button>
           {qs && <Link href="/reports" className="pb-2 text-sm text-ink-soft underline">Скинути</Link>}

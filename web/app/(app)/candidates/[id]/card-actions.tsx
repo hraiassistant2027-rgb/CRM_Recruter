@@ -62,7 +62,7 @@ export function UploadResumeForm({ candidateId }: { candidateId: string }) {
         required
         accept=".pdf,.doc,.docx,.rtf,.txt,.jpg,.jpeg,.png"
         aria-label="Файл резюме"
-        className="block w-full text-sm file:mr-3 file:rounded-lg file:border file:border-line file:bg-white file:px-3 file:py-2 file:text-sm"
+        className="block w-full text-sm file:mr-3 file:rounded-lg file:border file:border-field-line file:bg-field file:px-3 file:py-2 file:text-sm focus:bg-white"
       />
       <p className="text-xs text-ink-soft">PDF, DOC, DOCX, RTF, TXT, JPG, PNG — до 20 МБ</p>
       <SubmitButton variant="secondary" pendingText="Завантажуємо…">Завантажити резюме</SubmitButton>
@@ -143,7 +143,7 @@ export function NoteForm({ candidateId }: { candidateId: string }) {
         required
         aria-label="Текст нотатки"
         placeholder="Результат дзвінка, домовленості, враження…"
-        className="block w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm focus:border-accent-strong focus:outline-none focus:ring-2 focus:ring-accent/30"
+        className="block w-full rounded-xl border border-field-line bg-field px-3.5 py-2.5 text-sm focus:border-accent-strong focus:outline-none focus:bg-white focus:ring-4 focus:ring-accent/15"
       />
       <SubmitButton variant="secondary" pendingText="…">Додати нотатку</SubmitButton>
       <Message state={state} />

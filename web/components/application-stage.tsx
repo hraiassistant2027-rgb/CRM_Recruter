@@ -69,7 +69,7 @@ export function ApplicationStage({
           value={currentStageId}
           disabled={busy}
           onChange={(e) => choose(e.target.value)}
-          className="min-w-0 flex-1 rounded-md border border-line bg-white px-2 py-1 text-xs"
+          className="min-w-0 flex-1 rounded-md border border-field-line bg-field px-2 py-1 text-xs focus:bg-white"
         >
           {stages.map((s) => (
             <option key={s.id} value={s.id}>

@@ -51,7 +51,7 @@ export function TemplateForm({
           name="body"
           rows={12}
           defaultValue={template?.body}
-          className="block w-full rounded-xl border border-line bg-white px-3.5 py-2.5 font-mono text-sm focus:border-accent-strong focus:outline-none focus:ring-2 focus:ring-accent/30"
+          className="block w-full rounded-xl border border-field-line bg-field px-3.5 py-2.5 font-mono text-sm focus:border-accent-strong focus:outline-none focus:bg-white focus:ring-4 focus:ring-accent/15"
         />
       </Field>
       <div>

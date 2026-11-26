@@ -14,7 +14,19 @@ async function countOf(sb: Supa, table: string, filter?: (q: any) => any): Promi
   return error ? null : (count ?? 0);
 }
 
-export async function WorkspaceStats({ ws, current, permissions, title = 'Рекрутинг сьогодні' }: { ws: WorkspaceCode; current: WorkspaceCode; permissions: Permissions; title?: string }) {
+export async function WorkspaceStats({
+  ws,
+  current,
+  permissions,
+  title = 'Рекрутинг сьогодні',
+  compact = false,
+}: {
+  ws: WorkspaceCode;
+  current: WorkspaceCode;
+  permissions: Permissions;
+  title?: string;
+  compact?: boolean;
+}) {
   const sb = await createClient({ workspace: ws });
   const p = permissions;
   const [candidates, openVacancies, activeApplications] = await Promise.all([
@@ -71,24 +83,24 @@ export async function WorkspaceStats({ ws, current, permissions, title = 'Рек
   };
   return (
     <section className="rounded-[28px] bg-panel p-2 shadow-card">
-      <h2 className="py-3 text-center text-lg font-semibold tracking-tight text-ink-soft">{title}</h2>
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+      <h2 className={`text-center font-semibold tracking-tight text-ink-soft ${compact ? 'py-2 text-base' : 'py-3 text-lg'}`}>{title}</h2>
+      <div className={`grid gap-2 ${compact ? 'sm:grid-cols-3' : 'sm:grid-cols-2 xl:grid-cols-3'}`}>
         {stats.map((s, i) => (
           <Link
             key={s.label}
             href={href(s.path)}
-            className={`group block rounded-3xl p-6 transition-shadow hover:shadow-card ${i === 1 ? 'bg-soft' : 'bg-white'}`}
+            className={`group block min-w-0 rounded-3xl transition-shadow hover:shadow-card ${compact ? 'p-4' : 'p-6'} ${i === 1 ? 'bg-soft' : 'bg-white'}`}
           >
-            <p className="flex items-center gap-2 text-base font-bold text-ink">
+            <p className={`flex flex-wrap items-center gap-x-2 gap-y-1 font-bold leading-snug text-ink ${compact ? 'text-sm' : 'text-base'}`}>
               {s.label}
               {i === 1 && <span className="rounded-md bg-ink px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">в роботі</span>}
             </p>
             <p className="mt-2 flex items-end gap-2">
-              <span className="text-5xl font-bold leading-none tracking-tight tabular-nums">{s.value}</span>
-              <span className="pb-1 text-xs leading-tight text-ink-soft">{CAPTION[s.path]}</span>
+              <span className={`font-bold leading-none tracking-tight tabular-nums ${compact ? 'text-4xl' : 'text-5xl'}`}>{s.value}</span>
+              {!compact && <span className="pb-1 text-xs leading-tight text-ink-soft">{CAPTION[s.path]}</span>}
             </p>
             {s.path === '/candidates' && sourceStats.length > 0 && (
-              <ul className="mt-5 space-y-1.5 text-sm">
+              <ul className={`space-y-1.5 ${compact ? 'mt-4 text-xs' : 'mt-5 text-sm'}`}>
                 {sourceStats.map((src) => (
                   <li key={src.name} className="flex items-center gap-2">
                     <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: src.color }} aria-hidden />
@@ -99,7 +111,7 @@ export async function WorkspaceStats({ ws, current, permissions, title = 'Рек
               </ul>
             )}
             {s.path === '/vacancies' && vacancyList.length > 0 && (
-              <ul className="mt-5 max-h-64 space-y-1.5 overflow-y-auto pr-1 text-sm">
+              <ul className={`space-y-1.5 overflow-y-auto pr-1 ${compact ? 'mt-4 max-h-48 text-xs' : 'mt-5 max-h-64 text-sm'}`}>
                 {vacancyList.map((v) => (
                   <li key={v.id} className="flex items-center gap-2">
                     <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: v.color }} aria-hidden />

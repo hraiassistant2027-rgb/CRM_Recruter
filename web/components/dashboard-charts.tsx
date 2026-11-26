@@ -76,8 +76,8 @@ export function HBarChart({ items, unit = 'днів' }: { items: { id: string; l
               )}
               <span className="relative h-6">
                 <span
-                  className="absolute inset-y-0 left-0 rounded-r-md transition-[filter] group-hover:brightness-95"
-                  style={{ width: `${Math.max(1, (v.value / top) * 100)}%`, background: v.color }}
+                  className="bar-3d absolute inset-y-0 left-0 rounded-r-lg transition-[filter] group-hover:brightness-105"
+                  style={{ width: `${Math.max(1, (v.value / top) * 100)}%`, backgroundColor: v.color }}
                 />
                 <span
                   className="pointer-events-none absolute top-0.5 z-10 ml-2 hidden whitespace-nowrap rounded-md bg-ink px-2 py-1 text-[11px] text-white shadow-lg group-hover:block"
@@ -131,16 +131,16 @@ export function FunnelChart({ rows }: { rows: FunnelRow[] }) {
               <span className="relative flex h-7 items-stretch">
                 {stay > 0 && (
                   <span
-                    className="flex items-center justify-center text-[11px] font-semibold text-ink/80"
-                    style={{ width: `${(stay / top) * 100}%`, background: GREEN, borderRadius: out ? '3px 0 0 3px' : '3px' }}
+                    className="bar-3d flex items-center justify-center text-[11px] font-semibold text-ink/80"
+                    style={{ width: `${(stay / top) * 100}%`, backgroundColor: GREEN, borderRadius: out ? '3px 0 0 3px' : '3px' }}
                   >
                     {stay / top > 0.05 ? stay : ''}
                   </span>
                 )}
                 {out > 0 && (
                   <span
-                    className="flex items-center justify-center text-[11px] font-semibold text-ink/80"
-                    style={{ width: `${(out / top) * 100}%`, background: RED, borderRadius: stay ? '0 3px 3px 0' : '3px' }}
+                    className="bar-3d flex items-center justify-center text-[11px] font-semibold text-ink/80"
+                    style={{ width: `${(out / top) * 100}%`, backgroundColor: RED, borderRadius: stay ? '0 3px 3px 0' : '3px' }}
                   >
                     {out / top > 0.04 ? out : ''}
                   </span>
@@ -209,13 +209,25 @@ export function PieChart({ items, empty, label }: { items: Slice[]; empty: strin
     const overflow = col.length ? col[col.length - 1].y - (H - 8) : 0;
     if (overflow > 0) for (const l of col) l.y -= overflow;
   }
+  const gid = `pie-${label.replace(/[^a-zA-Zа-яА-ЯіїєґІЇЄҐ]/g, '').length}-${total}-${items.length}`;
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label={`${label}: ${items.map((i) => `${i.name} ${fmt(i.count)}`).join(', ')}`}>
-      {segs.map((s) => (
-        <path key={s.name} d={path(s.a0, s.a1)} fill={s.color} stroke="#fff" strokeWidth={2} className="transition-opacity hover:opacity-85">
-          <title>{`${s.name}: ${s.count} (${fmt(s.count)})`}</title>
-        </path>
-      ))}
+      <defs>
+        <radialGradient id={`${gid}-sheen`} cx="38%" cy="30%" r="75%">
+          <stop offset="0%" stopColor="#fff" stopOpacity="0.38" />
+          <stop offset="55%" stopColor="#fff" stopOpacity="0.06" />
+          <stop offset="100%" stopColor="#000" stopOpacity="0.10" />
+        </radialGradient>
+      </defs>
+      <ellipse cx={cx} cy={cy + R + 10} rx={R * 0.85} ry={9} fill="#141428" opacity="0.10" />
+      <g className="chart-lift">
+        {segs.map((s) => (
+          <path key={s.name} d={path(s.a0, s.a1)} fill={s.color} stroke="#fff" strokeWidth={2} className="origin-center transition-transform duration-200 hover:scale-[1.03]" style={{ transformOrigin: `${cx}px ${cy}px` }}>
+            <title>{`${s.name}: ${s.count} (${fmt(s.count)})`}</title>
+          </path>
+        ))}
+        <circle cx={cx} cy={cy} r={R} fill={`url(#${gid}-sheen)`} pointerEvents="none" />
+      </g>
       {labels.map((l) => {
         const kx = cx + l.side * (R + 26);
         const tx = kx + l.side * 6;

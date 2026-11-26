@@ -58,6 +58,7 @@ export function DynamicsChart({ data, bucket }: { data: Analytics['dynamics']; b
                       key={s.key}
                       d={roundedTop(gx + si * (barW + gap), y(v) + 4, barW, h, 3)}
                       fill={s.color}
+                      className="chart-lift"
                     />
                   );
                 })}
@@ -116,7 +117,7 @@ export function FunnelBars({ data }: { data: Analytics['funnel'] }) {
           <li key={s.name} className="grid grid-cols-[11rem_minmax(0,1fr)_7rem] items-center gap-3 text-sm">
             <span className="truncate" title={s.name}>{s.name}</span>
             <div className="h-5 rounded bg-surface" title={`${s.name}: ${s.count} (${pct(s.count, first)} від усіх відгуків)`}>
-              <div className="h-full rounded" style={{ width: `${Math.max(s.count ? 1.5 : 0, (s.count / first) * 100)}%`, background: '#257de0' }} />
+              <div className="bar-3d h-full rounded" style={{ width: `${Math.max(s.count ? 1.5 : 0, (s.count / first) * 100)}%`, backgroundColor: '#257de0' }} />
             </div>
             <span className="text-right tabular-nums">
               <b>{s.count}</b>

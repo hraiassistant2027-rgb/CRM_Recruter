@@ -8,7 +8,7 @@ import { FIELD_TYPE_LABELS, type FieldDef } from '@/lib/custom-fields';
 import type { FormState } from '@/lib/form-state';
 
 const textarea =
-  'block w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-soft/60 focus:border-accent-strong focus:outline-none focus:ring-2 focus:ring-accent/30';
+  'block w-full rounded-xl border border-field-line bg-field px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-soft/60 focus:border-accent-strong focus:outline-none focus:bg-white focus:ring-4 focus:ring-accent/15';
 
 export function FieldForm({ entity, field, onDone }: { entity: string; field?: FieldDef; onDone?: () => void }) {
   const router = useRouter();

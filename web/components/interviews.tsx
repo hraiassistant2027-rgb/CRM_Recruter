@@ -290,7 +290,7 @@ export function InterviewActions({
             rows={3}
             placeholder="Коментар: сильні сторони, сумніви, домовленості"
             aria-label="Коментар"
-            className="block w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm"
+            className="block w-full rounded-xl border border-field-line bg-field px-3.5 py-2.5 text-sm focus:bg-white"
           />
           <Button type="submit" disabled={busy}>
             {busy ? '…' : 'Зберегти результат'}

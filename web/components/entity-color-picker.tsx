@@ -12,7 +12,7 @@ export function EntityColorPicker({
   emptyLabel: string;
 }) {
   const box =
-    'flex h-9 items-center justify-center rounded-lg border border-line bg-white px-2 has-[:checked]:border-ink has-[:checked]:ring-2 has-[:checked]:ring-ink/30 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent-strong cursor-pointer';
+    'flex h-9 items-center justify-center rounded-lg border border-field-line bg-field px-2 has-[:checked]:border-ink has-[:checked]:ring-2 has-[:checked]:ring-ink/30 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent-strong cursor-pointer focus:bg-white';
   return (
     <div role="radiogroup" className="flex flex-wrap gap-1.5">
       <label className={`${box} text-xs text-ink-soft`}>

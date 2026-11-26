@@ -68,7 +68,7 @@ export function BulkResumeUpload({ vacancyId, sources }: { vacancyId?: string; s
               setFiles(chosen.slice(0, MAX_FILES));
               setRows([]);
             }}
-            className="block w-full text-sm file:mr-3 file:rounded-lg file:border file:border-line file:bg-white file:px-3 file:py-2 file:text-sm"
+            className="block w-full text-sm file:mr-3 file:rounded-lg file:border file:border-field-line file:bg-field file:px-3 file:py-2 file:text-sm focus:bg-white"
           />
         </Field>
         <Field label="Джерело для всіх (необов'язково)" htmlFor="bulk-source">

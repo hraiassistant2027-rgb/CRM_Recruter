@@ -18,7 +18,11 @@ export async function DashboardOverview({
   vacancy,
   filterHiddenFields = {},
   showFilter = true,
+  compact = false,
+  paramName = 'vacancy',
 }: {
+  compact?: boolean;
+  paramName?: string;
   ws: WorkspaceCode;
   current: WorkspaceCode;
   vacancy: string | null;
@@ -40,26 +44,36 @@ export async function DashboardOverview({
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-5 lg:grid-cols-[17rem_minmax(0,1fr)]">
-        <ChartCard title="Тривалість роботи над поточними вакансіями" subtitle="Відкриті вакансії і вакансії на паузі">
-          <KpiTile
-            label="Середній час роботи над вакансіями"
-            value={o.avg_open_days != null ? `${o.avg_open_days}д` : '—'}
-            caption="Середня тривалість роботи над поточними вакансіями"
-          />
-        </ChartCard>
-        <ChartCard title="Час роботи над поточними вакансіями" subtitle="Днів від відкриття · колір — юрособа">
+      {compact ? (
+        <ChartCard title="Тривалість роботи над поточними вакансіями" subtitle="Днів від відкриття · колір — юрособа">
+          <div className="mb-4 flex items-center gap-4 rounded-2xl bg-soft px-4 py-3">
+            <span className="text-3xl font-bold tracking-tight tabular-nums">{o.avg_open_days != null ? `${o.avg_open_days}д` : '—'}</span>
+            <span className="text-xs leading-tight text-ink-soft">середня тривалість роботи над поточними вакансіями</span>
+          </div>
           <HBarChart items={o.open_vacancies.map((v) => ({ id: v.id, label: v.title, value: v.days, color: v.color, href: href(`/vacancies/${v.id}`) }))} />
         </ChartCard>
-      </div>
+      ) : (
+        <div className="grid gap-5 lg:grid-cols-[17rem_minmax(0,1fr)]">
+          <ChartCard title="Тривалість роботи над поточними вакансіями" subtitle="Відкриті вакансії і вакансії на паузі">
+            <KpiTile
+              label="Середній час роботи над вакансіями"
+              value={o.avg_open_days != null ? `${o.avg_open_days}д` : '—'}
+              caption="Середня тривалість роботи над поточними вакансіями"
+            />
+          </ChartCard>
+          <ChartCard title="Час роботи над поточними вакансіями" subtitle="Днів від відкриття · колір — юрособа">
+            <HBarChart items={o.open_vacancies.map((v) => ({ id: v.id, label: v.title, value: v.days, color: v.color, href: href(`/vacancies/${v.id}`) }))} />
+          </ChartCard>
+        </div>
+      )}
 
       {showFilter && (
         <form method="get" className="flex flex-wrap items-center justify-end gap-2">
           {Object.entries(filterHiddenFields).map(([k, v]) => (
             <input key={k} type="hidden" name={k} value={v} />
           ))}
-          <label htmlFor={`dash-vacancy-${ws}`} className="text-sm text-ink-soft">Воронка, відмови і джерела для</label>
-          <select id={`dash-vacancy-${ws}`} name="vacancy" defaultValue={vacancy ?? ''} className="max-w-64 rounded-xl border border-line bg-white px-3 py-1.5 text-sm">
+          <label htmlFor={`dash-vacancy-${ws}`} className="text-sm text-ink-soft">{compact ? 'Для' : 'Воронка, відмови і джерела для'}</label>
+          <select id={`dash-vacancy-${ws}`} name={paramName} defaultValue={vacancy ?? ''} className="max-w-64 rounded-xl border border-field-line bg-field px-3 py-1.5 text-sm focus:bg-white">
             <option value="">усіх вакансій</option>
             {((vs ?? []) as { id: string; title: string }[]).map((v) => (
               <option key={v.id} value={v.id}>{v.title}</option>
@@ -77,7 +91,7 @@ export async function DashboardOverview({
             <span>Наведіть на рядок — розбивка відмов і час на етапі</span>
           </p>
         </ChartCard>
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className={`grid gap-5 ${compact ? '' : 'lg:grid-cols-2'}`}>
         <ChartCard title={vacancyTitle ? 'Причини відмов по вакансії' : 'Причини відмов'} subtitle={scope}>
           <PieChart
             label="Причини відмов"

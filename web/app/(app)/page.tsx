@@ -18,6 +18,19 @@ import type { WorkspaceCode } from '@/lib/workspace';
 
 export const metadata: Metadata = { title: 'Dashboard' };
 
+function WorkspaceHeading({ name, icon, note }: { name: string; icon: string; note?: string }) {
+  return (
+    <div className="flex items-center gap-3 px-2 pt-1">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={icon} alt="" aria-hidden="true" className="h-9 w-9 rounded-xl bg-white object-contain p-0.5 shadow-card" />
+      <div>
+        <h2 className="text-xl font-bold tracking-tight">{name}</h2>
+        {note && <p className="text-xs text-ink-soft">{note}</p>}
+      </div>
+    </div>
+  );
+}
+
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const session = await requireSession();
   // Попередження адміністраторам, коли сховище файлів майже заповнене
@@ -29,7 +42,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const curCode: WorkspaceCode = current?.code ?? 'kan';
   // У KAN Talent адміністратор може показати під основним дашборд HomeHub
   const homehub = curCode === 'kan' ? workspaces.find((w) => w.code === 'homehub') : undefined;
-  const showHomehub = Boolean(homehub) && sp.homehub === '1';
+  // За замовчуванням HomeHub показано поруч (ліворуч KAN, праворуч HomeHub); «Лише KAN Talent» — ?homehub=0
+  const showHomehub = Boolean(homehub) && sp.homehub !== '0';
+  const one1 = (k: string) => (Array.isArray(sp[k]) ? sp[k]![0] : (sp[k] as string | undefined));
+  const hhRaw = one1('hvacancy');
+  const hhVacancy = hhRaw && /^[0-9a-f-]{36}$/i.test(hhRaw) ? hhRaw : null;
+  // Зберегти інші фільтри при зміні одного
+  const keepParams = (except: string) =>
+    Object.fromEntries(['vacancy', 'hvacancy', 'homehub'].filter((k) => k !== except && one1(k)).map((k) => [k, one1(k)!]));
 
   // Аналітичні графіки дашборда (за весь період; воронка, відмови і джерела — по всіх вакансіях або одній)
   const canCharts = can(p, 'analytics.read') || can(p, 'applications.read');
@@ -122,12 +142,44 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </Alert>
         </div>
       )}
-      <WorkspaceStats ws={curCode} current={curCode} permissions={p} />
-      {canCharts && (
-        <div className="mt-6">
-          <DashboardOverview ws={curCode} current={curCode} vacancy={vacancyFilter} filterHiddenFields={sp.homehub === '1' ? { homehub: '1' } : {}} />
+      {homehub && (
+        <div className="mb-3 flex justify-end">
+          <Link href={showHomehub ? '/?homehub=0' : '/'} scroll={false} className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-ink shadow-card hover:bg-panel">
+            {showHomehub ? 'Лише KAN Talent' : 'Показати поруч HomeHub'}
+          </Link>
         </div>
       )}
+      <div className={showHomehub ? 'grid items-start gap-5 2xl:gap-6 lg:grid-cols-2' : ''}>
+        <div className="min-w-0 space-y-5">
+          {showHomehub && <WorkspaceHeading name={current?.name ?? 'KAN Talent'} icon={current?.icon ?? '/logo-icon.png'} />}
+          <WorkspaceStats ws={curCode} current={curCode} permissions={p} compact={showHomehub} />
+          {canCharts && (
+            <DashboardOverview
+              ws={curCode}
+              current={curCode}
+              vacancy={vacancyFilter}
+              compact={showHomehub}
+              filterHiddenFields={keepParams('vacancy')}
+            />
+          )}
+        </div>
+        {showHomehub && homehub && (
+          <div data-theme="homehub" className="min-w-0 space-y-5" aria-label="Дашборд HomeHub">
+            <WorkspaceHeading name="HomeHub" icon={homehub.icon} note="Клік на картку відкриє розділ у просторі HomeHub" />
+            <WorkspaceStats ws="homehub" current={curCode} permissions={p} compact />
+            {canCharts && (
+              <DashboardOverview
+                ws="homehub"
+                current={curCode}
+                vacancy={hhVacancy}
+                compact
+                paramName="hvacancy"
+                filterHiddenFields={keepParams('hvacancy')}
+              />
+            )}
+          </div>
+        )}
+      </div>
       {can(p, 'applications.read') && (
         <Card className="mt-6">
           <div className="mb-1 grid max-w-4xl gap-1 px-2 md:grid-cols-[minmax(0,1fr)_18rem] md:items-end md:gap-x-6">
@@ -178,33 +230,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             </ul>
           )}
         </Card>
-      )}
-      {homehub && (
-        <section data-theme="homehub" className="mt-8 rounded-[28px] bg-soft p-5 shadow-card" aria-label="Дашборд HomeHub">
-          <div className="flex flex-wrap items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={homehub.icon} alt="" aria-hidden="true" className="h-8 w-8 rounded-lg bg-white object-contain" />
-            <h2 className="text-lg font-bold tracking-tight">HomeHub — управляюча компанія</h2>
-            <Link
-              href={showHomehub ? '/' : '/?homehub=1'}
-              scroll={false}
-              className="ml-auto rounded-xl bg-white px-4 py-2 text-sm font-semibold text-accent-strong shadow-card hover:bg-panel"
-            >
-              {showHomehub ? 'Сховати дашборд HomeHub' : 'Показати дашборд HomeHub'}
-            </Link>
-          </div>
-          {showHomehub && (
-            <div className="mt-4">
-              <WorkspaceStats ws="homehub" current={curCode} permissions={p} title="HomeHub сьогодні" />
-              {canCharts && (
-                <div className="mt-5">
-                  <DashboardOverview ws="homehub" current={curCode} vacancy={null} showFilter={false} />
-                </div>
-              )}
-              <p className="mt-3 text-xs text-ink-soft">Клік на картку відкриє розділ у просторі HomeHub.</p>
-            </div>
-          )}
-        </section>
       )}
     </>
   );

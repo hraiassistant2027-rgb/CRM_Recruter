@@ -209,7 +209,7 @@ export function PipelineBoard({
                                 const target = stages.find((s) => s.id === e.target.value);
                                 if (target) requestMove(card, target);
                               }}
-                              className="w-full rounded-md border border-line bg-white px-2 py-1 text-xs"
+                              className="w-full rounded-md border border-field-line bg-field px-2 py-1 text-xs focus:bg-white"
                             >
                               {stages.map((s) => (
                                 <option key={s.id} value={s.id}>

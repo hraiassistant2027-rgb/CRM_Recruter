@@ -13,7 +13,7 @@ import { LEGAL_BASIS_LABELS, MATCH_LABELS, type CandidateRow } from '@/lib/candi
 type Source = { id: string; name: string };
 
 const textareaClass =
-  'block w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-soft/60 focus:border-accent-strong focus:outline-none focus:ring-2 focus:ring-accent/30';
+  'block w-full rounded-xl border border-field-line bg-field px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-soft/60 focus:border-accent-strong focus:outline-none focus:bg-white focus:ring-4 focus:ring-accent/15';
 
 export function CandidateForm({
   sources,
@@ -176,7 +176,7 @@ export function CandidateForm({
               type="file"
               accept=".pdf,.doc,.docx,.rtf,.txt,.jpg,.jpeg,.png"
               onChange={(e) => onResumeChosen(e.currentTarget)}
-              className="block w-full text-sm file:mr-3 file:rounded-lg file:border file:border-line file:bg-white file:px-3 file:py-2 file:text-sm"
+              className="block w-full text-sm file:mr-3 file:rounded-lg file:border file:border-field-line file:bg-field file:px-3 file:py-2 file:text-sm focus:bg-white"
             />
           </Field>
           {parsing && <p className="text-sm text-ink-soft">Читаємо резюме…</p>}

@@ -72,11 +72,11 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
         <form method="get" className="flex flex-wrap items-end gap-3">
           <label className="block">
             <span className="mb-1.5 block text-xs font-medium text-ink-soft">З</span>
-            <input type="date" name="from" defaultValue={f.from} className="rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm" />
+            <input type="date" name="from" defaultValue={f.from} className="rounded-xl border border-field-line bg-field px-3.5 py-2.5 text-sm focus:bg-white" />
           </label>
           <label className="block">
             <span className="mb-1.5 block text-xs font-medium text-ink-soft">по</span>
-            <input type="date" name="to" defaultValue={f.to} className="rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm" />
+            <input type="date" name="to" defaultValue={f.to} className="rounded-xl border border-field-line bg-field px-3.5 py-2.5 text-sm focus:bg-white" />
           </label>
           <label className="block">
             <span className="mb-1.5 block text-xs font-medium text-ink-soft">Рекрутер</span>

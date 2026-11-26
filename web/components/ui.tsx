@@ -41,8 +41,8 @@ export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElem
     <input
       {...props}
       className={cx(
-        'block w-full rounded-3xl bg-white shadow-card px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-soft/60',
-        'focus:border-accent-strong focus:outline-none focus:ring-2 focus:ring-accent/30',
+        'block w-full rounded-xl border border-field-line bg-field px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-soft/70 transition-colors',
+        'hover:border-ink-soft/40 focus:border-accent-strong focus:bg-white focus:outline-none focus:ring-4 focus:ring-accent/15',
         className,
       )}
     />
@@ -54,8 +54,8 @@ export function Select({ className, children, ...props }: SelectHTMLAttributes<H
     <select
       {...props}
       className={cx(
-        'block w-full rounded-3xl bg-white shadow-card px-3.5 py-2.5 text-sm text-ink',
-        'focus:border-accent-strong focus:outline-none focus:ring-2 focus:ring-accent/30',
+        'block w-full rounded-xl border border-field-line bg-field px-3.5 py-2.5 text-sm text-ink transition-colors',
+        'hover:border-ink-soft/40 focus:border-accent-strong focus:bg-white focus:outline-none focus:ring-4 focus:ring-accent/15',
         className,
       )}
     >

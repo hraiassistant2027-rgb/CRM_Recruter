@@ -53,7 +53,7 @@ function Row({ row, contacts, canSend }: { row: HandoffRow; contacts: { id: stri
             defaultValue={row.docs}
             disabled={!row.canEdit || busy}
             onChange={(e) => start(async () => { const r = await setHrStatus(row.applicationId, 'hr_docs_status', e.target.value); if (r.error) setMsg(r); else router.refresh(); })}
-            className={`w-full rounded border border-line px-1 py-0.5 ${row.docs === 'passed' ? 'text-ok' : ''}`}
+            className={`w-full rounded-lg border border-field-line bg-field px-1.5 py-1 ${row.docs === 'passed' ? 'text-ok' : ''}`}
           >
             <option value="pending">очікую</option>
             <option value="passed">пройдено</option>
@@ -66,7 +66,7 @@ function Row({ row, contacts, canSend }: { row: HandoffRow; contacts: { id: stri
             defaultValue={row.approval}
             disabled={!row.canEdit || busy}
             onChange={(e) => start(async () => { const r = await setHrStatus(row.applicationId, 'hr_approval_status', e.target.value); if (r.error) setMsg(r); else router.refresh(); })}
-            className={`w-full rounded border border-line px-1 py-0.5 ${row.approval === 'signed' ? 'text-ok' : ''}`}
+            className={`w-full rounded-lg border border-field-line bg-field px-1.5 py-1 ${row.approval === 'signed' ? 'text-ok' : ''}`}
           >
             <option value="pending">очікую підписання</option>
             <option value="signed">підписано</option>

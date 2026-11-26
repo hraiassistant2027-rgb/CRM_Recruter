@@ -178,7 +178,7 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
                 {workspaces.map((w) => (
                   <label
                     key={w.code}
-                    className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1 has-[:checked]:border-accent-strong has-[:checked]:bg-accent-soft has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent/40"
+                    className="flex cursor-pointer items-center gap-1.5 rounded-full border border-field-line bg-field px-3 py-1 has-[:checked]:border-accent-strong has-[:checked]:bg-accent-soft has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent/40 focus:bg-white"
                   >
                     <input type="checkbox" name="base" value={w.code} defaultChecked={searchBases.includes(w.code)} className="sr-only" />
                     {/* eslint-disable-next-line @next/next/no-img-element */}
