@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { prepareHrHandoff, sendHrHandoff, setHrStatus } from '@/app/(app)/hr/actions';
 import { Alert, Badge, Button, Input, Select } from '@/components/ui';
+import { InfoStrip, PairPager } from '@/components/pair-pager';
 
 export type HandoffRow = {
   applicationId: string;
@@ -27,14 +28,14 @@ function Row({ row, contacts, canSend }: { row: HandoffRow; contacts: { id: stri
   const [busy, start] = useTransition();
 
   return (
-    <li className={`py-3 text-sm ${row.lastHandoff ? '' : 'bg-accent-soft/30'}`}>
-      <div className="grid gap-3 px-2 md:grid-cols-[minmax(0,1fr)_18rem] md:items-start md:gap-x-6">
+    <div className="flex h-full flex-col justify-center text-sm">
+      <div className="grid gap-3 px-1 md:grid-cols-[minmax(0,1fr)_16rem] md:items-start md:gap-x-5">
         <div className="min-w-0 space-y-1.5">
           <div className="flex flex-wrap items-baseline gap-x-2">
-            <Link href={`/candidates/${row.candidateId}`} className="font-medium hover:underline">
+            <Link href={`/candidates/${row.candidateId}`} className="font-semibold hover:underline">
               {row.candidateName}
             </Link>
-            <span className="text-xs text-ink-soft">
+            <span className="truncate text-xs text-ink-soft">
               {row.vacancyTitle}
               {row.phone ? ` · ${row.phone}` : ''}
             </span>
@@ -46,7 +47,7 @@ function Row({ row, contacts, canSend }: { row: HandoffRow; contacts: { id: stri
             {row.lastHandoff ? <Badge tone="neutral">передано {row.lastHandoff}</Badge> : <Badge tone="danger">не передано кадровику</Badge>}
           </div>
         </div>
-        <div className="grid grid-cols-[9rem_minmax(0,1fr)] items-center gap-x-2 gap-y-1.5 text-xs">
+        <div className="grid grid-cols-[8.5rem_minmax(0,1fr)] items-center gap-x-2 gap-y-1.5 text-xs">
           <span className="text-ink-soft">Перевірка документів:</span>
           <select
             aria-label="Перевірка документів"
@@ -100,7 +101,9 @@ function Row({ row, contacts, canSend }: { row: HandoffRow; contacts: { id: stri
         </div>
       )}
       {draft && (
-        <div className="mx-2 mt-3 space-y-2 rounded-lg border border-line bg-white p-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 p-4" role="dialog" aria-modal="true" aria-label={`Лист кадровику: ${row.candidateName}`}>
+        <div className="w-full max-w-2xl space-y-2 rounded-3xl bg-white p-6 shadow-card">
+          <h3 className="text-lg font-bold">Лист кадровику — {row.candidateName}</h3>
           <p className="text-xs text-ink-soft">
             Кому: <strong>{draft.to}</strong>
           </p>
@@ -133,36 +136,35 @@ function Row({ row, contacts, canSend }: { row: HandoffRow; contacts: { id: stri
               Скасувати
             </Button>
           </div>
+          {msg?.error && <Alert>{msg.error}</Alert>}
+        </div>
         </div>
       )}
-      {msg?.error && <div className="mx-2 mt-2"><Alert>{msg.error}</Alert></div>}
-      {msg?.ok && <div className="mx-2 mt-2"><Alert kind="success">{msg.ok}</Alert></div>}
-    </li>
+      {!draft && msg?.error && <p className="mt-1 truncate px-1 text-xs text-danger" title={msg.error}>{msg.error}</p>}
+      {!draft && msg?.ok && <p className="mt-1 truncate px-1 text-xs text-ok">{msg.ok}</p>}
+    </div>
   );
 }
 
 export function HrHandoffList({ rows, contacts, canSend, gmailReady }: { rows: HandoffRow[]; contacts: { id: string; name: string; email: string }[]; canSend: boolean; gmailReady: boolean }) {
   return (
     <div>
-      {canSend && !gmailReady && (
-        <p className="mb-2 text-xs text-ink-soft">
-          Щоб надсилати лист кадровику, підключіть Google у{' '}
-          <Link href="/profile" className="underline">
-            профілі
-          </Link>
-          .
-        </p>
+      {canSend && !gmailReady ? (
+        <InfoStrip tone="warn">
+          Щоб надсилати лист кадровику, підключіть Google у <Link href="/profile" className="underline">профілі</Link>.
+        </InfoStrip>
+      ) : canSend && contacts.length === 0 ? (
+        <InfoStrip tone="warn">Кадровиків ще не додано: Налаштування → Довідники → Кадровики.</InfoStrip>
+      ) : (
+        <InfoStrip>Ліворуч — дані кандидата, праворуч — статус готовності перевірок</InfoStrip>
       )}
-      {canSend && contacts.length === 0 && (
-        <p className="mb-2 text-xs text-ink-soft">
-          Список кадровиків порожній — адміністратор додає їх у Налаштування → Довідники → Кадровики.
-        </p>
-      )}
-      <ul className="max-w-4xl divide-y divide-line">
-        {rows.map((r) => (
+      <PairPager
+        label="Кандидати на оформлення"
+        slotClass="h-[14.5rem] py-3"
+        items={rows.map((r) => (
           <Row key={r.applicationId} row={r} contacts={contacts} canSend={canSend && gmailReady} />
         ))}
-      </ul>
+      />
     </div>
   );
 }

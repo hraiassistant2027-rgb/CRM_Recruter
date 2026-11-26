@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Monitor, Send } from 'lucide-react';
 import { saveItRequest, sendItRequest, type ItFields } from '@/app/(app)/it/actions';
-import { Badge, Button, Input } from '@/components/ui';
+import { Badge, Button } from '@/components/ui';
+import { InfoStrip, PairPager } from '@/components/pair-pager';
 
 export type ItRow = {
   applicationId: string;
@@ -29,62 +30,57 @@ function Row({ row, canSend }: { row: ItRow; canSend: boolean }) {
   const ro = !row.canEdit || busy;
   const id = (k: string) => `it-${k}-${row.applicationId}`;
 
+  const small =
+    'block h-8 w-full rounded-lg border border-field-line bg-field px-2.5 text-xs text-ink placeholder:text-ink-soft/60 focus:border-accent-strong focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent/15 disabled:opacity-70';
+  const label = 'mb-0.5 block truncate text-[10px] font-medium uppercase tracking-wide text-ink-soft';
+
   return (
-    <li className="py-4 first:pt-1">
-      <div className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-1 px-1">
-        <Link href={`/candidates/${row.candidateId}`} className="font-semibold hover:underline">{row.candidateName}</Link>
-        <span className="text-xs text-ink-soft">{row.vacancyTitle}{row.phone ? ` · ${row.phone}` : ''}</span>
-        <span className="ml-auto">
-          {row.sent ? <Badge tone="ok">надіслано в IT {row.sent}</Badge> : <Badge tone="danger">ще не надіслано в IT</Badge>}
+    <div className="flex h-full flex-col gap-2 px-1 text-sm">
+      <div className="flex items-baseline gap-2">
+        <Link href={`/candidates/${row.candidateId}`} className="shrink-0 font-semibold hover:underline">{row.candidateName}</Link>
+        <span className="min-w-0 truncate text-xs text-ink-soft">{row.vacancyTitle}{row.phone ? ` · ${row.phone}` : ''}</span>
+        <span className="ml-auto shrink-0">
+          {row.sent ? <Badge tone="ok">надіслано в IT</Badge> : <Badge tone="danger">не надіслано в IT</Badge>}
         </span>
       </div>
-      <dl className="mb-3 grid grid-cols-[9.5rem_minmax(0,1fr)] gap-x-3 gap-y-1 rounded-2xl bg-panel px-4 py-3 text-xs">
-        <dt className="text-ink-soft">Дата оформлення:</dt>
-        <dd className={row.offerAt ? 'font-medium text-ok' : 'text-ink-soft'}>{row.offerAt ?? 'не призначено'}</dd>
-        <dt className="text-ink-soft">Посада:</dt>
-        <dd>{row.vacancyTitle}</dd>
-        <dt className="text-ink-soft">Телефон кандидата:</dt>
-        <dd>{row.phone ?? '—'}</dd>
-      </dl>
-      <div className="grid gap-2 sm:grid-cols-2">
-        <label className="block text-xs">
-          <span className="mb-1 block text-ink-soft">Тип робочого ПК</span>
-          <Input id={id('pc')} list={`pc-types-${row.applicationId}`} value={f.pc_type} onChange={set('pc_type')} disabled={ro} placeholder="Ноутбук" />
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <Badge tone={row.offerAt ? 'ok' : 'warn'}>{row.offerAt ? `оформлення: ${row.offerAt}` : 'дату оформлення не призначено'}</Badge>
+        {row.sent && <span className="truncate text-ink-soft" title={row.sent}>{row.sent}</span>}
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <label className="min-w-0">
+          <span className={label}>Тип робочого ПК</span>
+          <input id={id('pc')} list={`pc-types-${row.applicationId}`} value={f.pc_type} onChange={set('pc_type')} disabled={ro} placeholder="Ноутбук" className={small} />
           <datalist id={`pc-types-${row.applicationId}`}>
             {PC_TYPES.map((t) => (
               <option key={t} value={t} />
             ))}
           </datalist>
         </label>
-        <label className="block text-xs">
-          <span className="mb-1 block text-ink-soft">В яку компанію оформлений</span>
-          <Input id={id('company')} value={f.company} onChange={set('company')} disabled={ro} placeholder="Назва юрособи" />
+        <label className="min-w-0">
+          <span className={label}>Компанія оформлення</span>
+          <input id={id('company')} value={f.company} onChange={set('company')} disabled={ro} placeholder="Юрособа" className={small} />
         </label>
-        <label className="block text-xs">
-          <span className="mb-1 block text-ink-soft">Кабінет (робоче місце)</span>
-          <Input id={id('room')} value={f.room} onChange={set('room')} disabled={ro} placeholder="Каб. 204, офіс на Лесі Українки" />
+        <label className="min-w-0">
+          <span className={label}>Кабінет (робоче місце)</span>
+          <input id={id('room')} value={f.room} onChange={set('room')} disabled={ro} placeholder="Каб. 204" className={small} />
         </label>
-        <label className="block text-xs">
-          <span className="mb-1 block text-ink-soft">Безпосередній керівник</span>
-          <Input id={id('manager')} value={f.manager} onChange={set('manager')} disabled={ro} placeholder="ПІБ керівника" />
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <label className="min-w-0">
+          <span className={label}>Безпосередній керівник</span>
+          <input id={id('manager')} value={f.manager} onChange={set('manager')} disabled={ro} placeholder="ПІБ керівника" className={small} />
         </label>
-        <label className="block text-xs sm:col-span-2">
-          <span className="mb-1 block text-ink-soft">Доступи (про доступи та характеристики запитати у безпосереднього керівника)</span>
-          <textarea
-            id={id('access')}
-            rows={2}
-            value={f.accesses}
-            onChange={set('accesses')}
-            disabled={ro}
-            placeholder="1С, корпоративна пошта, AutoCAD, доступ до папки «Кошториси»…"
-            className="block w-full rounded-xl border border-field-line bg-field px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-soft/70 focus:border-accent-strong focus:bg-white focus:outline-none focus:ring-4 focus:ring-accent/15 disabled:opacity-70"
-          />
+        <label className="col-span-2 min-w-0">
+          <span className={label} title="Про доступи та характеристики запитати у безпосереднього керівника">Доступи (уточнити у керівника)</span>
+          <input id={id('access')} value={f.accesses} onChange={set('accesses')} disabled={ro} placeholder="1С, пошта, AutoCAD, папка «Кошториси»…" className={small} />
         </label>
       </div>
       {row.canEdit && (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2">
           <Button
             type="button"
+            className="!px-3 !py-1.5 text-xs"
             disabled={busy || !canSend}
             onClick={() =>
               start(async () => {
@@ -94,11 +90,12 @@ function Row({ row, canSend }: { row: ItRow; canSend: boolean }) {
               })
             }
           >
-            <Send className="h-4 w-4" aria-hidden /> {busy ? 'Надсилаємо…' : row.sent ? 'Надіслати оновлення в IT' : 'Надіслати в IT'}
+            <Send className="h-3.5 w-3.5" aria-hidden /> {busy ? 'Надсилаємо…' : row.sent ? 'Надіслати оновлення' : 'Надіслати в IT'}
           </Button>
           <Button
             type="button"
             variant="secondary"
+            className="!px-3 !py-1.5 text-xs"
             disabled={busy}
             onClick={() =>
               start(async () => {
@@ -107,41 +104,45 @@ function Row({ row, canSend }: { row: ItRow; canSend: boolean }) {
               })
             }
           >
-            Зберегти чернетку
+            Зберегти
           </Button>
-          {msg?.error && <span className="text-sm text-danger">{msg.error}</span>}
-          {msg?.ok && <span className="text-sm text-ok">{msg.ok}</span>}
+          {msg?.error && <span className="min-w-0 truncate text-xs text-danger" title={msg.error}>{msg.error}</span>}
+          {msg?.ok && <span className="min-w-0 truncate text-xs text-ok" title={msg.ok}>{msg.ok}</span>}
         </div>
       )}
-    </li>
+    </div>
   );
 }
 
 export function ItPrepList({ rows, itEmails, canSend, gmailReady }: { rows: ItRow[]; itEmails: string[]; canSend: boolean; gmailReady: boolean }) {
   return (
     <div>
-      <p className="mb-3 flex items-start gap-2 rounded-2xl bg-soft px-4 py-2.5 text-xs text-ink-soft">
-        <Monitor className="mt-0.5 h-4 w-4 shrink-0 text-accent-strong" aria-hidden />
-        {itEmails.length ? (
-          <span>
+      {!itEmails.length ? (
+        <InfoStrip tone="warn">
+          <Monitor className="h-4 w-4 shrink-0" aria-hidden />
+          <span className="truncate">
+            Адресу IT не вказано: <Link href="/settings/dictionaries" className="underline">Довідники → Системні адміністратори (IT)</Link>
+          </span>
+        </InfoStrip>
+      ) : !gmailReady && canSend ? (
+        <InfoStrip tone="warn">
+          Щоб надсилати листи, підключіть Google у <Link href="/profile" className="underline">Профілі</Link>.
+        </InfoStrip>
+      ) : (
+        <InfoStrip>
+          <Monitor className="h-4 w-4 shrink-0 text-accent-strong" aria-hidden />
+          <span className="truncate" title={itEmails.join(', ')}>
             Лист автоматично піде на: <b className="text-ink">{itEmails.join(', ')}</b>
           </span>
-        ) : (
-          <span>
-            Адресу IT ще не вказано — адміністратор додає її в <Link href="/settings/dictionaries" className="underline">Налаштування → Довідники → Системні адміністратори (IT)</Link>.
-          </span>
-        )}
-      </p>
-      {!gmailReady && canSend && (
-        <p className="mb-3 text-xs text-danger">
-          Щоб надсилати листи, підключіть Google у <Link href="/profile" className="underline">Профілі</Link>.
-        </p>
+        </InfoStrip>
       )}
-      <ul className="divide-y divide-line">
-        {rows.map((r) => (
+      <PairPager
+        label="Підготовка робочого місця IT"
+        slotClass="h-[14.5rem] py-3"
+        items={rows.map((r) => (
           <Row key={r.applicationId} row={r} canSend={canSend && gmailReady && itEmails.length > 0} />
         ))}
-      </ul>
+      />
     </div>
   );
 }

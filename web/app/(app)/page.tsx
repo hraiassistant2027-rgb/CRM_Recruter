@@ -19,6 +19,18 @@ import type { WorkspaceCode } from '@/lib/workspace';
 
 export const metadata: Metadata = { title: 'Dashboard' };
 
+function CardTitle({ title, count, subtitle }: { title: string; count: number; subtitle: string }) {
+  return (
+    <div className="mb-3">
+      <h2 className="flex items-center gap-2 text-lg font-bold tracking-tight">
+        {title}
+        <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-accent px-2 text-sm font-bold text-on-accent tabular-nums">{count}</span>
+      </h2>
+      <p className="text-xs text-ink-soft">{subtitle}</p>
+    </div>
+  );
+}
+
 function WorkspaceHeading({ name, icon, note }: { name: string; icon: string; note?: string }) {
   return (
     <div className="flex items-center gap-3 px-2 pt-1">
@@ -103,6 +115,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     const polyOf = new Map(evs.filter((o) => o.kind === 'polygraph').map((o) => [o.application_id, o]));
     const handed = new Map(((handoffs ?? []) as { application_id: string; hr_email: string; sent_at: string }[]).map((h) => [h.application_id, h]));
     const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? v[0] ?? null : v);
+    const offerTs = (a: A) => {
+      const t = offerAt.get(a.id);
+      return t ? Date.parse(t) : Number.MAX_SAFE_INTEGER;
+    };
+    list.sort((x, y) => offerTs(x) - offerTs(y));
     handoffRows = list.map((a) => {
       const at = offerAt.get(a.id);
       const h = handed.get(a.id);
@@ -220,21 +237,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         )}
       </div>
       {can(p, 'applications.read') && (
-        <div className="mt-6 grid items-start gap-5 xl:grid-cols-2">
-        <Card>
-          <div className="mb-1 grid max-w-4xl gap-1 px-2 md:grid-cols-[minmax(0,1fr)_18rem] md:items-end md:gap-x-6">
-            <h2 className="text-lg font-bold tracking-tight">Кандидати на оформлення</h2>
-            <span className="text-xs text-ink-soft">Статус готовності перевірок кандидата</span>
-          </div>
+        <div className="mt-6 grid items-stretch gap-5 xl:grid-cols-2">
+        <Card className="flex flex-col">
+          <CardTitle title="Кандидати на оформлення" count={handoffRows.length} subtitle="Етап «Офер» · від ранньої дати оформлення до пізньої" />
           {handoffRows.length === 0 ? (
             <p className="text-sm text-ink-soft">Кандидатів на етапі «Офер» немає.</p>
           ) : (
             <HrHandoffList rows={handoffRows} contacts={hrContacts} canSend={can(p, 'email.send')} gmailReady={gmailReady} />
           )}
         </Card>
-          <Card>
-            <h2 className="text-lg font-bold tracking-tight">Підготовка робочого місця IT</h2>
-            <p className="mb-3 text-xs text-ink-soft">Кандидати на етапі «Офер» — дані для системного адміністратора</p>
+          <Card className="flex flex-col">
+            <CardTitle title="Підготовка робочого місця IT" count={itRows.length} subtitle="Дані для системного адміністратора · той самий порядок" />
             {itRows.length === 0 ? (
               <p className="text-sm text-ink-soft">Кандидатів на етапі «Офер» немає.</p>
             ) : (
