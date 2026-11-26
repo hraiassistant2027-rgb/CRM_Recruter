@@ -71,7 +71,7 @@ export async function WorkspaceStats({ ws, current, permissions, title = 'Рек
   };
   return (
     <section className="rounded-[28px] bg-panel p-2 shadow-card">
-      <h2 className="py-3 text-center text-lg text-lg font-bold tracking-tight text-ink-soft">{title}</h2>
+      <h2 className="py-3 text-center text-lg font-semibold tracking-tight text-ink-soft">{title}</h2>
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {stats.map((s, i) => (
           <Link

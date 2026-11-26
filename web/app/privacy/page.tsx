@@ -14,14 +14,14 @@ export default function PrivacyPage() {
           KAN Talent — внутрішня система рекрутингу будівельної компанії KAN. Доступ мають лише працівники відділу рекрутингу та керівники,
           запрошені адміністратором. Публічної реєстрації немає.
         </p>
-        <h2 className="pt-4 text-lg text-lg font-bold tracking-tight">Дані кандидатів</h2>
+        <h2 className="pt-4 text-lg font-bold tracking-tight">Дані кандидатів</h2>
         <p>
           Система зберігає дані, які кандидати надали компанії (резюме, контакти, досвід), а також історію відбору. Дані обробляються згідно із
           Законом України «Про захист персональних даних» і GDPR на підставі згоди кандидата або для підготовки до укладення трудового договору.
           Дані зберігаються на серверах у Європейському Союзі, передаються зашифрованими, доступ обмежено правами ролей, усі дії записуються в журнал.
           Кандидат може запросити доступ до своїх даних, їх виправлення або видалення, звернувшись до відділу рекрутингу компанії.
         </p>
-        <h2 className="pt-4 text-lg text-lg font-bold tracking-tight">Дані облікового запису Google</h2>
+        <h2 className="pt-4 text-lg font-bold tracking-tight">Дані облікового запису Google</h2>
         <p>
           Працівник може за власним бажанням підключити свій обліковий запис Google, щоб надсилати листи кандидатам і планувати співбесіди.
           Система використовує дані Google лише для цього:
@@ -43,7 +43,7 @@ export default function PrivacyPage() {
           </a>
           , зокрема вимогам щодо обмеженого використання (Limited Use).
         </p>
-        <h2 className="pt-4 text-lg text-lg font-bold tracking-tight">English summary</h2>
+        <h2 className="pt-4 text-lg font-bold tracking-tight">English summary</h2>
         <p>
           KAN Talent is an internal recruiting system used only by invited employees of KAN. When an employee connects a Google account, the app uses
           Gmail to send messages the employee composes and confirms, reads only correspondence with candidates stored in the system, and manages
@@ -51,7 +51,7 @@ export default function PrivacyPage() {
           parties, used for advertising or for training AI models. Use of information received from Google APIs adheres to the Google API Services User
           Data Policy, including the Limited Use requirements.
         </p>
-        <h2 className="pt-4 text-lg text-lg font-bold tracking-tight">Контакти</h2>
+        <h2 className="pt-4 text-lg font-bold tracking-tight">Контакти</h2>
         <p>Питання щодо обробки даних: hr.ai.assistant.2027@gmail.com</p>
       </section>
     </main>
