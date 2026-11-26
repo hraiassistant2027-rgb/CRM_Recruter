@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { can, type Permissions } from '@/lib/permissions';
-import { Card } from '@/components/ui';
 import { switchHref, type WorkspaceCode } from '@/lib/workspace';
 
 type Supa = Awaited<ReturnType<typeof createClient>>;
@@ -15,7 +14,7 @@ async function countOf(sb: Supa, table: string, filter?: (q: any) => any): Promi
   return error ? null : (count ?? 0);
 }
 
-export async function WorkspaceStats({ ws, current, permissions }: { ws: WorkspaceCode; current: WorkspaceCode; permissions: Permissions }) {
+export async function WorkspaceStats({ ws, current, permissions, title = 'Рекрутинг сьогодні' }: { ws: WorkspaceCode; current: WorkspaceCode; permissions: Permissions; title?: string }) {
   const sb = await createClient({ workspace: ws });
   const p = permissions;
   const [candidates, openVacancies, activeApplications] = await Promise.all([
@@ -65,26 +64,42 @@ export async function WorkspaceStats({ ws, current, permissions }: { ws: Workspa
   ].filter((s) => s.value !== null);
   if (stats.length === 0) return null;
 
+  const CAPTION: Record<string, string> = {
+    '/candidates': 'у базі простору',
+    '/vacancies': 'відкрито зараз',
+    '/pipeline': 'кандидатів у воронках',
+  };
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {stats.map((s) => (
-        <Link key={s.label} href={href(s.path)}>
-          <Card className="h-full transition-colors hover:border-accent">
-            <p className="text-sm text-ink-soft">{s.label}</p>
-            <p className="mt-2 text-3xl font-semibold">{s.value}</p>
+    <section className="rounded-[28px] bg-panel p-2 shadow-card">
+      <h2 className="py-3 text-center text-lg text-lg font-bold tracking-tight text-ink-soft">{title}</h2>
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        {stats.map((s, i) => (
+          <Link
+            key={s.label}
+            href={href(s.path)}
+            className={`group block rounded-3xl p-6 transition-shadow hover:shadow-card ${i === 1 ? 'bg-soft' : 'bg-white'}`}
+          >
+            <p className="flex items-center gap-2 text-base font-bold text-ink">
+              {s.label}
+              {i === 1 && <span className="rounded-md bg-ink px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">в роботі</span>}
+            </p>
+            <p className="mt-2 flex items-end gap-2">
+              <span className="text-5xl font-bold leading-none tracking-tight tabular-nums">{s.value}</span>
+              <span className="pb-1 text-xs leading-tight text-ink-soft">{CAPTION[s.path]}</span>
+            </p>
             {s.path === '/candidates' && sourceStats.length > 0 && (
-              <ul className="mt-3 space-y-1 text-sm">
+              <ul className="mt-5 space-y-1.5 text-sm">
                 {sourceStats.map((src) => (
                   <li key={src.name} className="flex items-center gap-2">
                     <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: src.color }} aria-hidden />
                     <span className="flex-1 truncate">{src.name}</span>
-                    <span className="font-medium tabular-nums">{src.count}</span>
+                    <span className="font-semibold tabular-nums">{src.count}</span>
                   </li>
                 ))}
               </ul>
             )}
             {s.path === '/vacancies' && vacancyList.length > 0 && (
-              <ul className="mt-3 max-h-64 space-y-1 overflow-y-auto pr-1 text-sm">
+              <ul className="mt-5 max-h-64 space-y-1.5 overflow-y-auto pr-1 text-sm">
                 {vacancyList.map((v) => (
                   <li key={v.id} className="flex items-center gap-2">
                     <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: v.color }} aria-hidden />
@@ -93,9 +108,9 @@ export async function WorkspaceStats({ ws, current, permissions }: { ws: Workspa
                 ))}
               </ul>
             )}
-          </Card>
-        </Link>
-      ))}
-    </div>
+          </Link>
+        ))}
+      </div>
+    </section>
   );
 }

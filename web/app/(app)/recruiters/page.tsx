@@ -99,13 +99,13 @@ export default async function RecruitersPage({ searchParams }: { searchParams: P
           <form method="get" className="ml-auto flex flex-wrap items-end gap-2">
             <label className="block">
               <span className="mb-1 block text-xs text-ink-soft">З</span>
-              <input type="date" name="from" defaultValue={f.from} className="rounded-lg border border-line bg-white px-3 py-1.5 text-sm" />
+              <input type="date" name="from" defaultValue={f.from} className="rounded-xl border border-line bg-white px-3 py-1.5 text-sm" />
             </label>
             <label className="block">
               <span className="mb-1 block text-xs text-ink-soft">по</span>
-              <input type="date" name="to" defaultValue={f.to} className="rounded-lg border border-line bg-white px-3 py-1.5 text-sm" />
+              <input type="date" name="to" defaultValue={f.to} className="rounded-xl border border-line bg-white px-3 py-1.5 text-sm" />
             </label>
-            <button type="submit" className="rounded-lg border border-line bg-white px-3 py-1.5 text-sm hover:bg-surface">Показати</button>
+            <button type="submit" className="rounded-xl border border-line bg-white px-3 py-1.5 text-sm hover:bg-surface">Показати</button>
           </form>
         </div>
       </Card>
@@ -128,7 +128,7 @@ export default async function RecruitersPage({ searchParams }: { searchParams: P
                     {initials(r.name)}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <h2 className="truncate font-medium">{r.name}</h2>
+                    <h2 className="truncate text-lg font-bold tracking-tight">{r.name}</h2>
                     <div className="mt-2 grid grid-cols-3 gap-2 text-center text-xs">
                       <div className="rounded-lg bg-surface px-2 py-1.5">
                         <div className="text-lg font-semibold tabular-nums">{r.open_now}</div>

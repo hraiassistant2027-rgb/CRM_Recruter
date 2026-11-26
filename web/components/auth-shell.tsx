@@ -8,9 +8,9 @@ export function AuthShell({ title, subtitle, children }: { title: string; subtit
         <div className="mb-6 flex items-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo-icon.png" alt="" aria-hidden="true" className="h-11 w-11 rounded-lg" />
-          <span className="text-lg font-semibold">KAN Talent</span>
+          <span className="text-xl font-bold tracking-tight">KAN Talent</span>
         </div>
-        <div className="rounded-2xl border border-line bg-white p-8 shadow-sm">
+        <div className="rounded-3xl bg-white p-8 shadow-card">
           <h1 className="text-xl font-semibold">{title}</h1>
           {subtitle && <p className="mt-1 text-sm text-ink-soft">{subtitle}</p>}
           <div className="mt-6">{children}</div>

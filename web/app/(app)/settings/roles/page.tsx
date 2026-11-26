@@ -42,7 +42,7 @@ export default async function RolesPage({ searchParams }: { searchParams: Promis
       <div className="grid gap-4 lg:grid-cols-[1fr_2fr]">
         <div className="space-y-4">
           <Card>
-            <h2 className="mb-2 font-medium">Ролі</h2>
+            <h2 className="mb-2 text-lg font-bold tracking-tight">Ролі</h2>
             <ul className="divide-y divide-line">
               {roleList.map((r) => (
                 <li key={r.id}>
@@ -64,14 +64,14 @@ export default async function RolesPage({ searchParams }: { searchParams: Promis
             </ul>
           </Card>
           <Card>
-            <h2 className="mb-3 font-medium">Нова роль</h2>
+            <h2 className="mb-3 text-lg font-bold tracking-tight">Нова роль</h2>
             <CreateRoleForm />
           </Card>
         </div>
         <Card>
           {selected ? (
             <>
-              <h2 className="mb-3 font-medium">Роль «{selected.name}»</h2>
+              <h2 className="mb-3 text-lg font-bold tracking-tight">Роль «{selected.name}»</h2>
               <RoleEditor
                 key={selected.id}
                 role={selected}

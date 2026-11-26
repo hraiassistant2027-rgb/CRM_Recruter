@@ -142,7 +142,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
         <DayListButton days={dayLists} defaultDate={today} />
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-line bg-white">
+      <div className="overflow-x-auto rounded-3xl bg-white shadow-card">
         <div className={days.length > 5 ? 'min-w-[1050px]' : 'min-w-[800px]'}>
           <div className="grid border-b border-line bg-surface text-xs" style={{ gridTemplateColumns: `56px repeat(${days.length}, minmax(0, 1fr))` }}>
             <div />

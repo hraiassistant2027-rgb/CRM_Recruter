@@ -58,7 +58,7 @@ export default async function VacanciesPage({ searchParams }: { searchParams: Pr
         title="Вакансії"
         actions={
           can(session.permissions, 'vacancies.manage') ? (
-            <Link href="/vacancies/new" className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-strong">
+            <Link href="/vacancies/new" className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-on-accent hover:bg-accent-strong">
               <Plus className="h-4 w-4" aria-hidden /> Нова вакансія
             </Link>
           ) : undefined
@@ -83,7 +83,7 @@ export default async function VacanciesPage({ searchParams }: { searchParams: Pr
             <input type="checkbox" name="mine" value="1" defaultChecked={mine} className="accent-[var(--color-accent-strong)]" />
             Лише мої
           </label>
-          <button type="submit" className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-strong">
+          <button type="submit" className="rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-on-accent hover:bg-accent-strong">
             Показати
           </button>
         </form>
@@ -94,7 +94,7 @@ export default async function VacanciesPage({ searchParams }: { searchParams: Pr
           <p className="text-sm text-ink-soft">Вакансій не знайдено.</p>
         </Card>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-line bg-white">
+        <div className="overflow-x-auto rounded-3xl bg-white shadow-card">
           <table className="w-full min-w-[820px] text-sm">
             <thead className="border-b border-line bg-surface text-left text-xs uppercase tracking-wide text-ink-soft">
               <tr>

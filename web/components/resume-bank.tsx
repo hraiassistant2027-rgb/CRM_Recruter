@@ -39,7 +39,7 @@ export function ResumeBank({ vacancies, canAdd }: { vacancies: { id: string; tit
   return (
     <div className="space-y-4">
       <form
-        className="grid gap-3 rounded-xl border border-line bg-white p-4 md:grid-cols-4"
+        className="grid gap-3 rounded-3xl bg-white shadow-card p-4 md:grid-cols-4"
         onSubmit={(e) => {
           e.preventDefault();
           run(false);
@@ -111,7 +111,7 @@ export function ResumeBank({ vacancies, canAdd }: { vacancies: { id: string; tit
                 </label>
               )}
             </div>
-            <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-white">
+            <ul className="divide-y divide-line overflow-hidden rounded-3xl bg-white shadow-card">
               {results.map((f) => {
                 const state = added[f.id];
                 const candidateId = state?.candidateId ?? f.candidateId;
@@ -156,7 +156,7 @@ export function ResumeBank({ vacancies, canAdd }: { vacancies: { id: string; tit
 
           {preview && (
             <aside className="xl:sticky xl:top-4 xl:self-start">
-              <div className="overflow-hidden rounded-xl border border-line bg-white">
+              <div className="overflow-hidden rounded-3xl bg-white shadow-card">
                 <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-2 text-sm">
                   <span className="truncate font-medium">{preview.name}</span>
                   <span className="flex shrink-0 gap-3">

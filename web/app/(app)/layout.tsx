@@ -28,17 +28,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div data-theme={ws.theme} className="flex min-h-screen bg-surface">
       <Sidebar items={menu} workspace={ws} workspaces={list} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 items-center justify-end gap-2 border-b border-line bg-white px-4 lg:px-8">
-          <span className="mr-auto hidden items-center gap-2 rounded-full bg-accent-soft px-3 py-1 text-xs font-medium text-accent-strong sm:inline-flex">
+        <header className="flex h-16 items-center justify-end gap-2 px-4 pt-2 lg:px-8">
+          <span className="mr-auto hidden items-center gap-2 rounded-full bg-white px-3.5 py-1.5 text-xs font-semibold text-accent-strong shadow-card sm:inline-flex">
             <span className="h-2 w-2 rounded-full bg-accent" aria-hidden />
             {ws.name}
           </span>
-          <Link href="/profile" className="rounded-lg px-3 py-2 text-sm text-ink hover:bg-surface">
+          <Link href="/profile" className="rounded-xl bg-white px-3.5 py-2 text-sm font-medium text-ink shadow-card hover:bg-panel">
             {session.profile.full_name}
           </Link>
           <SignOutButton />
         </header>
-        <main className="flex-1 px-4 py-8 lg:px-8">{children}</main>
+        <main className="flex-1 px-4 pb-10 pt-4 lg:px-8">{children}</main>
       </div>
     </div>
   );

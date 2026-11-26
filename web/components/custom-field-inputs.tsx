@@ -2,7 +2,7 @@
 import { CUSTOM_MARKER, formatCustomValue, inputName, type CustomValues, type FieldDef } from '@/lib/custom-fields';
 
 const base =
-  'block w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-ink-soft/60 focus:border-accent-strong focus:outline-none focus:ring-2 focus:ring-accent/30';
+  'block w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-soft/60 focus:border-accent-strong focus:outline-none focus:ring-2 focus:ring-accent/30';
 
 export function CustomFieldInputs({
   fields,
@@ -21,7 +21,7 @@ export function CustomFieldInputs({
   return (
     <section className="space-y-4">
       <input type="hidden" name={CUSTOM_MARKER} value="1" />
-      <h2 className="font-semibold">{title}</h2>
+      <h2 className="text-lg font-bold tracking-tight">{title}</h2>
       <div className="grid gap-4 md:grid-cols-2">
         {active.map((f) => {
           const name = inputName(f.code);
@@ -56,7 +56,7 @@ export function CustomFieldInputs({
             case 'multiselect': {
               const picked = Array.isArray(current) ? current : [];
               control = (
-                <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-lg border border-line bg-white px-3 py-2">
+                <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-xl border border-line bg-white px-3.5 py-2.5">
                   {f.options.map((o) => (
                     <label key={o} className="flex items-center gap-1.5 text-sm">
                       <input type="checkbox" name={name} value={o} defaultChecked={picked.includes(o)} className="h-4 w-4 accent-[var(--color-accent-strong)]" />

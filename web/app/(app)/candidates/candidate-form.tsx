@@ -13,7 +13,7 @@ import { LEGAL_BASIS_LABELS, MATCH_LABELS, type CandidateRow } from '@/lib/candi
 type Source = { id: string; name: string };
 
 const textareaClass =
-  'block w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-ink-soft/60 focus:border-accent-strong focus:outline-none focus:ring-2 focus:ring-accent/30';
+  'block w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-soft/60 focus:border-accent-strong focus:outline-none focus:ring-2 focus:ring-accent/30';
 
 export function CandidateForm({
   sources,

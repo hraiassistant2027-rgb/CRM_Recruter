@@ -11,10 +11,10 @@ export function Button({ variant = 'primary', className, ...props }: ButtonProps
     <button
       {...props}
       className={cx(
-        'inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors',
+        'inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-colors',
         'disabled:cursor-not-allowed disabled:opacity-60',
         variant === 'primary' && 'bg-accent text-on-accent hover:bg-accent-strong',
-        variant === 'secondary' && 'border border-line bg-white text-ink hover:bg-surface',
+        variant === 'secondary' && 'border border-line bg-white text-ink hover:bg-panel',
         variant === 'danger' && 'border border-danger/30 bg-white text-danger hover:bg-danger-soft',
         variant === 'ghost' && 'text-ink-soft hover:bg-surface hover:text-ink',
         className,
@@ -41,7 +41,7 @@ export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElem
     <input
       {...props}
       className={cx(
-        'block w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-ink-soft/60',
+        'block w-full rounded-3xl bg-white shadow-card px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-soft/60',
         'focus:border-accent-strong focus:outline-none focus:ring-2 focus:ring-accent/30',
         className,
       )}
@@ -54,7 +54,7 @@ export function Select({ className, children, ...props }: SelectHTMLAttributes<H
     <select
       {...props}
       className={cx(
-        'block w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink',
+        'block w-full rounded-3xl bg-white shadow-card px-3.5 py-2.5 text-sm text-ink',
         'focus:border-accent-strong focus:outline-none focus:ring-2 focus:ring-accent/30',
         className,
       )}
@@ -69,7 +69,7 @@ export function Alert({ kind = 'error', children }: { kind?: 'error' | 'success'
     <div
       role={kind === 'error' ? 'alert' : 'status'}
       className={cx(
-        'rounded-lg border px-4 py-3 text-sm',
+        'rounded-2xl border px-4 py-3 text-sm',
         kind === 'error' && 'border-danger/20 bg-danger-soft text-danger',
         kind === 'success' && 'border-ok/20 bg-ok-soft text-ok',
         kind === 'info' && 'border-accent/40 bg-accent-soft text-ink',
@@ -81,14 +81,14 @@ export function Alert({ kind = 'error', children }: { kind?: 'error' | 'success'
 }
 
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={cx('rounded-xl border border-line bg-white p-6', className)}>{children}</div>;
+  return <div className={cx('rounded-3xl bg-white p-6 shadow-card', className)}>{children}</div>;
 }
 
 export function PageHeader({ title, description, actions }: { title: string; description?: string; actions?: ReactNode }) {
   return (
     <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div>
-        <h1 className="text-2xl font-semibold text-ink">{title}</h1>
+        <h1 className="text-[28px] font-bold leading-tight tracking-tight text-ink">{title}</h1>
         {description && <p className="mt-1 text-sm text-ink-soft">{description}</p>}
       </div>
       {actions}
@@ -96,12 +96,13 @@ export function PageHeader({ title, description, actions }: { title: string; des
   );
 }
 
-export function Badge({ tone = 'neutral', children }: { tone?: 'neutral' | 'ok' | 'warn' | 'danger'; children: ReactNode }) {
+export function Badge({ tone = 'neutral', children }: { tone?: 'neutral' | 'ok' | 'warn' | 'danger' | 'dark'; children: ReactNode }) {
   return (
     <span
       className={cx(
         'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
         tone === 'neutral' && 'bg-surface text-ink-soft',
+        tone === 'dark' && 'rounded-md bg-ink px-2 font-bold uppercase tracking-wide text-white',
         tone === 'ok' && 'bg-ok-soft text-ok',
         tone === 'warn' && 'bg-warn-soft text-warn',
         tone === 'danger' && 'bg-danger-soft text-danger',

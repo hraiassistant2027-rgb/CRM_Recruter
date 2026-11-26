@@ -56,7 +56,7 @@ export default async function UsersPage() {
       />
 
       <Card className="mb-6">
-        <h2 className="mb-4 font-medium">Запросити користувача</h2>
+        <h2 className="mb-4 text-lg font-bold tracking-tight">Запросити користувача</h2>
         <InviteForm roles={roleRows} />
       </Card>
 

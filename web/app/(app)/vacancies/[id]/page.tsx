@@ -81,7 +81,7 @@ export default async function VacancyPage({
               ← До вакансій
             </Link>
             {canEdit && (
-              <Link href={`/vacancies/${id}/edit`} className="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-4 py-2 text-sm hover:bg-surface">
+              <Link href={`/vacancies/${id}/edit`} className="inline-flex items-center gap-2 rounded-xl border border-line bg-white px-5 py-2.5 text-sm hover:bg-surface">
                 <Pencil className="h-4 w-4" aria-hidden /> Редагувати
               </Link>
             )}
@@ -135,7 +135,7 @@ export default async function VacancyPage({
         </Card>
         {canAdd && (
           <Card>
-            <h2 className="mb-3 font-medium">Додати кандидата з бази</h2>
+            <h2 className="mb-3 text-lg font-bold tracking-tight">Додати кандидата з бази</h2>
             <AddCandidate vacancyId={v.id} canCreateCandidate={can(p, 'candidates.create')} />
             {can(p, 'candidates.create') && (
               <div className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -162,7 +162,7 @@ export default async function VacancyPage({
           <div id="bulk-upload" className="scroll-mt-4">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
-                <h2 className="font-medium">Кілька резюме у вакансію «{v.title}»</h2>
+                <h2 className="text-lg font-bold tracking-tight">Кілька резюме у вакансію «{v.title}»</h2>
                 <p className="text-sm text-ink-soft">Кандидати з'являться у воронці на етапі «Новий кандидат».</p>
               </div>
               <Link href={`/vacancies/${id}`} className="text-sm text-ink-soft underline">
@@ -177,7 +177,7 @@ export default async function VacancyPage({
       {showNewForm && (
         <Card className="mb-6">
           <div id="new-candidate" className="scroll-mt-4">
-            <h2 className="font-medium">Новий кандидат у вакансію «{v.title}»</h2>
+            <h2 className="text-lg font-bold tracking-tight">Новий кандидат у вакансію «{v.title}»</h2>
             <p className="mb-4 text-sm text-ink-soft">Оберіть файл резюме — дані заповняться автоматично. Після збереження кандидат з'явиться на етапі «Новий кандидат».</p>
             <CandidateForm sources={(sources ?? []) as { id: string; name: string }[]} vacancyId={v.id} cancelHref={`/vacancies/${id}`} />
           </div>
@@ -186,7 +186,7 @@ export default async function VacancyPage({
 
       {board && (
         <>
-          <h2 className="mb-3 text-lg font-semibold">Воронка</h2>
+          <h2 className="mb-3 text-lg text-lg font-bold tracking-tight">Воронка</h2>
           <PipelineBoard stages={board.stages} cards={board.cards} reasons={board.reasons} canMove={canMove} googleReady={googleReady} sites={board.sites} defaultSiteId={v.site_id} />
         </>
       )}

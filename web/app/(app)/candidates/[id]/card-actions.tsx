@@ -143,7 +143,7 @@ export function NoteForm({ candidateId }: { candidateId: string }) {
         required
         aria-label="Текст нотатки"
         placeholder="Результат дзвінка, домовленості, враження…"
-        className="block w-full rounded-lg border border-line bg-white px-3 py-2 text-sm focus:border-accent-strong focus:outline-none focus:ring-2 focus:ring-accent/30"
+        className="block w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm focus:border-accent-strong focus:outline-none focus:ring-2 focus:ring-accent/30"
       />
       <SubmitButton variant="secondary" pendingText="…">Додати нотатку</SubmitButton>
       <Message state={state} />

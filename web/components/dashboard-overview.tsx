@@ -59,13 +59,13 @@ export async function DashboardOverview({
             <input key={k} type="hidden" name={k} value={v} />
           ))}
           <label htmlFor={`dash-vacancy-${ws}`} className="text-sm text-ink-soft">Воронка, відмови і джерела для</label>
-          <select id={`dash-vacancy-${ws}`} name="vacancy" defaultValue={vacancy ?? ''} className="max-w-64 rounded-lg border border-line bg-white px-3 py-1.5 text-sm">
+          <select id={`dash-vacancy-${ws}`} name="vacancy" defaultValue={vacancy ?? ''} className="max-w-64 rounded-xl border border-line bg-white px-3 py-1.5 text-sm">
             <option value="">усіх вакансій</option>
             {((vs ?? []) as { id: string; title: string }[]).map((v) => (
               <option key={v.id} value={v.id}>{v.title}</option>
             ))}
           </select>
-          <button type="submit" className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-on-accent hover:bg-accent-strong">Показати</button>
+          <button type="submit" className="rounded-xl bg-accent px-4 py-1.5 text-sm font-medium text-on-accent hover:bg-accent-strong">Показати</button>
         </form>
       )}
 

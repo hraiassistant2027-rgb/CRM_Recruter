@@ -117,13 +117,13 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
             <div className="flex flex-wrap gap-2">
               <Link
                 href="/candidates/import"
-                className="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-4 py-2 text-sm font-medium hover:bg-surface"
+                className="inline-flex items-center gap-2 rounded-xl border border-line bg-white px-5 py-2.5 text-sm font-medium hover:bg-surface"
               >
                 <Upload className="h-4 w-4" aria-hidden /> Кілька резюме
               </Link>
               <Link
                 href="/candidates/new"
-                className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-strong"
+                className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-on-accent hover:bg-accent-strong"
               >
                 <Plus className="h-4 w-4" aria-hidden /> Додати кандидата
               </Link>
@@ -166,7 +166,7 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
             </Select>
           </label>
           <div className="flex items-center gap-3">
-            <button type="submit" className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-strong">
+            <button type="submit" className="rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-on-accent hover:bg-accent-strong">
               Знайти
             </button>
           </div>
@@ -213,7 +213,7 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
       </p>
 
       {rows.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-line bg-white">
+        <div className="overflow-x-auto rounded-3xl bg-white shadow-card">
           <table className="w-full min-w-[760px] text-sm">
             <thead className="border-b border-line bg-surface text-left text-xs uppercase tracking-wide text-ink-soft">
               <tr>

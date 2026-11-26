@@ -12,7 +12,7 @@ type Item = { id: string; name: string; is_active: boolean; address?: string | n
 function Section({ title, hint, kind, items, extraLabel }: { title: string; hint: string; kind: string; items: Item[]; extraLabel?: string }) {
   return (
     <Card>
-      <h2 className="font-medium">{title}</h2>
+      <h2 className="text-lg font-bold tracking-tight">{title}</h2>
       <p className="mb-3 text-xs text-ink-soft">{hint}</p>
       <ul className="mb-4 divide-y divide-line">
         {items.map((i) => (

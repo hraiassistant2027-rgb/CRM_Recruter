@@ -216,7 +216,7 @@ export default async function CandidatePage({
 
   const preview = viewing && (
     <aside className="xl:sticky xl:top-4 xl:self-start">
-      <div className="overflow-hidden rounded-xl border border-line bg-white">
+      <div className="overflow-hidden rounded-3xl bg-white shadow-card">
         <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-2">
           <span className="truncate text-sm font-medium" title={docName(viewing)}>
             {docName(viewing)}
@@ -271,7 +271,7 @@ export default async function CandidatePage({
             {canUpdate && (
               <Link
                 href={`/candidates/${id}/edit`}
-                className="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-4 py-2 text-sm hover:bg-surface"
+                className="inline-flex items-center gap-2 rounded-xl border border-line bg-white px-5 py-2.5 text-sm hover:bg-surface"
               >
                 <Pencil className="h-4 w-4" aria-hidden /> Редагувати
               </Link>
@@ -306,7 +306,7 @@ export default async function CandidatePage({
       <div className={viewing ? 'grid gap-6' : 'grid gap-6 lg:grid-cols-[3fr_2fr]'}>
         <div className="space-y-6">
           <Card>
-            <h2 className="mb-3 font-medium">Основне</h2>
+            <h2 className="mb-3 text-lg font-bold tracking-tight">Основне</h2>
             <dl className="divide-y divide-line">
               <Row label="Телефон">{c.phone ? <a href={`tel:${c.phone.replace(/[^\d+]/g, '')}`} className="underline">{c.phone}</a> : '—'}</Row>
               <Row label="Email">{c.email ? <a href={`mailto:${c.email}`} className="underline">{c.email}</a> : '—'}</Row>
@@ -356,7 +356,7 @@ export default async function CandidatePage({
             return (
               <Card>
                 <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-                  <h2 className="font-medium">Досвід роботи та освіта</h2>
+                  <h2 className="text-lg font-bold tracking-tight">Досвід роботи та освіта</h2>
                   {canUpdate && hasText && <RefillFromResume candidateId={c.id} hasLists={exp.length + edu.length > 0} />}
                 </div>
                 {!exp.length && !edu.length && (
@@ -398,7 +398,7 @@ export default async function CandidatePage({
           {canMail && (
             <Card>
               <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-                <h2 className="font-medium">Листування</h2>
+                <h2 className="text-lg font-bold tracking-tight">Листування</h2>
                 {mailReady && c.email && <SyncEmailsButton candidateId={id} />}
               </div>
               {canSend && (
@@ -415,7 +415,7 @@ export default async function CandidatePage({
                     </p>
                   ) : (
                     <details>
-                      <summary className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-strong">
+                      <summary className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-on-accent hover:bg-accent-strong">
                         <Mail className="h-4 w-4" aria-hidden /> Написати лист
                       </summary>
                       <div className="mt-4">
@@ -457,7 +457,7 @@ export default async function CandidatePage({
           )}
 
           <Card>
-            <h2 className="mb-3 font-medium">Нотатки</h2>
+            <h2 className="mb-3 text-lg font-bold tracking-tight">Нотатки</h2>
             {!deleted && <NoteForm candidateId={id} />}
             <ul className="mt-4 space-y-3">
               {((notes.data ?? []) as Note[]).map((n) => (
@@ -475,7 +475,7 @@ export default async function CandidatePage({
 
         <div className="space-y-6">
           <Card>
-            <h2 className="mb-3 font-medium">Резюме</h2>
+            <h2 className="mb-3 text-lg font-bold tracking-tight">Резюме</h2>
             <ul className="mb-4 divide-y divide-line">
               {docList.map((d) => (
                 <li key={d.id} className={`flex flex-wrap items-center justify-between gap-2 py-2 text-sm ${viewing?.id === d.id ? 'bg-accent-soft/50' : ''}`}>
@@ -504,7 +504,7 @@ export default async function CandidatePage({
           </Card>
 
           <Card>
-            <h2 className="mb-1 font-medium">Персональні дані</h2>
+            <h2 className="mb-1 text-lg font-bold tracking-tight">Персональні дані</h2>
             <p className="mb-3 text-xs text-ink-soft">Підстави обробки даних кандидата (ЗУ «Про захист персональних даних», GDPR)</p>
             <ul className="mb-4 space-y-2">
               {((consents.data ?? []) as Consent[]).map((x) => (
@@ -539,7 +539,7 @@ export default async function CandidatePage({
 
           {canApps && (interviews.length > 0 || schedulable.length > 0) && (
             <Card>
-              <h2 className="mb-3 font-medium">Співбесіди</h2>
+              <h2 className="mb-3 text-lg font-bold tracking-tight">Співбесіди</h2>
               <ul className="mb-4 space-y-3">
                 {interviews.map((iv) => {
                   const st = STATUS_LABELS[iv.status] ?? { label: iv.status, tone: 'neutral' as const };
@@ -599,7 +599,7 @@ export default async function CandidatePage({
               {schedulable.length > 0 && !deleted && (
                 mailReady ? (
                   <details>
-                    <summary className="inline-flex cursor-pointer items-center rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-strong">
+                    <summary className="inline-flex cursor-pointer items-center rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-on-accent hover:bg-accent-strong">
                       Призначити співбесіду
                     </summary>
                     <div className="mt-4">
@@ -633,7 +633,7 @@ export default async function CandidatePage({
 
           {canApps && (
             <Card>
-              <h2 className="mb-3 font-medium">Відгуки на вакансії</h2>
+              <h2 className="mb-3 text-lg font-bold tracking-tight">Відгуки на вакансії</h2>
               <ul className="mb-4 space-y-3">
                 {apps.map((a) => {
                   const st = stageById.get(a.stage_id);

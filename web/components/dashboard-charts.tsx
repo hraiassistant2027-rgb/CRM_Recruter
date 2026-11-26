@@ -30,8 +30,8 @@ function niceTicks(max: number, count = 5): number[] {
 // Картка графіка: заголовок, підзаголовок «За весь період», вміст
 export function ChartCard({ title, subtitle, children, className = '' }: { title: string; subtitle?: string; children: React.ReactNode; className?: string }) {
   return (
-    <section className={`rounded-2xl border border-line bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)] ${className}`}>
-      <h3 className="text-[15px] font-semibold text-ink">{title}</h3>
+    <section className={`rounded-3xl bg-white p-6 shadow-card ${className}`}>
+      <h3 className="text-lg font-bold tracking-tight text-ink">{title}</h3>
       {subtitle && <p className="mt-0.5 text-xs text-ink-soft">{subtitle}</p>}
       <div className="mt-4">{children}</div>
     </section>
@@ -41,11 +41,11 @@ export function ChartCard({ title, subtitle, children, className = '' }: { title
 // Велике число з підписом (як «24д — Середня тривалість роботи…»)
 export function KpiTile({ label, value, caption }: { label: string; value: string; caption: string }) {
   return (
-    <div className="rounded-xl border border-line p-4">
-      <div className="text-sm font-medium text-ink">{label}</div>
+    <div className="rounded-3xl bg-soft p-5">
+      <div className="text-sm font-bold text-ink">{label}</div>
       <div className="text-xs text-ink-soft">За весь період</div>
-      <div className="my-3 text-center text-4xl font-semibold tracking-tight tabular-nums">{value}</div>
-      <div className="border-t border-line pt-2 text-center text-xs text-ink-soft">{caption}</div>
+      <div className="my-4 text-center text-5xl font-bold tracking-tight tabular-nums">{value}</div>
+      <div className="border-t border-ink/10 pt-2 text-center text-xs text-ink-soft">{caption}</div>
     </div>
   );
 }

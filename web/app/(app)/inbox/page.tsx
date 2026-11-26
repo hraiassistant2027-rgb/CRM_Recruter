@@ -79,7 +79,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
           <p className="text-sm text-ink-soft">Листів ще немає. Надішліть лист кандидату з його картки або натисніть «Оновити з Gmail».</p>
         </Card>
       ) : (
-        <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-white">
+        <ul className="divide-y divide-line overflow-hidden rounded-3xl bg-white shadow-card">
           {messages.map((m) => (
             <li key={m.id} className={`px-4 py-3 text-sm ${m.direction === 'in' ? 'bg-accent-soft/20' : ''}`}>
               <div className="flex flex-wrap items-center gap-2 text-xs text-ink-soft">

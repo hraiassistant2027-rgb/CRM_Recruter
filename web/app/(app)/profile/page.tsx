@@ -44,12 +44,12 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
       <PageHeader title="Мій профіль" description={session.profile.email} />
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <h2 className="mb-4 font-medium">Особисті дані</h2>
+          <h2 className="mb-4 text-lg font-bold tracking-tight">Особисті дані</h2>
           <ProfileForm fullName={session.profile.full_name} phone={session.profile.phone} />
         </Card>
         <div className="space-y-6">
           <Card>
-            <h2 className="mb-3 font-medium">Доступ</h2>
+            <h2 className="mb-3 text-lg font-bold tracking-tight">Доступ</h2>
             <p className="mb-2 flex flex-wrap gap-1">
               {roleNames.length ? roleNames.map((n) => <Badge key={n}>{n}</Badge>) : <Badge tone="warn">роль не призначено</Badge>}
             </p>
@@ -60,7 +60,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
             <p className="mt-2 text-xs text-ink-soft">Якщо втратили телефон з автентифікатором — зверніться до адміністратора, він скине MFA.</p>
           </Card>
           <Card>
-            <h2 className="mb-1 font-medium">Google (Gmail і Календар)</h2>
+            <h2 className="mb-1 text-lg font-bold tracking-tight">Google (Gmail і Календар)</h2>
             <p className="mb-3 text-xs text-ink-soft">
               Листи кандидатам надсилатимуться з вашої скриньки, а співбесіди — створюватимуться у вашому календарі. Пароль від пошти CRM не бачить.
             </p>
@@ -79,7 +79,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
                   {google!.last_sync_at ? ` · остання перевірка пошти ${formatDate(google!.last_sync_at, true)}` : ''}
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  <a href="/api/google/connect" className="inline-flex items-center rounded-lg border border-line bg-white px-4 py-2 text-sm hover:bg-surface">
+                  <a href="/api/google/connect" className="inline-flex items-center rounded-xl border border-line bg-white px-5 py-2.5 text-sm hover:bg-surface">
                     Підключити знову
                   </a>
                   <DisconnectGoogleButton />
@@ -91,7 +91,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
                   <Alert>Доступ до Google втрачено{google.last_error ? ` (${google.last_error})` : ''}. Підключіть акаунт знову.</Alert>
                 )}
                 {googleConfigured() ? (
-                  <a href="/api/google/connect" className="inline-flex items-center rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-strong">
+                  <a href="/api/google/connect" className="inline-flex items-center rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-on-accent hover:bg-accent-strong">
                     Підключити Google
                   </a>
                 ) : (
@@ -101,7 +101,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
             )}
           </Card>
           <Card>
-            <h2 className="mb-4 font-medium">Зміна пароля</h2>
+            <h2 className="mb-4 text-lg font-bold tracking-tight">Зміна пароля</h2>
             <PasswordForm />
           </Card>
         </div>

@@ -82,7 +82,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         title="Звіт по вакансіях"
         description="Збирається автоматично з вакансій, воронки кандидатів і календаря"
         actions={
-          <a href={`/api/reports/vacancies${qs ? `?${qs}` : ''}`} className="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-4 py-2 text-sm font-medium hover:bg-surface">
+          <a href={`/api/reports/vacancies${qs ? `?${qs}` : ''}`} className="inline-flex items-center gap-2 rounded-xl border border-line bg-white px-5 py-2.5 text-sm font-medium hover:bg-surface">
             <Download className="h-4 w-4" aria-hidden /> Вивантажити в Excel
           </a>
         }
@@ -140,13 +140,13 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           </label>
           <label className="block">
             <span className="mb-1.5 block text-xs font-medium text-ink-soft">Відкрито з</span>
-            <input type="date" name="from" defaultValue={f.from} className="rounded-lg border border-line bg-white px-3 py-2 text-sm" />
+            <input type="date" name="from" defaultValue={f.from} className="rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm" />
           </label>
           <label className="block">
             <span className="mb-1.5 block text-xs font-medium text-ink-soft">по</span>
-            <input type="date" name="to" defaultValue={f.to} className="rounded-lg border border-line bg-white px-3 py-2 text-sm" />
+            <input type="date" name="to" defaultValue={f.to} className="rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm" />
           </label>
-          <button type="submit" className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-strong">Показати</button>
+          <button type="submit" className="rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-on-accent hover:bg-accent-strong">Показати</button>
           {qs && <Link href="/reports" className="pb-2 text-sm text-ink-soft underline">Скинути</Link>}
         </form>
       </Card>
@@ -156,7 +156,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           <p className="text-sm text-ink-soft">Вакансій за цими умовами немає.</p>
         </Card>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-line bg-white">
+        <div className="overflow-x-auto rounded-3xl bg-white shadow-card">
           <table className="w-full min-w-[1400px] text-sm">
             <thead className="border-b border-line bg-surface text-left text-[11px] uppercase tracking-wide text-ink-soft">
               <tr>
@@ -216,7 +216,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 
       <div className="mt-6">
         <Card>
-          <h2 className="mb-3 font-medium">Класи вакансій</h2>
+          <h2 className="mb-3 text-lg font-bold tracking-tight">Класи вакансій</h2>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {Object.entries(CLASS_INFO).map(([k, info]) => (
               <div key={k} className="flex gap-3 rounded-lg border border-line p-3">

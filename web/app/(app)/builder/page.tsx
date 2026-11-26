@@ -38,7 +38,7 @@ export default async function BuilderPage({ searchParams }: { searchParams: Prom
 
       <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
         <Card>
-          <h2 className="font-medium">Додаткові поля: {ENTITY_LABELS[entity].toLowerCase()}</h2>
+          <h2 className="text-lg font-bold tracking-tight">Додаткові поля: {ENTITY_LABELS[entity].toLowerCase()}</h2>
           <p className="mb-2 text-xs text-ink-soft">
             Стрілками змінюється порядок у формі. «Приховати» прибирає поле з форм і карток, але заповнені значення зберігаються — поле можна повернути.
           </p>
@@ -63,7 +63,7 @@ export default async function BuilderPage({ searchParams }: { searchParams: Prom
           )}
         </Card>
         <Card>
-          <h2 className="mb-3 font-medium">Нове поле</h2>
+          <h2 className="mb-3 text-lg font-bold tracking-tight">Нове поле</h2>
           <FieldForm entity={entity} />
         </Card>
       </div>

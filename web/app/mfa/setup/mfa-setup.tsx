@@ -76,7 +76,7 @@ export function MfaSetup({ next }: { next: string }) {
         <li>Введіть 6 цифр, які покаже застосунок.</li>
       </ol>
 
-      <div className="flex justify-center rounded-xl border border-line bg-white p-4">
+      <div className="flex justify-center rounded-3xl bg-white shadow-card p-4">
         {/* QR-код повертає Supabase у вигляді SVG data URL */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={enrollment.qr} alt="QR-код для застосунку-автентифікатора" width={192} height={192} />

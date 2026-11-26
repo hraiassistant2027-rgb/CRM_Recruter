@@ -133,7 +133,7 @@ export function EmailComposer({
               value={body}
               disabled={loading}
               onChange={(e) => setBody(e.target.value)}
-              className="block w-full rounded-lg border border-line bg-white px-3 py-2 text-sm focus:border-accent-strong focus:outline-none focus:ring-2 focus:ring-accent/30"
+              className="block w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm focus:border-accent-strong focus:outline-none focus:ring-2 focus:ring-accent/30"
             />
           </Field>
           {placeholders.length > 0 && (

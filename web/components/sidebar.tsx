@@ -19,7 +19,7 @@ function WorkspaceLogo({ workspace, workspaces }: { workspace: Ws; workspaces: W
     <>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={workspace.icon} alt="" aria-hidden="true" className="h-9 w-9 rounded-lg bg-white object-contain" />
-      <span className="font-semibold">{workspace.name}</span>
+      <span className="text-[17px] font-bold tracking-tight">{workspace.name}</span>
     </>
   );
   if (workspaces.length < 2) {
@@ -37,19 +37,19 @@ function WorkspaceLogo({ workspace, workspaces }: { workspace: Ws; workspaces: W
         aria-expanded={open}
         aria-haspopup="menu"
         title="Перемкнути простір"
-        className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left hover:bg-accent-soft"
+        className="flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left hover:bg-panel"
       >
         {logo}
         <ChevronsUpDown className="ml-auto h-4 w-4 text-ink-soft" aria-hidden />
       </button>
       {open && (
-        <div role="menu" className="absolute left-0 right-0 z-50 mt-1 rounded-xl border border-line bg-white p-1 shadow-lg">
+        <div role="menu" className="absolute left-0 right-0 z-50 mt-1 rounded-3xl bg-white shadow-card p-1 shadow-lg">
           {workspaces.map((w) => (
             <a
               key={w.code}
               role="menuitem"
               href={w.code === workspace.code ? '/' : switchHref(w.code, section)}
-              className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm hover:bg-surface"
+              className="flex items-center gap-2 rounded-xl px-2 py-2 text-sm hover:bg-panel"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={w.icon} alt="" aria-hidden="true" className="h-7 w-7 rounded-md bg-white object-contain" />
@@ -80,8 +80,8 @@ function Nav({ items, onNavigate }: { items: MenuLink[]; onNavigate?: () => void
             onClick={onNavigate}
             aria-current={active ? 'page' : undefined}
             className={[
-              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
-              active ? 'bg-accent-soft font-medium text-ink' : 'text-ink-soft hover:bg-surface hover:text-ink',
+              'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors',
+              active ? 'bg-soft font-semibold text-ink shadow-[inset_0_0_0_1px_rgb(255_255_255/0.6)]' : 'text-ink-soft hover:bg-panel hover:text-ink',
             ].join(' ')}
           >
             <MenuIcon name={item.icon} className={active ? 'h-4 w-4 text-accent-strong' : 'h-4 w-4'} />
@@ -98,11 +98,13 @@ export function Sidebar({ items, workspace, workspaces }: { items: MenuLink[]; w
   return (
     <>
       {/* Ноутбук: постійне бокове меню */}
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-line border-t-4 border-t-accent bg-white p-4 lg:flex">
-        <div className="mb-6">
-          <WorkspaceLogo workspace={workspace} workspaces={workspaces} />
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col p-3 lg:flex">
+        <div className="flex h-full flex-col rounded-3xl bg-white p-3 shadow-card">
+          <div className="mb-5 border-b border-line pb-4">
+            <WorkspaceLogo workspace={workspace} workspaces={workspaces} />
+          </div>
+          <Nav items={items} />
         </div>
-        <Nav items={items} />
       </aside>
 
       {/* Планшет: меню відкривається кнопкою */}

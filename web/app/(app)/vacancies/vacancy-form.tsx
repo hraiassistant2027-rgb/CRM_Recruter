@@ -11,7 +11,7 @@ import { CLASS_INFO, PRIORITY_LABELS, REQUEST_TYPE_LABELS, VACANCY_STATUS_LABELS
 type Option = { id: string; name: string };
 
 const textareaClass =
-  'block w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-ink-soft/60 focus:border-accent-strong focus:outline-none focus:ring-2 focus:ring-accent/30';
+  'block w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-soft/60 focus:border-accent-strong focus:outline-none focus:ring-2 focus:ring-accent/30';
 
 export function VacancyForm({
   vacancy,
@@ -145,9 +145,9 @@ export function VacancyForm({
         </div>
       </section>
 
-      <section className="space-y-4 rounded-xl border border-line bg-white p-4">
+      <section className="space-y-4 rounded-3xl bg-white shadow-card p-4">
         <div>
-          <h2 className="font-semibold">Для звіту по вакансіях</h2>
+          <h2 className="text-lg font-bold tracking-tight">Для звіту по вакансіях</h2>
           <p className="text-sm text-ink-soft">Ці поля потрапляють у розділ «Звіти та аналітика».</p>
         </div>
         <div className="grid gap-4 md:grid-cols-3">

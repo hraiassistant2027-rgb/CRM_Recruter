@@ -72,11 +72,11 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
         <form method="get" className="flex flex-wrap items-end gap-3">
           <label className="block">
             <span className="mb-1.5 block text-xs font-medium text-ink-soft">З</span>
-            <input type="date" name="from" defaultValue={f.from} className="rounded-lg border border-line bg-white px-3 py-2 text-sm" />
+            <input type="date" name="from" defaultValue={f.from} className="rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm" />
           </label>
           <label className="block">
             <span className="mb-1.5 block text-xs font-medium text-ink-soft">по</span>
-            <input type="date" name="to" defaultValue={f.to} className="rounded-lg border border-line bg-white px-3 py-2 text-sm" />
+            <input type="date" name="to" defaultValue={f.to} className="rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm" />
           </label>
           <label className="block">
             <span className="mb-1.5 block text-xs font-medium text-ink-soft">Рекрутер</span>
@@ -109,7 +109,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
             <span className="mb-1.5 block text-xs font-medium text-ink-soft">Юр. особа</span>
             <EntityColorPicker name="entity" entities={entityList} defaultValue={f.entity} emptyLabel="Усі" />
           </div>
-          <button type="submit" className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-strong">Показати</button>
+          <button type="submit" className="rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-on-accent hover:bg-accent-strong">Показати</button>
           <Link href="/reports/analytics" className="pb-2 text-sm text-ink-soft underline">Скинути</Link>
         </form>
       </Card>
@@ -130,21 +130,21 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           </div>
 
           <Card className="mb-4">
-            <h2 className="font-medium">Динаміка</h2>
+            <h2 className="text-lg font-bold tracking-tight">Динаміка</h2>
             <p className="mb-3 text-xs text-ink-soft">{a.bucket === 'month' ? 'По місяцях' : 'По тижнях'}. Наведіть на стовпчики, щоб побачити цифри.</p>
             <DynamicsChart data={a.dynamics} bucket={a.bucket} />
           </Card>
 
           <div className="mb-4 grid gap-4 xl:grid-cols-[3fr_2fr]">
             <Card>
-              <h2 className="font-medium">Конверсія воронки</h2>
+              <h2 className="text-lg font-bold tracking-tight">Конверсія воронки</h2>
               <p className="mb-3 text-xs text-ink-soft">
                 Скільки кандидатів, доданих у вакансії за період, дійшли до кожного етапу. Відсоток — перехід з попереднього етапу.
               </p>
               <FunnelBars data={a.funnel} />
             </Card>
             <Card>
-              <h2 className="font-medium">Причини відмов</h2>
+              <h2 className="text-lg font-bold tracking-tight">Причини відмов</h2>
               <p className="mb-3 text-xs text-ink-soft">Серед кандидатів, доданих за період</p>
               {a.rejections.length === 0 ? (
                 <p className="text-sm text-ink-soft">Відмов немає.</p>
@@ -167,10 +167,10 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           <Card className="mb-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="font-medium">Ефективність рекрутерів</h2>
+                <h2 className="text-lg font-bold tracking-tight">Ефективність рекрутерів</h2>
                 <p className="text-xs text-ink-soft">За вакансіями, де людина вказана рекрутером</p>
               </div>
-              <a href={`/api/reports/analytics?kind=recruiters&${qs}`} className="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-1.5 text-sm hover:bg-surface">
+              <a href={`/api/reports/analytics?kind=recruiters&${qs}`} className="inline-flex items-center gap-2 rounded-xl border border-line bg-white px-3 py-1.5 text-sm hover:bg-surface">
                 <Download className="h-4 w-4" aria-hidden /> Excel
               </a>
             </div>
@@ -213,10 +213,10 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           <Card>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="font-medium">Ефективність джерел</h2>
+                <h2 className="text-lg font-bold tracking-tight">Ефективність джерел</h2>
                 <p className="text-xs text-ink-soft">Скільки кандидатів прийшло і скільки з них дійшли до керівника, оферу та найму</p>
               </div>
-              <a href={`/api/reports/analytics?kind=sources&${qs}`} className="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-1.5 text-sm hover:bg-surface">
+              <a href={`/api/reports/analytics?kind=sources&${qs}`} className="inline-flex items-center gap-2 rounded-xl border border-line bg-white px-3 py-1.5 text-sm hover:bg-surface">
                 <Download className="h-4 w-4" aria-hidden /> Excel
               </a>
             </div>

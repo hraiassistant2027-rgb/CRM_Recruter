@@ -28,7 +28,7 @@ export default async function SettingsPage() {
       {usage && (
         <Card className="mb-4">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="font-medium">Сховище резюме</h2>
+            <h2 className="text-lg font-bold tracking-tight">Сховище резюме</h2>
             <span className="text-sm text-ink-soft">
               {formatBytes(usage.bytes)} з {formatBytes(usage.limit)} · файлів: {usage.files}
             </span>
@@ -51,14 +51,14 @@ export default async function SettingsPage() {
           s.href ? (
             <Link key={s.title} href={s.href}>
               <Card className="h-full transition-colors hover:border-accent">
-                <h2 className="font-medium">{s.title}</h2>
+                <h2 className="text-lg font-bold tracking-tight">{s.title}</h2>
                 <p className="mt-1 text-sm text-ink-soft">{s.text}</p>
               </Card>
             </Link>
           ) : (
             <Card key={s.title} className="h-full opacity-70">
               <div className="flex items-start justify-between gap-3">
-                <h2 className="font-medium">{s.title}</h2>
+                <h2 className="text-lg font-bold tracking-tight">{s.title}</h2>
                 <Badge>Етап {s.stage}</Badge>
               </div>
               <p className="mt-1 text-sm text-ink-soft">{s.text}</p>

@@ -131,7 +131,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       {can(p, 'applications.read') && (
         <Card className="mt-6">
           <div className="mb-1 grid max-w-4xl gap-1 px-2 md:grid-cols-[minmax(0,1fr)_18rem] md:items-end md:gap-x-6">
-            <h2 className="font-medium">Кандидати на оформлення</h2>
+            <h2 className="text-lg font-bold tracking-tight">Кандидати на оформлення</h2>
             <span className="text-xs text-ink-soft">Статус готовності перевірок кандидата</span>
           </div>
           {handoffRows.length === 0 ? (
@@ -144,7 +144,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       {can(p, 'applications.read') && (
         <Card className="mt-6">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="font-medium">Мої співбесіди сьогодні і завтра</h2>
+            <h2 className="text-lg font-bold tracking-tight">Мої співбесіди сьогодні і завтра</h2>
             <Link href="/calendar" className="text-sm underline">
               Календар →
             </Link>
@@ -180,22 +180,22 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </Card>
       )}
       {homehub && (
-        <section data-theme="homehub" className="mt-8 rounded-2xl border border-line bg-surface p-4" aria-label="Дашборд HomeHub">
+        <section data-theme="homehub" className="mt-8 rounded-[28px] bg-soft p-5 shadow-card" aria-label="Дашборд HomeHub">
           <div className="flex flex-wrap items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={homehub.icon} alt="" aria-hidden="true" className="h-8 w-8 rounded-lg bg-white object-contain" />
-            <h2 className="font-medium">HomeHub — управляюча компанія</h2>
+            <h2 className="text-lg font-bold tracking-tight">HomeHub — управляюча компанія</h2>
             <Link
               href={showHomehub ? '/' : '/?homehub=1'}
               scroll={false}
-              className="ml-auto rounded-lg border border-accent-strong bg-white px-3 py-1.5 text-sm font-medium text-accent-strong hover:bg-accent-soft"
+              className="ml-auto rounded-xl bg-white px-4 py-2 text-sm font-semibold text-accent-strong shadow-card hover:bg-panel"
             >
               {showHomehub ? 'Сховати дашборд HomeHub' : 'Показати дашборд HomeHub'}
             </Link>
           </div>
           {showHomehub && (
             <div className="mt-4">
-              <WorkspaceStats ws="homehub" current={curCode} permissions={p} />
+              <WorkspaceStats ws="homehub" current={curCode} permissions={p} title="HomeHub сьогодні" />
               {canCharts && (
                 <div className="mt-5">
                   <DashboardOverview ws="homehub" current={curCode} vacancy={null} showFilter={false} />

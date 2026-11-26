@@ -4,28 +4,39 @@
 @theme {
   --color-accent: #2563eb;
   --color-accent-strong: #1d4ed8;
-  --color-accent-soft: #e8f1fd;
+  --color-accent-soft: #e3eefc;
   --color-on-accent: #ffffff;
-  --color-ink: #1f2a37;
-  --color-ink-soft: #536175;
-  --color-surface: #f3f7fc;
-  --color-line: #dde6f0;
+  --color-ink: #26272b;
+  --color-ink-soft: #6b6c73;
+  --color-surface: #f4f3ef;
+  --color-panel: #f8f7f3;
+  --color-line: #e9e6df;
+  --shadow-card: 0 1px 2px rgb(30 30 20 / 0.04), 0 10px 28px -12px rgb(30 30 20 / 0.12);
   --color-warn: #a35200;
   --color-warn-soft: #fff1d6;
   --color-danger: #c62828;
   --color-danger-soft: #fdecec;
   --color-ok: #1f7a3a;
   --color-ok-soft: #e7f5ec;
-  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-sans: var(--font-fira), 'Fira Sans', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
 }
 
 /* Простір HomeHub (управляюча компанія): зелений і салатовий */
 [data-theme='homehub'] {
   --color-accent: #3b8013;
   --color-accent-strong: #2f6a0d;
-  --color-accent-soft: #edf7df;
-  --color-surface: #f4f9ef;
-  --color-line: #dfe9d5;
+  --color-accent-soft: #e8f5d9;
+  --gradient-soft: linear-gradient(180deg, #ddf0c9 0%, #eef3e2 55%, #f4f2ea 100%);
+}
+
+/* Ніжний градієнт виділених карток (як картка «PRO» у зразку) */
+:root,
+[data-theme='kan'] {
+  --gradient-soft: linear-gradient(180deg, #d9e8fb 0%, #e9e9f6 55%, #f3eef2 100%);
+}
+
+@utility bg-soft {
+  background-image: var(--gradient-soft);
 }
 
 html {
