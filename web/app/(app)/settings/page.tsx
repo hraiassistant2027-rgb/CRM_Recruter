@@ -16,6 +16,7 @@ export default async function SettingsPage() {
   const sections = [
     { title: 'Користувачі та ролі', text: 'Запрошення, призначення ролей, блокування, скидання двофакторної перевірки', href: '/settings/users', allowed: can(p, 'users.manage'), stage: null },
     { title: 'Довідники', text: 'Кадровики, об\'єкти, підрозділи, джерела кандидатів, причини відмов', href: '/settings/dictionaries', allowed: true, stage: null },
+    { title: 'Сайти вакансій', text: 'Кабінети роботодавця на robota.ua: автоматичне отримання відгуків', href: '/settings/job-boards', allowed: true, stage: null },
     { title: 'Банк резюме', text: 'Папка архіву резюме на Google Диску для пошуку', href: '/settings/resume-bank', allowed: true, stage: null },
     { title: 'Етапи воронки', text: 'Назви, кольори, норма днів на етапі, вимкнення етапів', href: '/settings/pipeline', allowed: true, stage: null },
     { title: 'Ролі та права доступу', text: 'Створення нових ролей і налаштування, що кожна роль бачить і може робити', href: '/settings/roles', allowed: can(p, 'roles.manage'), stage: null },

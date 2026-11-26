@@ -1,12 +1,13 @@
 import Link from 'next/link';
 import { requireSession } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { visibleMenu, type MenuItemRow } from '@/lib/permissions';
+import { can, visibleMenu, type MenuItemRow } from '@/lib/permissions';
 import { Sidebar } from '@/components/sidebar';
 import { SignOutButton } from '@/components/sign-out-button';
 import { redirect } from 'next/navigation';
 import { getWorkspaces } from '@/lib/workspace-server';
 import { switchHref } from '@/lib/workspace';
+import { JobBoardAutoSync } from '@/components/job-board-autosync';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +27,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div data-theme={ws.theme} className="flex min-h-screen bg-surface">
+      {can(session.permissions, 'candidates.create') && <JobBoardAutoSync />}
       <Sidebar items={menu} workspace={ws} workspaces={list} />
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-16 items-center justify-end gap-2 px-4 pt-2 lg:px-8">
