@@ -39,6 +39,10 @@ describe('формат листа для Gmail', () => {
     expect(decoded).toContain(`Subject: =?UTF-8?B?${Buffer.from('Запрошення Bcc: x@y.z').toString('base64')}?=`);
     expect(decoded).toContain(Buffer.from('Добрий день', 'utf8').toString('base64'));
   });
+  it('кілька отримувачів через кому', () => {
+    const raw = buildRawEmail({ fromEmail: 'hr@gmail.com', to: 'it1@kan.ua, it2@kan.ua', subject: 'Т', text: 'т', html: '<p>т</p>' });
+    expect(Buffer.from(raw, 'base64url').toString('utf8')).toContain('To: it1@kan.ua, it2@kan.ua');
+  });
 });
 
 describe('розбір вхідних листів', () => {

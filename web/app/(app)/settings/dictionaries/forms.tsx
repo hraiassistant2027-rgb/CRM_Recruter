@@ -85,13 +85,15 @@ export function StageOrderButtons({ id, first, last }: { id: string; first: bool
   );
 }
 
-export function HrContactForm({ id, name, email }: { id: string; name: string; email: string }) {
+export function HrContactForm({ id, name, email, kind = 'hr_contacts' }: { id: string; name: string; email: string; kind?: string }) {
   const [state, action] = useActionState(updateHrContact, initialFormState);
+  const who = kind === 'it_contacts' ? 'системного адміністратора' : 'кадровика';
   return (
     <form action={action} className="flex flex-wrap items-center gap-2">
       <input type="hidden" name="id" value={id} />
-      <Input name="name" defaultValue={name} aria-label="Ім'я кадровика" className="min-w-32 flex-1" />
-      <Input name="email" type="email" defaultValue={email} aria-label="Email кадровика" className="min-w-48 flex-[2]" />
+      <input type="hidden" name="kind" value={kind} />
+      <Input name="name" defaultValue={name} aria-label={`Ім'я ${who}`} className="min-w-32 flex-1" />
+      <Input name="email" type="email" defaultValue={email} aria-label={`Email ${who}`} className="min-w-48 flex-[2]" />
       <SubmitButton variant="secondary" pendingText="…">Зберегти</SubmitButton>
       {state.error && <span className="w-full text-xs text-danger">{state.error}</span>}
       {state.ok && <span className="w-full text-xs text-ok">{state.ok}</span>}

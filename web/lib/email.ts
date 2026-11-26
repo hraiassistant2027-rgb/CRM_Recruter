@@ -82,7 +82,12 @@ function wrap76(b64: string): string {
 export function buildRawEmail(input: { fromEmail: string; fromName?: string; to: string; subject: string; text: string; html: string }): string {
   const boundary = `crm_${Math.random().toString(36).slice(2)}`;
   const from = input.fromName ? `${encodeHeader(input.fromName.replace(/["\r\n]/g, ''))} <${input.fromEmail}>` : input.fromEmail;
-  const to = input.to.replace(/[\r\n,;<>]/g, '');
+  // Кілька адрес — через кому; кожну очищаємо окремо (захист від підміни заголовків)
+  const to = input.to
+    .split(',')
+    .map((a) => a.replace(/[\r\n;<>"]/g, '').trim())
+    .filter(Boolean)
+    .join(', ');
   const lines = [
     `From: ${from}`,
     `To: ${to}`,

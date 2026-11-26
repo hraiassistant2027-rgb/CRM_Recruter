@@ -12,6 +12,7 @@ const KINDS = {
   company_reasons: { table: 'rejection_reasons', extra: null, side: 'company' },
   candidate_reasons: { table: 'rejection_reasons', extra: null, side: 'candidate' },
   hr_contacts: { table: 'hr_contacts', extra: 'email' },
+  it_contacts: { table: 'it_contacts', extra: 'email' },
   legal_entities: { table: 'legal_entities', extra: null },
   projects: { table: 'projects', extra: null },
 } as const;
@@ -28,6 +29,7 @@ export async function addDictionaryItem(_prev: FormState, formData: FormData): P
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Перевірте дані' };
   const cfg = KINDS[kind];
   if (kind === 'hr_contacts' && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(parsed.data.extra ?? '')) return { error: 'Вкажіть email кадровика' };
+  if (kind === 'it_contacts' && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(parsed.data.extra ?? '')) return { error: 'Вкажіть email системного адміністратора' };
   const row: Record<string, string | null> = { name: parsed.data.name };
   if (cfg.extra) row[cfg.extra] = cfg.extra === 'email' ? (parsed.data.extra ?? '').toLowerCase() : parsed.data.extra;
   if ('side' in cfg) row.side = cfg.side;
@@ -103,10 +105,11 @@ export async function updateHrContact(_prev: FormState, formData: FormData): Pro
   if (!id.success) return { error: 'Невірний запис' };
   const name = String(formData.get('name') ?? '').trim();
   const email = String(formData.get('email') ?? '').trim().toLowerCase();
-  if (name.length < 2 || name.length > 200) return { error: "Вкажіть ім'я кадровика" };
+  if (name.length < 2 || name.length > 200) return { error: "Вкажіть ім'я" };
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: 'Невірний email' };
+  const table = formData.get('kind') === 'it_contacts' ? 'it_contacts' : 'hr_contacts';
   const supabase = await createClient();
-  const { data, error } = await supabase.from('hr_contacts').update({ name, email }).eq('id', id.data).select('id');
+  const { data, error } = await supabase.from(table).update({ name, email }).eq('id', id.data).select('id');
   if (error) return { error: translateError(error) };
   if (!data?.length) return { error: 'Немає права на цю дію' };
   revalidatePath('/settings/dictionaries');

@@ -17,9 +17,9 @@ function Section({ title, hint, kind, items, extraLabel }: { title: string; hint
       <ul className="mb-4 divide-y divide-line">
         {items.map((i) => (
           <li key={i.id} className={`flex items-center justify-between gap-2 py-1.5 text-sm ${i.is_active ? '' : 'opacity-60'}`}>
-            {kind === 'hr_contacts' ? (
+            {kind === 'hr_contacts' || kind === 'it_contacts' ? (
               <div className="min-w-0 flex-1">
-                <HrContactForm id={i.id} name={i.name} email={i.email ?? ''} />
+                <HrContactForm id={i.id} name={i.name} email={i.email ?? ''} kind={kind} />
               </div>
             ) : (
             <span className="min-w-0">
@@ -44,7 +44,7 @@ function Section({ title, hint, kind, items, extraLabel }: { title: string; hint
 export default async function DictionariesPage() {
   await requirePermission('settings.manage');
   const supabase = await createClient();
-  const [sites, departments, sources, reasons, hr, entities, projects] = await Promise.all([
+  const [sites, departments, sources, reasons, hr, entities, projects, it] = await Promise.all([
     supabase.from('sites').select('id, name, address, is_active').order('name'),
     supabase.from('departments').select('id, name, is_active').order('name'),
     supabase.from('sources').select('id, name, is_active, color').order('sort_order'),
@@ -52,6 +52,7 @@ export default async function DictionariesPage() {
     supabase.from('hr_contacts').select('id, name, email, is_active').order('name'),
     supabase.from('legal_entities').select('id, name, color, is_active').order('sort_order').order('name'),
     supabase.from('projects').select('id, name, is_active').order('sort_order').order('name'),
+    supabase.from('it_contacts').select('id, name, email, is_active').order('name'),
   ]);
   const r = (reasons.data ?? []) as Item[];
   return (
@@ -62,6 +63,7 @@ export default async function DictionariesPage() {
         actions={<Link href="/settings" className="text-sm text-ink-soft underline">← Налаштування</Link>}
       />
       <div className="grid gap-4 lg:grid-cols-2">
+        <Section title="Системні адміністратори (IT)" hint="На ці адреси автоматично надсилається лист «Підготовка робочого місця» з дашборда. Можна вказати кілька — лист отримають усі активні" kind="it_contacts" items={(it.data ?? []) as Item[]} extraLabel="Email системного адміністратора" />
         <Section title="Кадровики" hint="Кому передавати кандидатів на оформлення (етап «Офер»). Ім'я і email можна змінити й натиснути «Зберегти»; одна скринька може бути в кількох кадровиків" kind="hr_contacts" items={(hr.data ?? []) as Item[]} extraLabel="Email кадровика" />
         <Section title="Юридичні особи" hint="Колір — смуга на початку рядка у звіті по вакансіях. Натисніть на кружечок, щоб змінити колір" kind="legal_entities" items={(entities.data ?? []) as Item[]} />
         <Section title="Проекти" hint="Колонка «Проект» у звіті по вакансіях" kind="projects" items={(projects.data ?? []) as Item[]} />

@@ -13,6 +13,7 @@ import { HrHandoffList, type HandoffRow } from '@/components/hr-handoff';
 import { formatDate } from '@/lib/candidates';
 import { WorkspaceStats } from '@/components/workspace-stats';
 import { DashboardOverview } from '@/components/dashboard-overview';
+import { ItPrepList, type ItRow } from '@/components/it-prep';
 import { getWorkspaces } from '@/lib/workspace-server';
 import type { WorkspaceCode } from '@/lib/workspace';
 
@@ -65,6 +66,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   let handoffRows: HandoffRow[] = [];
   let hrContacts: { id: string; name: string; email: string }[] = [];
   let gmailReady = false;
+  let itRows: ItRow[] = [];
+  let itEmails: string[] = [];
   if (can(p, 'applications.read')) {
     const sb = await createClient();
     const { data: offerStages } = await sb.from('pipeline_stages').select('id').eq('contact_kind', 'offer');
@@ -72,12 +75,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     const { data: apps } = stageIds.length
       ? await sb
           .from('applications')
-          .select('id, candidate_id, vacancy_id, hr_docs_status, hr_approval_status, candidates(full_name, phone), vacancies(title, recruiter_id, hiring_manager_id)')
+          .select('id, candidate_id, vacancy_id, hr_docs_status, hr_approval_status, candidates(full_name, phone), vacancies(title, recruiter_id, hiring_manager_id, legal_entity_id)')
           .in('stage_id', stageIds)
           .order('stage_changed_at', { ascending: false })
           .limit(100)
       : { data: [] };
-    type V = { title: string; recruiter_id: string | null; hiring_manager_id: string | null };
+    type V = { title: string; recruiter_id: string | null; hiring_manager_id: string | null; legal_entity_id: string | null };
     type A = {
       id: string;
       candidate_id: string;
@@ -128,6 +131,42 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       };
     });
     hrContacts = (contacts ?? []) as { id: string; name: string; email: string }[];
+
+    // Підготовка робочого місця IT — для тих самих кандидатів
+    const managerIds = [...new Set(list.map((a) => one(a.vacancies)?.hiring_manager_id).filter((x): x is string => !!x))];
+    const [{ data: reqs }, { data: its }, { data: entities }, { data: managers }] = await Promise.all([
+      ids.length ? sb.from('it_requests').select('application_id, pc_type, company, room, accesses, manager, sent_at, sent_to').in('application_id', ids) : Promise.resolve({ data: [] }),
+      sb.from('it_contacts').select('email').eq('is_active', true),
+      sb.from('legal_entities').select('id, name'),
+      managerIds.length ? sb.from('profiles').select('id, full_name').in('id', managerIds) : Promise.resolve({ data: [] }),
+    ]);
+    type Req = { application_id: string; pc_type: string | null; company: string | null; room: string | null; accesses: string | null; manager: string | null; sent_at: string | null; sent_to: string | null };
+    const reqBy = new Map(((reqs ?? []) as Req[]).map((r) => [r.application_id, r]));
+    const entityName = new Map(((entities ?? []) as { id: string; name: string }[]).map((e) => [e.id, e.name]));
+    const managerName = new Map(((managers ?? []) as { id: string; full_name: string }[]).map((m) => [m.id, m.full_name]));
+    itEmails = [...new Set(((its ?? []) as { email: string }[]).map((x) => x.email))];
+    itRows = handoffRows.map((h, i) => {
+      const a = list[i];
+      const v = one(a.vacancies);
+      const r = reqBy.get(h.applicationId);
+      return {
+        applicationId: h.applicationId,
+        candidateId: h.candidateId,
+        candidateName: h.candidateName,
+        vacancyTitle: h.vacancyTitle,
+        phone: h.phone,
+        offerAt: h.offerAt,
+        fields: {
+          pc_type: r?.pc_type ?? '',
+          company: r?.company ?? (v?.legal_entity_id ? entityName.get(v.legal_entity_id) ?? '' : ''),
+          room: r?.room ?? '',
+          accesses: r?.accesses ?? '',
+          manager: r?.manager ?? (v?.hiring_manager_id ? managerName.get(v.hiring_manager_id) ?? '' : ''),
+        },
+        sent: r?.sent_at ? `${formatDate(r.sent_at)}, ${formatTime(r.sent_at)} → ${r.sent_to ?? ''}` : null,
+        canEdit: h.canEdit,
+      };
+    });
     gmailReady = (account as { status: string } | null)?.status === 'active';
   }
 
@@ -181,7 +220,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         )}
       </div>
       {can(p, 'applications.read') && (
-        <Card className="mt-6">
+        <div className="mt-6 grid items-start gap-5 xl:grid-cols-2">
+        <Card>
           <div className="mb-1 grid max-w-4xl gap-1 px-2 md:grid-cols-[minmax(0,1fr)_18rem] md:items-end md:gap-x-6">
             <h2 className="text-lg font-bold tracking-tight">Кандидати на оформлення</h2>
             <span className="text-xs text-ink-soft">Статус готовності перевірок кандидата</span>
@@ -192,6 +232,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <HrHandoffList rows={handoffRows} contacts={hrContacts} canSend={can(p, 'email.send')} gmailReady={gmailReady} />
           )}
         </Card>
+          <Card>
+            <h2 className="text-lg font-bold tracking-tight">Підготовка робочого місця IT</h2>
+            <p className="mb-3 text-xs text-ink-soft">Кандидати на етапі «Офер» — дані для системного адміністратора</p>
+            {itRows.length === 0 ? (
+              <p className="text-sm text-ink-soft">Кандидатів на етапі «Офер» немає.</p>
+            ) : (
+              <ItPrepList rows={itRows} itEmails={itEmails} canSend={can(p, 'email.send')} gmailReady={gmailReady} />
+            )}
+          </Card>
+        </div>
       )}
       {can(p, 'applications.read') && (
         <Card className="mt-6">
