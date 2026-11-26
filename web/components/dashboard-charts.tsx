@@ -65,7 +65,7 @@ export function HBarChart({ items, unit = 'днів' }: { items: { id: string; l
   const multi = columns.length > 1;
   const labelW = multi ? '6.5rem' : '9.5rem';
   return (
-    <div className="flex h-[16.5rem] gap-6 overflow-x-auto">
+    <div className="flex h-[16.5rem] gap-6 overflow-x-auto overflow-y-hidden">
       {columns.map((col, ci) => (
         <div key={ci} className="flex min-w-[15rem] flex-1 flex-col">
           <div className="relative flex-1">
@@ -171,77 +171,90 @@ export function FunnelChart({ rows }: { rows: FunnelRow[] }) {
 }
 
 // ---------------------------------------------------------------------
-// Кругова діаграма з виносками «Назва — 10.9 %» (як у зразку)
+// Кругова діаграма-інфографіка: розсунуті сектори різної висоти, відсотки всередині,
+// тінь і відблиск (об'єм), підписи з кольоровими кружечками під діаграмою
 // ---------------------------------------------------------------------
 export function PieChart({ items, empty, label }: { items: Slice[]; empty: string; label: string }) {
   const total = items.reduce((s, i) => s + i.count, 0);
-  if (!total) return <div className="flex aspect-[540/260] w-full items-center justify-center text-sm text-ink-soft">{empty}</div>;
-  const W = 540;
-  const H = 260;
+  if (!total) return <div className="flex h-[22rem] w-full items-center justify-center text-sm text-ink-soft">{empty}</div>;
+  const W = 260;
+  const H = 230;
   const cx = W / 2;
-  const cy = H / 2;
-  const R = 88;
-  const fmt = (n: number) => `${Math.round((n / total) * 1000) / 10} %`;
-  // Найбільший сектор — праворуч, як у зразку
+  const cy = H / 2 - 4;
+  const pct = (n: number) => Math.round((n / total) * 1000) / 10;
+  const sorted = [...items].sort((p, q) => q.count - p.count);
   let a = -Math.PI / 2;
-  const segs = items.map((i) => {
+  const segs = sorted.map((i, k) => {
     const a0 = a;
     const a1 = a + (i.count / total) * Math.PI * 2;
     a = a1;
-    return { ...i, a0, a1, mid: (a0 + a1) / 2 };
+    return { ...i, a0, a1, mid: (a0 + a1) / 2, r: Math.max(76, 98 - k * 6) };
   });
-  const path = (a0: number, a1: number) => {
-    if (a1 - a0 >= Math.PI * 2 - 1e-6) return `M${cx - R},${cy} a${R},${R} 0 1,0 ${2 * R},0 a${R},${R} 0 1,0 ${-2 * R},0`;
-    const x0 = cx + R * Math.cos(a0);
-    const y0 = cy + R * Math.sin(a0);
-    const x1 = cx + R * Math.cos(a1);
-    const y1 = cy + R * Math.sin(a1);
-    return `M${cx},${cy} L${x0},${y0} A${R},${R} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${x1},${y1} Z`;
+  const path = (s: (typeof segs)[number]) => {
+    const { r } = s;
+    if (s.a1 - s.a0 >= Math.PI * 2 - 1e-6) return `M${cx - r},${cy} a${r},${r} 0 1,0 ${2 * r},0 a${r},${r} 0 1,0 ${-2 * r},0`;
+    const ox = segs.length > 1 ? 4 * Math.cos(s.mid) : 0;
+    const oy = segs.length > 1 ? 4 * Math.sin(s.mid) : 0;
+    const x0 = cx + ox + r * Math.cos(s.a0);
+    const y0 = cy + oy + r * Math.sin(s.a0);
+    const x1 = cx + ox + r * Math.cos(s.a1);
+    const y1 = cy + oy + r * Math.sin(s.a1);
+    return `M${cx + ox},${cy + oy} L${x0},${y0} A${r},${r} 0 ${s.a1 - s.a0 > Math.PI ? 1 : 0} 1 ${x1},${y1} Z`;
   };
-  // Підписи: ліворуч і праворуч від кола, без накладань (мінімум 15 px між рядками)
-  type L = { seg: (typeof segs)[number]; side: 1 | -1; y: number; ex: number; ey: number };
-  const labels: L[] = segs.map((s) => {
-    const ex = cx + (R + 4) * Math.cos(s.mid);
-    const ey = cy + (R + 4) * Math.sin(s.mid);
-    return { seg: s, side: Math.cos(s.mid) >= 0 ? 1 : -1, y: cy + (R + 22) * Math.sin(s.mid), ex, ey };
-  });
-  for (const side of [1, -1] as const) {
-    const col = labels.filter((l) => l.side === side).sort((p, q) => p.y - q.y);
-    for (let i = 1; i < col.length; i++) if (col[i].y - col[i - 1].y < 15) col[i].y = col[i - 1].y + 15;
-    const overflow = col.length ? col[col.length - 1].y - (H - 8) : 0;
-    if (overflow > 0) for (const l of col) l.y -= overflow;
-  }
-  const gid = `pie-${label.replace(/[^a-zA-Zа-яА-ЯіїєґІЇЄҐ]/g, '').length}-${total}-${items.length}`;
+  const gid = `pie-${label.length}-${total}-${items.length}`;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label={`${label}: ${items.map((i) => `${i.name} ${fmt(i.count)}`).join(', ')}`}>
-      <defs>
-        <radialGradient id={`${gid}-sheen`} cx="38%" cy="30%" r="75%">
-          <stop offset="0%" stopColor="#fff" stopOpacity="0.38" />
-          <stop offset="55%" stopColor="#fff" stopOpacity="0.06" />
-          <stop offset="100%" stopColor="#000" stopOpacity="0.10" />
-        </radialGradient>
-      </defs>
-      <ellipse cx={cx} cy={cy + R + 10} rx={R * 0.85} ry={9} fill="#141428" opacity="0.10" />
-      <g className="chart-lift">
-        {segs.map((s) => (
-          <path key={s.name} d={path(s.a0, s.a1)} fill={s.color} stroke="#fff" strokeWidth={2} className="origin-center transition-transform duration-200 hover:scale-[1.03]" style={{ transformOrigin: `${cx}px ${cy}px` }}>
-            <title>{`${s.name}: ${s.count} (${fmt(s.count)})`}</title>
-          </path>
-        ))}
-        <circle cx={cx} cy={cy} r={R} fill={`url(#${gid}-sheen)`} pointerEvents="none" />
-      </g>
-      {labels.map((l) => {
-        const kx = cx + l.side * (R + 26);
-        const tx = kx + l.side * 6;
-        return (
-          <g key={l.seg.name}>
-            <polyline points={`${l.ex},${l.ey} ${kx},${l.y} ${kx + l.side * 4},${l.y}`} fill="none" stroke="#9aa5b1" strokeWidth={0.8} />
-            <text x={tx} y={l.y + 3.5} fontSize="10" textAnchor={l.side > 0 ? 'start' : 'end'} fill="var(--color-ink)">
-              {l.seg.name.length > 22 ? `${l.seg.name.slice(0, 21)}…` : l.seg.name} — {fmt(l.seg.count)}
+    <div className="flex h-[22rem] flex-col">
+      <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto h-[14.5rem] w-auto max-w-full" role="img" aria-label={`${label}: ${sorted.map((i) => `${i.name} ${pct(i.count)}%`).join(', ')}`}>
+        <defs>
+          <radialGradient id={`${gid}-sheen`} cx="35%" cy="30%" r="80%">
+            <stop offset="0%" stopColor="#fff" stopOpacity="0.35" />
+            <stop offset="60%" stopColor="#fff" stopOpacity="0.05" />
+            <stop offset="100%" stopColor="#000" stopOpacity="0.12" />
+          </radialGradient>
+          <filter id={`${gid}-shadow`} x="-20%" y="-20%" width="140%" height="150%">
+            <feDropShadow dx="0" dy="5" stdDeviation="5" floodColor="#141428" floodOpacity="0.22" />
+          </filter>
+        </defs>
+        <g filter={`url(#${gid}-shadow)`}>
+          {segs.map((s) => (
+            <g key={s.name} className="origin-center transition-transform duration-200 hover:scale-[1.04]" style={{ transformOrigin: `${cx}px ${cy}px` }}>
+              <path d={path(s)} fill={s.color} stroke="#fff" strokeWidth={1.5} />
+              <path d={path(s)} fill={`url(#${gid}-sheen)`} pointerEvents="none" />
+              <title>{`${s.name}: ${s.count} (${pct(s.count)}%)`}</title>
+            </g>
+          ))}
+        </g>
+        {segs.map((s) =>
+          s.a1 - s.a0 > 0.38 ? (
+            <text
+              key={`t-${s.name}`}
+              x={segs.length === 1 ? cx : cx + s.r * 0.6 * Math.cos(s.mid)}
+              y={(segs.length === 1 ? cy : cy + s.r * 0.6 * Math.sin(s.mid)) + 4.5}
+              textAnchor="middle"
+              fontSize="13"
+              fontWeight="700"
+              fill="#fff"
+              pointerEvents="none"
+              style={{ paintOrder: 'stroke', stroke: 'rgb(0 0 0 / 0.15)', strokeWidth: 2 }}
+            >
+              {Math.round((s.count / total) * 100)}%
             </text>
-          </g>
-        );
-      })}
-    </svg>
+          ) : null,
+        )}
+      </svg>
+      <ul className="mt-auto grid grid-cols-2 gap-x-4 gap-y-2 overflow-y-auto text-xs">
+        {segs.map((s) => (
+          <li key={s.name} className="flex min-w-0 items-center gap-2" title={`${s.name}: ${s.count} (${pct(s.count)}%)`}>
+            <span className="h-3.5 w-3.5 shrink-0 rounded-full ring-2 ring-white shadow-[0_1px_3px_rgb(20_20_40/0.3)]" style={{ background: s.color }} aria-hidden />
+            <span className="min-w-0">
+              <span className="block truncate font-semibold text-ink">{s.name}</span>
+              <span className="block text-[11px] text-ink-soft tabular-nums">
+                {s.count} · {pct(s.count)}%
+              </span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

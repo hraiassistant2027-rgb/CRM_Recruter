@@ -15,6 +15,7 @@ import { WorkspaceStats } from '@/components/workspace-stats';
 import { DashboardOverview } from '@/components/dashboard-overview';
 import type { ItRow } from '@/components/it-prep';
 import { OnboardingPanels } from '@/components/onboarding-panels';
+import { SplitView } from '@/components/split-view';
 import { getWorkspaces } from '@/lib/workspace-server';
 import type { WorkspaceCode } from '@/lib/workspace';
 
@@ -33,30 +34,18 @@ function WorkspaceHeading({ name, icon, note }: { name: string; icon: string; no
   );
 }
 
-export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+export default async function DashboardPage() {
   const session = await requireSession();
   // Попередження адміністраторам, коли сховище файлів майже заповнене
   const storage = can(session.permissions, 'settings.manage') ? await loadStorageUsage(await createClient()) : null;
   const p = session.permissions;
 
-  const sp = await searchParams;
   const { current, list: workspaces } = await getWorkspaces();
   const curCode: WorkspaceCode = current?.code ?? 'kan';
   // У KAN Talent адміністратор може показати під основним дашборд HomeHub
   const homehub = curCode === 'kan' ? workspaces.find((w) => w.code === 'homehub') : undefined;
-  // За замовчуванням HomeHub показано поруч (ліворуч KAN, праворуч HomeHub); «Лише KAN Talent» — ?homehub=0
-  const showHomehub = Boolean(homehub) && sp.homehub !== '0';
-  const one1 = (k: string) => (Array.isArray(sp[k]) ? sp[k]![0] : (sp[k] as string | undefined));
-  const hhRaw = one1('hvacancy');
-  const hhVacancy = hhRaw && /^[0-9a-f-]{36}$/i.test(hhRaw) ? hhRaw : null;
-  // Зберегти інші фільтри при зміні одного
-  const keepParams = (except: string) =>
-    Object.fromEntries(['vacancy', 'hvacancy', 'homehub'].filter((k) => k !== except && one1(k)).map((k) => [k, one1(k)!]));
-
   // Аналітичні графіки дашборда (за весь період; воронка, відмови і джерела — по всіх вакансіях або одній)
   const canCharts = can(p, 'analytics.read') || can(p, 'applications.read');
-  const vacRaw = Array.isArray(sp.vacancy) ? sp.vacancy[0] : sp.vacancy;
-  const vacancyFilter = vacRaw && /^[0-9a-f-]{36}$/i.test(vacRaw) ? vacRaw : null;
 
   const today = todayKyiv();
   const agenda = can(p, 'applications.read')
@@ -182,26 +171,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <PageHeader
         title={`Вітаємо, ${firstNameOf(session.profile.full_name)}!`}
         description="Короткий огляд рекрутингу"
-        actions={
-          homehub ? (
-            <nav className="inline-flex gap-1 rounded-2xl bg-white p-1 shadow-card" aria-label="Вигляд дашборда">
-              <a
-                href="/?homehub=0"
-                aria-current={!showHomehub ? 'page' : undefined}
-                className={`rounded-xl px-4 py-2 text-sm font-semibold ${!showHomehub ? 'bg-accent text-on-accent' : 'text-ink-soft hover:bg-panel'}`}
-              >
-                Лише KAN Talent
-              </a>
-              <a
-                href="/"
-                aria-current={showHomehub ? 'page' : undefined}
-                className={`rounded-xl px-4 py-2 text-sm font-semibold ${showHomehub ? 'bg-accent text-on-accent' : 'text-ink-soft hover:bg-panel'}`}
-              >
-                KAN + HomeHub
-              </a>
-            </nav>
-          ) : undefined
-        }
       />
       {storage && storage.ratio >= 0.8 && (
         <div className="mb-4">
@@ -211,37 +180,24 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </Alert>
         </div>
       )}
-      <div className={showHomehub ? 'grid items-start gap-5 2xl:gap-6 lg:grid-cols-2' : ''}>
-        <div className="min-w-0 space-y-5">
-          {showHomehub && <WorkspaceHeading name={current?.name ?? 'KAN Talent'} icon={current?.icon ?? '/logo-icon.png'} note="Ваш поточний простір" />}
-          <WorkspaceStats ws={curCode} current={curCode} permissions={p} compact={showHomehub} />
-          {canCharts && (
-            <DashboardOverview
-              ws={curCode}
-              current={curCode}
-              vacancy={vacancyFilter}
-              compact={showHomehub}
-              filterHiddenFields={keepParams('vacancy')}
-            />
-          )}
-        </div>
-        {showHomehub && homehub && (
-          <div data-theme="homehub" className="min-w-0 space-y-5" aria-label="Дашборд HomeHub">
-            <WorkspaceHeading name="HomeHub" icon={homehub.icon} note="Клік на картку відкриє розділ у просторі HomeHub" />
-            <WorkspaceStats ws="homehub" current={curCode} permissions={p} compact />
-            {canCharts && (
-              <DashboardOverview
-                ws="homehub"
-                current={curCode}
-                vacancy={hhVacancy}
-                compact
-                paramName="hvacancy"
-                filterHiddenFields={keepParams('hvacancy')}
-              />
-            )}
-          </div>
-        )}
-      </div>
+      <SplitView
+        left={
+          <>
+            {homehub && <WorkspaceHeading name={current?.name ?? 'KAN Talent'} icon={current?.icon ?? '/logo-icon.png'} note="Ваш поточний простір" />}
+            <WorkspaceStats ws={curCode} current={curCode} permissions={p} compact={Boolean(homehub)} />
+            {canCharts && <DashboardOverview ws={curCode} current={curCode} compact={Boolean(homehub)} />}
+          </>
+        }
+        right={
+          homehub ? (
+            <div data-theme="homehub" className="space-y-5" aria-label="Дашборд HomeHub">
+              <WorkspaceHeading name="HomeHub" icon={homehub.icon} note="Клік на картку відкриє розділ у просторі HomeHub" />
+              <WorkspaceStats ws="homehub" current={curCode} permissions={p} compact />
+              {canCharts && <DashboardOverview ws="homehub" current={curCode} compact />}
+            </div>
+          ) : null
+        }
+      />
       {can(p, 'applications.read') && (
         <OnboardingPanels hrRows={handoffRows} itRows={itRows} contacts={hrContacts} itEmails={itEmails} canSend={can(p, 'email.send')} gmailReady={gmailReady} />
       )}
