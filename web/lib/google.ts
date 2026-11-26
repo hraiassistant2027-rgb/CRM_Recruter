@@ -130,25 +130,38 @@ export async function googleSession(userId: string): Promise<GoogleSession> {
   if (!account || account.status !== 'active' || !account.refresh_token_encrypted) {
     throw new GoogleNotConnected('Підключіть Google-акаунт у своєму профілі');
   }
-  const res = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: clientId(),
-      client_secret: clientSecret(),
-      refresh_token: decryptToken(account.refresh_token_encrypted),
-      grant_type: 'refresh_token',
-    }),
-  });
-  const json = (await res.json()) as TokenResponse;
+  const refresh = async () => {
+    const r = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: clientId(),
+        client_secret: clientSecret(),
+        refresh_token: decryptToken(account.refresh_token_encrypted),
+        grant_type: 'refresh_token',
+      }),
+    });
+    const j = (await r.json().catch(() => ({}))) as TokenResponse;
+    return { res: r, json: j };
+  };
+  let { res, json } = await refresh();
+  // Тимчасові збої на боці Google (internal_failure, 5xx) — повторюємо, підключення не чіпаємо
+  const transient = (e: { res: Response; json: TokenResponse }) =>
+    e.res.status >= 500 || e.json.error === 'internal_failure' || e.json.error === 'temporarily_unavailable';
+  for (let i = 0; i < 2 && (!res.ok || !json.access_token) && transient({ res, json }); i++) {
+    await new Promise((r) => setTimeout(r, 700 * (i + 1)));
+    ({ res, json } = await refresh());
+  }
   if (!res.ok || !json.access_token) {
     const revoked = json.error === 'invalid_grant';
     await admin
       .from('email_accounts')
-      .update({ status: revoked ? 'revoked' : 'error', last_error: json.error ?? `HTTP ${res.status}` })
+      .update(revoked
+        ? { status: 'revoked', last_error: json.error }
+        : { last_error: json.error ?? `HTTP ${res.status}` })
       .eq('id', account.id);
     throw new GoogleNotConnected(
-      revoked ? 'Доступ до Google відкликано або він закінчився — підключіть акаунт у профілі знову' : 'Google тимчасово недоступний, спробуйте пізніше',
+      revoked ? 'Доступ до Google відкликано або він закінчився — підключіть акаунт у профілі знову' : 'Google тимчасово не відповідає — спробуйте ще раз за хвилину',
     );
   }
   return { accountId: account.id, email: account.google_email, accessToken: json.access_token };
