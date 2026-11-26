@@ -2,10 +2,11 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Monitor, Send } from 'lucide-react';
+import { Monitor, RotateCcw, Send } from 'lucide-react';
 import { saveItRequest, sendItRequest, type ItFields } from '@/app/(app)/it/actions';
 import { Badge, Button } from '@/components/ui';
-import { InfoStrip, PairPager } from '@/components/pair-pager';
+import { InfoStrip } from '@/components/pair-pager';
+import { latinName } from '@/lib/translit';
 
 export type ItRow = {
   applicationId: string;
@@ -20,67 +21,95 @@ export type ItRow = {
 };
 
 const PC_TYPES = ['Ноутбук', 'Стаціонарний ПК', 'Моноблок', 'Не потрібен'];
+const field =
+  'block w-full rounded-xl border border-field-line bg-field px-3 py-2 text-sm text-ink placeholder:text-ink-soft/60 transition-colors focus:border-accent-strong focus:bg-white focus:outline-none focus:ring-4 focus:ring-accent/15 disabled:opacity-70';
+const label = 'mb-1 block text-xs font-medium text-ink-soft';
 
-function Row({ row, canSend }: { row: ItRow; canSend: boolean }) {
+// Заявка IT для одного кандидата — того, якого обрано в блоці «Кандидати на оформлення»
+export function ItCard({ row, position, total, canSend }: { row: ItRow; position: number; total: number; canSend: boolean }) {
   const router = useRouter();
-  const [f, setF] = useState<ItFields>(row.fields);
+  const [f, setF] = useState<ItFields>({ ...row.fields, name_latin: row.fields.name_latin || latinName(row.candidateName) });
   const [busy, start] = useTransition();
   const [msg, setMsg] = useState<{ error?: string; ok?: string } | null>(null);
-  const set = (k: keyof ItFields) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
+  const set = (k: keyof ItFields) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
   const ro = !row.canEdit || busy;
   const id = (k: string) => `it-${k}-${row.applicationId}`;
 
-  const small =
-    'block h-8 w-full rounded-lg border border-field-line bg-field px-2.5 text-xs text-ink placeholder:text-ink-soft/60 focus:border-accent-strong focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent/15 disabled:opacity-70';
-  const label = 'mb-0.5 block truncate text-[10px] font-medium uppercase tracking-wide text-ink-soft';
-
   return (
-    <div className="flex h-full flex-col gap-2 px-1 text-sm">
-      <div className="flex items-baseline gap-2">
-        <Link href={`/candidates/${row.candidateId}`} className="shrink-0 font-semibold hover:underline">{row.candidateName}</Link>
-        <span className="min-w-0 truncate text-xs text-ink-soft">{row.vacancyTitle}{row.phone ? ` · ${row.phone}` : ''}</span>
-        <span className="ml-auto shrink-0">
-          {row.sent ? <Badge tone="ok">надіслано в IT</Badge> : <Badge tone="danger">не надіслано в IT</Badge>}
+    <div className="flex h-full flex-col gap-3">
+      <div className="flex items-center justify-between gap-2 text-xs text-ink-soft">
+        <span>
+          Кандидат {position} з {total}
         </span>
+        {row.sent ? <Badge tone="ok">надіслано в IT</Badge> : <Badge tone="danger">ще не надіслано в IT</Badge>}
       </div>
-      <div className="flex flex-wrap items-center gap-2 text-xs">
-        <Badge tone={row.offerAt ? 'ok' : 'warn'}>{row.offerAt ? `оформлення: ${row.offerAt}` : 'дату оформлення не призначено'}</Badge>
-        {row.sent && <span className="truncate text-ink-soft" title={row.sent}>{row.sent}</span>}
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="min-w-0">
+          <span className={label}>ПІБ кандидата</span>
+          <Link href={`/candidates/${row.candidateId}`} className="block truncate rounded-xl bg-panel px-3 py-2 text-sm font-semibold hover:underline">
+            {row.candidateName}
+          </Link>
+        </div>
+        <label className="min-w-0" htmlFor={id('latin')}>
+          <span className={label}>Прізвище та ім&apos;я латиницею</span>
+          <span className="flex gap-1.5">
+            <input id={id('latin')} value={f.name_latin} onChange={set('name_latin')} disabled={ro} placeholder="Zhohlo Dmytro" className={field} />
+            <button
+              type="button"
+              title="Заповнити заново за правилами транслітерації"
+              aria-label="Заповнити латиницею заново"
+              disabled={ro}
+              onClick={() => setF({ ...f, name_latin: latinName(row.candidateName) })}
+              className="flex w-10 shrink-0 items-center justify-center rounded-xl bg-panel text-ink-soft hover:text-ink disabled:opacity-40"
+            >
+              <RotateCcw className="h-4 w-4" aria-hidden />
+            </button>
+          </span>
+        </label>
       </div>
-      <div className="grid grid-cols-3 gap-2">
-        <label className="min-w-0">
+
+      <dl className="grid grid-cols-[9.5rem_minmax(0,1fr)] gap-x-3 gap-y-1 rounded-2xl bg-panel px-4 py-3 text-sm">
+        <dt className="text-ink-soft">Дата оформлення:</dt>
+        <dd className={row.offerAt ? 'font-semibold text-ok' : 'text-ink-soft'}>{row.offerAt ?? 'не призначено'}</dd>
+        <dt className="text-ink-soft">Посада:</dt>
+        <dd className="truncate">{row.vacancyTitle}</dd>
+        <dt className="text-ink-soft">Телефон кандидата:</dt>
+        <dd>{row.phone ?? '—'}</dd>
+      </dl>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="min-w-0" htmlFor={id('pc')}>
           <span className={label}>Тип робочого ПК</span>
-          <input id={id('pc')} list={`pc-types-${row.applicationId}`} value={f.pc_type} onChange={set('pc_type')} disabled={ro} placeholder="Ноутбук" className={small} />
+          <input id={id('pc')} list={`pc-types-${row.applicationId}`} value={f.pc_type} onChange={set('pc_type')} disabled={ro} placeholder="Ноутбук" className={field} />
           <datalist id={`pc-types-${row.applicationId}`}>
             {PC_TYPES.map((t) => (
               <option key={t} value={t} />
             ))}
           </datalist>
         </label>
-        <label className="min-w-0">
-          <span className={label}>Компанія оформлення</span>
-          <input id={id('company')} value={f.company} onChange={set('company')} disabled={ro} placeholder="Юрособа" className={small} />
+        <label className="min-w-0" htmlFor={id('company')}>
+          <span className={label}>В яку компанію оформлений</span>
+          <input id={id('company')} value={f.company} onChange={set('company')} disabled={ro} placeholder="Юрособа" className={field} />
         </label>
-        <label className="min-w-0">
+        <label className="min-w-0" htmlFor={id('room')}>
           <span className={label}>Кабінет (робоче місце)</span>
-          <input id={id('room')} value={f.room} onChange={set('room')} disabled={ro} placeholder="Каб. 204" className={small} />
+          <input id={id('room')} value={f.room} onChange={set('room')} disabled={ro} placeholder="Каб. 204, офіс на Лесі Українки" className={field} />
         </label>
-      </div>
-      <div className="grid grid-cols-3 gap-2">
-        <label className="min-w-0">
+        <label className="min-w-0" htmlFor={id('manager')}>
           <span className={label}>Безпосередній керівник</span>
-          <input id={id('manager')} value={f.manager} onChange={set('manager')} disabled={ro} placeholder="ПІБ керівника" className={small} />
+          <input id={id('manager')} value={f.manager} onChange={set('manager')} disabled={ro} placeholder="ПІБ керівника" className={field} />
         </label>
-        <label className="col-span-2 min-w-0">
-          <span className={label} title="Про доступи та характеристики запитати у безпосереднього керівника">Доступи (уточнити у керівника)</span>
-          <input id={id('access')} value={f.accesses} onChange={set('accesses')} disabled={ro} placeholder="1С, пошта, AutoCAD, папка «Кошториси»…" className={small} />
+        <label className="min-w-0 sm:col-span-2" htmlFor={id('access')}>
+          <span className={label}>Доступи — про доступи та характеристики запитати у безпосереднього керівника</span>
+          <textarea id={id('access')} rows={2} value={f.accesses} onChange={set('accesses')} disabled={ro} placeholder="1С, корпоративна пошта, AutoCAD, папка «Кошториси»…" className={field} />
         </label>
       </div>
+
       {row.canEdit && (
-        <div className="flex items-center gap-2">
+        <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
           <Button
             type="button"
-            className="!px-3 !py-1.5 text-xs"
             disabled={busy || !canSend}
             onClick={() =>
               start(async () => {
@@ -90,12 +119,11 @@ function Row({ row, canSend }: { row: ItRow; canSend: boolean }) {
               })
             }
           >
-            <Send className="h-3.5 w-3.5" aria-hidden /> {busy ? 'Надсилаємо…' : row.sent ? 'Надіслати оновлення' : 'Надіслати в IT'}
+            <Send className="h-4 w-4" aria-hidden /> {busy ? 'Надсилаємо…' : row.sent ? 'Надіслати оновлення в IT' : 'Надіслати в IT'}
           </Button>
           <Button
             type="button"
             variant="secondary"
-            className="!px-3 !py-1.5 text-xs"
             disabled={busy}
             onClick={() =>
               start(async () => {
@@ -106,43 +134,39 @@ function Row({ row, canSend }: { row: ItRow; canSend: boolean }) {
           >
             Зберегти
           </Button>
-          {msg?.error && <span className="min-w-0 truncate text-xs text-danger" title={msg.error}>{msg.error}</span>}
-          {msg?.ok && <span className="min-w-0 truncate text-xs text-ok" title={msg.ok}>{msg.ok}</span>}
+          {msg?.error && <span className="min-w-0 text-xs text-danger">{msg.error}</span>}
+          {msg?.ok && <span className="min-w-0 truncate text-xs text-ok">{msg.ok}</span>}
+          {!msg && row.sent && <span className="min-w-0 truncate text-xs text-ink-soft" title={row.sent}>{row.sent}</span>}
         </div>
       )}
     </div>
   );
 }
 
-export function ItPrepList({ rows, itEmails, canSend, gmailReady }: { rows: ItRow[]; itEmails: string[]; canSend: boolean; gmailReady: boolean }) {
+export function ItInfo({ itEmails, canSend, gmailReady }: { itEmails: string[]; canSend: boolean; gmailReady: boolean }) {
+  if (!itEmails.length) {
+    return (
+      <InfoStrip tone="warn">
+        <Monitor className="h-4 w-4 shrink-0" aria-hidden />
+        <span className="truncate">
+          Адресу IT не вказано: <Link href="/settings/dictionaries" className="underline">Довідники → Системні адміністратори (IT)</Link>
+        </span>
+      </InfoStrip>
+    );
+  }
+  if (!gmailReady && canSend) {
+    return (
+      <InfoStrip tone="warn">
+        Щоб надсилати листи, підключіть Google у <Link href="/profile" className="underline">Профілі</Link>.
+      </InfoStrip>
+    );
+  }
   return (
-    <div>
-      {!itEmails.length ? (
-        <InfoStrip tone="warn">
-          <Monitor className="h-4 w-4 shrink-0" aria-hidden />
-          <span className="truncate">
-            Адресу IT не вказано: <Link href="/settings/dictionaries" className="underline">Довідники → Системні адміністратори (IT)</Link>
-          </span>
-        </InfoStrip>
-      ) : !gmailReady && canSend ? (
-        <InfoStrip tone="warn">
-          Щоб надсилати листи, підключіть Google у <Link href="/profile" className="underline">Профілі</Link>.
-        </InfoStrip>
-      ) : (
-        <InfoStrip>
-          <Monitor className="h-4 w-4 shrink-0 text-accent-strong" aria-hidden />
-          <span className="truncate" title={itEmails.join(', ')}>
-            Лист автоматично піде на: <b className="text-ink">{itEmails.join(', ')}</b>
-          </span>
-        </InfoStrip>
-      )}
-      <PairPager
-        label="Підготовка робочого місця IT"
-        slotClass="h-[14.5rem] py-3"
-        items={rows.map((r) => (
-          <Row key={r.applicationId} row={r} canSend={canSend && gmailReady && itEmails.length > 0} />
-        ))}
-      />
-    </div>
+    <InfoStrip>
+      <Monitor className="h-4 w-4 shrink-0 text-accent-strong" aria-hidden />
+      <span className="truncate" title={itEmails.join(', ')}>
+        Лист автоматично піде на: <b className="text-ink">{itEmails.join(', ')}</b>
+      </span>
+    </InfoStrip>
   );
 }

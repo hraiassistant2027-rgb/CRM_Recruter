@@ -9,27 +9,16 @@ import { firstNameOf } from '@/lib/email';
 import { loadAgenda } from '@/lib/interviews-load';
 import { KIND_LABELS } from '@/lib/interviews';
 import { addDays, dateToKyiv, formatInterviewDate, formatTime, kyivToDate, todayKyiv } from '@/lib/time';
-import { HrHandoffList, type HandoffRow } from '@/components/hr-handoff';
+import type { HandoffRow } from '@/components/hr-handoff';
 import { formatDate } from '@/lib/candidates';
 import { WorkspaceStats } from '@/components/workspace-stats';
 import { DashboardOverview } from '@/components/dashboard-overview';
-import { ItPrepList, type ItRow } from '@/components/it-prep';
+import type { ItRow } from '@/components/it-prep';
+import { OnboardingPanels } from '@/components/onboarding-panels';
 import { getWorkspaces } from '@/lib/workspace-server';
 import type { WorkspaceCode } from '@/lib/workspace';
 
 export const metadata: Metadata = { title: 'Dashboard' };
-
-function CardTitle({ title, count, subtitle }: { title: string; count: number; subtitle: string }) {
-  return (
-    <div className="mb-3">
-      <h2 className="flex items-center gap-2 text-lg font-bold tracking-tight">
-        {title}
-        <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-accent px-2 text-sm font-bold text-on-accent tabular-nums">{count}</span>
-      </h2>
-      <p className="text-xs text-ink-soft">{subtitle}</p>
-    </div>
-  );
-}
 
 function WorkspaceHeading({ name, icon, note }: { name: string; icon: string; note?: string }) {
   return (
@@ -152,12 +141,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     // Підготовка робочого місця IT — для тих самих кандидатів
     const managerIds = [...new Set(list.map((a) => one(a.vacancies)?.hiring_manager_id).filter((x): x is string => !!x))];
     const [{ data: reqs }, { data: its }, { data: entities }, { data: managers }] = await Promise.all([
-      ids.length ? sb.from('it_requests').select('application_id, pc_type, company, room, accesses, manager, sent_at, sent_to').in('application_id', ids) : Promise.resolve({ data: [] }),
+      ids.length ? sb.from('it_requests').select('application_id, name_latin, pc_type, company, room, accesses, manager, sent_at, sent_to').in('application_id', ids) : Promise.resolve({ data: [] }),
       sb.from('it_contacts').select('email').eq('is_active', true),
       sb.from('legal_entities').select('id, name'),
       managerIds.length ? sb.from('profiles').select('id, full_name').in('id', managerIds) : Promise.resolve({ data: [] }),
     ]);
-    type Req = { application_id: string; pc_type: string | null; company: string | null; room: string | null; accesses: string | null; manager: string | null; sent_at: string | null; sent_to: string | null };
+    type Req = { application_id: string; name_latin: string | null; pc_type: string | null; company: string | null; room: string | null; accesses: string | null; manager: string | null; sent_at: string | null; sent_to: string | null };
     const reqBy = new Map(((reqs ?? []) as Req[]).map((r) => [r.application_id, r]));
     const entityName = new Map(((entities ?? []) as { id: string; name: string }[]).map((e) => [e.id, e.name]));
     const managerName = new Map(((managers ?? []) as { id: string; full_name: string }[]).map((m) => [m.id, m.full_name]));
@@ -174,6 +163,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         phone: h.phone,
         offerAt: h.offerAt,
         fields: {
+          name_latin: r?.name_latin ?? '',
           pc_type: r?.pc_type ?? '',
           company: r?.company ?? (v?.legal_entity_id ? entityName.get(v.legal_entity_id) ?? '' : ''),
           room: r?.room ?? '',
@@ -237,24 +227,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         )}
       </div>
       {can(p, 'applications.read') && (
-        <div className="mt-6 grid items-stretch gap-5 xl:grid-cols-2">
-        <Card className="flex flex-col">
-          <CardTitle title="Кандидати на оформлення" count={handoffRows.length} subtitle="Етап «Офер» · від ранньої дати оформлення до пізньої" />
-          {handoffRows.length === 0 ? (
-            <p className="text-sm text-ink-soft">Кандидатів на етапі «Офер» немає.</p>
-          ) : (
-            <HrHandoffList rows={handoffRows} contacts={hrContacts} canSend={can(p, 'email.send')} gmailReady={gmailReady} />
-          )}
-        </Card>
-          <Card className="flex flex-col">
-            <CardTitle title="Підготовка робочого місця IT" count={itRows.length} subtitle="Дані для системного адміністратора · той самий порядок" />
-            {itRows.length === 0 ? (
-              <p className="text-sm text-ink-soft">Кандидатів на етапі «Офер» немає.</p>
-            ) : (
-              <ItPrepList rows={itRows} itEmails={itEmails} canSend={can(p, 'email.send')} gmailReady={gmailReady} />
-            )}
-          </Card>
-        </div>
+        <OnboardingPanels hrRows={handoffRows} itRows={itRows} contacts={hrContacts} itEmails={itEmails} canSend={can(p, 'email.send')} gmailReady={gmailReady} />
       )}
       {can(p, 'applications.read') && (
         <Card className="mt-6">

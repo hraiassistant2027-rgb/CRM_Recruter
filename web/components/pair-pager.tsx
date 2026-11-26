@@ -3,8 +3,24 @@ import { useState, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Показує записи парами (по 2) у блоках однакової висоти; стрілки перемикають на наступну пару
-export function PairPager({ items, perPage = 2, slotClass, label }: { items: ReactNode[]; perPage?: number; slotClass: string; label: string }) {
-  const [page, setPage] = useState(0);
+export function PairPager({
+  items,
+  perPage = 2,
+  slotClass,
+  label,
+  onPageChange,
+}: {
+  items: ReactNode[];
+  perPage?: number;
+  slotClass: string;
+  label: string;
+  onPageChange?: (firstIndex: number) => void;
+}) {
+  const [page, setPageState] = useState(0);
+  const setPage = (n: number) => {
+    setPageState(n);
+    onPageChange?.(n * perPage);
+  };
   const pages = Math.max(1, Math.ceil(items.length / perPage));
   const p = Math.min(page, pages - 1);
   const shown = items.slice(p * perPage, p * perPage + perPage);

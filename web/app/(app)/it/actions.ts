@@ -8,7 +8,7 @@ import { buildRawEmail, textToHtml } from '@/lib/email';
 import { formatInterviewDate, formatTime } from '@/lib/time';
 import type { FormState } from '@/lib/form-state';
 
-export type ItFields = { pc_type: string; company: string; room: string; accesses: string; manager: string };
+export type ItFields = { name_latin: string; pc_type: string; company: string; room: string; accesses: string; manager: string };
 
 const clip = (v: unknown, n: number) => {
   const s = String(v ?? '').trim();
@@ -17,6 +17,7 @@ const clip = (v: unknown, n: number) => {
 
 function readFields(f: ItFields) {
   return {
+    name_latin: clip(f.name_latin, 200),
     pc_type: clip(f.pc_type, 100),
     company: clip(f.company, 200),
     room: clip(f.room, 200),
@@ -76,6 +77,7 @@ export async function sendItRequest(applicationId: string, fields: ItFields): Pr
     '',
     `Дата оформлення: ${date}`,
     `ПІБ: ${c.full_name}`,
+    `Прізвище та ім'я латиницею: ${f.name_latin ?? '—'}`,
     `Посада: ${v.title}`,
     `Телефон кандидата: ${c.phone ?? '—'}`,
     `Тип робочого ПК: ${f.pc_type ?? '—'}`,

@@ -20,7 +20,19 @@ export type HandoffRow = {
   canEdit: boolean;
 };
 
-function Row({ row, contacts, canSend }: { row: HandoffRow; contacts: { id: string; name: string; email: string }[]; canSend: boolean }) {
+function Row({
+  row,
+  contacts,
+  canSend,
+  selected,
+  onSelect,
+}: {
+  row: HandoffRow;
+  contacts: { id: string; name: string; email: string }[];
+  canSend: boolean;
+  selected: boolean;
+  onSelect: () => void;
+}) {
   const router = useRouter();
   const [hrId, setHrId] = useState('');
   const [draft, setDraft] = useState<{ to: string; subject: string; body: string } | null>(null);
@@ -28,7 +40,12 @@ function Row({ row, contacts, canSend }: { row: HandoffRow; contacts: { id: stri
   const [busy, start] = useTransition();
 
   return (
-    <div className="flex h-full flex-col justify-center text-sm">
+    <div
+      onClickCapture={onSelect}
+      onFocusCapture={onSelect}
+      aria-current={selected ? 'true' : undefined}
+      className={`-mx-2 flex h-full cursor-pointer flex-col justify-center rounded-2xl px-2 text-sm transition-colors ${selected ? 'bg-soft ring-2 ring-accent/40' : 'hover:bg-panel'}`}
+    >
       <div className="grid gap-3 px-1 md:grid-cols-[minmax(0,1fr)_16rem] md:items-start md:gap-x-5">
         <div className="min-w-0 space-y-1.5">
           <div className="flex flex-wrap items-baseline gap-x-2">
@@ -146,7 +163,21 @@ function Row({ row, contacts, canSend }: { row: HandoffRow; contacts: { id: stri
   );
 }
 
-export function HrHandoffList({ rows, contacts, canSend, gmailReady }: { rows: HandoffRow[]; contacts: { id: string; name: string; email: string }[]; canSend: boolean; gmailReady: boolean }) {
+export function HrHandoffList({
+  rows,
+  contacts,
+  canSend,
+  gmailReady,
+  selectedId,
+  onSelect,
+}: {
+  rows: HandoffRow[];
+  contacts: { id: string; name: string; email: string }[];
+  canSend: boolean;
+  gmailReady: boolean;
+  selectedId?: string | null;
+  onSelect?: (applicationId: string) => void;
+}) {
   return (
     <div>
       {canSend && !gmailReady ? (
@@ -156,13 +187,21 @@ export function HrHandoffList({ rows, contacts, canSend, gmailReady }: { rows: H
       ) : canSend && contacts.length === 0 ? (
         <InfoStrip tone="warn">Кадровиків ще не додано: Налаштування → Довідники → Кадровики.</InfoStrip>
       ) : (
-        <InfoStrip>Ліворуч — дані кандидата, праворуч — статус готовності перевірок</InfoStrip>
+        <InfoStrip>Оберіть кандидата — праворуч відкриється його заявка для IT</InfoStrip>
       )}
       <PairPager
         label="Кандидати на оформлення"
-        slotClass="h-[14.5rem] py-3"
+        slotClass="h-[14.5rem] py-2"
+        onPageChange={(i) => rows[i] && onSelect?.(rows[i].applicationId)}
         items={rows.map((r) => (
-          <Row key={r.applicationId} row={r} contacts={contacts} canSend={canSend && gmailReady} />
+          <Row
+            key={r.applicationId}
+            row={r}
+            contacts={contacts}
+            canSend={canSend && gmailReady}
+            selected={r.applicationId === selectedId}
+            onSelect={() => onSelect?.(r.applicationId)}
+          />
         ))}
       />
     </div>
