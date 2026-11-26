@@ -5,7 +5,7 @@ export function ReportTabs({ active }: { active: 'vacancies' | 'analytics' }) {
     <Link
       href={href}
       aria-current={active === key ? 'page' : undefined}
-      className={`rounded-lg px-3 py-1.5 text-sm font-medium ${active === key ? 'bg-accent text-ink' : 'text-ink-soft hover:bg-white'}`}
+      className={`rounded-lg px-3 py-1.5 text-sm font-medium ${active === key ? 'bg-accent text-on-accent' : 'text-ink-soft hover:bg-white'}`}
     >
       {label}
     </Link>

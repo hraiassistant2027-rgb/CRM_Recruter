@@ -34,7 +34,7 @@ export default async function TemplatesPage({ searchParams }: { searchParams: Pr
         title="Шаблони листів"
         description="Використовуються під час надсилання листа з картки кандидата"
         actions={
-          <Link href="/templates/new" className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium hover:bg-accent-strong">
+          <Link href="/templates/new" className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-strong">
             <Plus className="h-4 w-4" aria-hidden /> Новий шаблон
           </Link>
         }

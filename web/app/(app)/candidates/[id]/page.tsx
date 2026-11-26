@@ -415,7 +415,7 @@ export default async function CandidatePage({
                     </p>
                   ) : (
                     <details>
-                      <summary className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium hover:bg-accent-strong">
+                      <summary className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-strong">
                         <Mail className="h-4 w-4" aria-hidden /> Написати лист
                       </summary>
                       <div className="mt-4">
@@ -599,7 +599,7 @@ export default async function CandidatePage({
               {schedulable.length > 0 && !deleted && (
                 mailReady ? (
                   <details>
-                    <summary className="inline-flex cursor-pointer items-center rounded-lg bg-accent px-4 py-2 text-sm font-medium hover:bg-accent-strong">
+                    <summary className="inline-flex cursor-pointer items-center rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-strong">
                       Призначити співбесіду
                     </summary>
                     <div className="mt-4">

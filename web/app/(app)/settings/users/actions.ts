@@ -6,6 +6,7 @@ import { firstIssue, inviteSchema, uuidSchema } from '@/lib/validation';
 import { translateError } from '@/lib/errors';
 import { confirmLink, sendSystemEmail } from '@/lib/system-mail';
 import type { FormState } from '@/lib/form-state';
+import { getWorkspaces } from '@/lib/workspace-server';
 
 const NO_RIGHTS: FormState = { error: 'Недостатньо прав для цієї дії або сесію не підтверджено кодом MFA' };
 const BAN_FOREVER = '876000h'; // 100 років
@@ -35,6 +36,8 @@ export async function inviteUser(_prev: FormState, formData: FormData): Promise<
   const supabase = await createClient();
   if (!(await allowed(supabase, 'users.manage'))) return NO_RIGHTS;
   const me = await currentUserId(supabase);
+  const { current } = await getWorkspaces();
+  const wsName = current?.name ?? 'KAN Talent';
 
   // Посилання-запрошення створює Supabase, а лист надсилається з Gmail адміністратора
   const admin = createAdminClient();
@@ -47,14 +50,21 @@ export async function inviteUser(_prev: FormState, formData: FormData): Promise<
   const link = confirmLink(data.properties.hashed_token, 'invite');
   const sent = await sendSystemEmail({
     to: parsed.data.email,
-    subject: 'Запрошення до KAN Talent',
+    subject: `Запрошення до ${wsName}`,
     paragraphs: [
       `Добрий день, ${parsed.data.full_name}!`,
-      'Вас запрошено до KAN Talent — системи рекрутингу компанії. Натисніть кнопку, щоб встановити пароль. Після цього система попросить налаштувати двофакторну перевірку в застосунку Google Authenticator.',
+      `Вас запрошено до ${wsName} — системи рекрутингу компанії.`
+        + ' Натисніть кнопку, щоб встановити пароль. Після цього система попросить налаштувати двофакторну перевірку в застосунку Google Authenticator.',
     ],
     link: { url: link, label: 'Прийняти запрошення' },
     preferredSenderId: me ?? undefined,
   });
+
+  // Новий користувач працює в просторі, з якого його запросили
+  if (current && current.code !== 'kan') {
+    await supabase.from('workspace_members').insert({ user_id: data.user.id, workspace_id: current.id });
+    await supabase.from('workspace_members').delete().eq('user_id', data.user.id).neq('workspace_id', current.id);
+  }
 
   // Роль призначаємо від імені адміністратора: діють правила RLS і журнал дій
   let roleNote = '';
@@ -164,4 +174,33 @@ export async function resetUserMfa(_prev: FormState, formData: FormData): Promis
   });
   revalidatePath('/settings/users');
   return { ok: 'Двофакторну перевірку скинуто. При наступному вході користувач налаштує її заново.' };
+}
+
+// Доступ до просторів (KAN Talent / HomeHub). Супер адміністратор і Адміністратор мають доступ до всіх автоматично.
+export async function setUserWorkspaces(_prev: FormState, formData: FormData): Promise<FormState> {
+  const userId = uuidSchema.safeParse(formData.get('user_id'));
+  if (!userId.success) return { error: 'Невірний користувач' };
+  const wanted = new Set(formData.getAll('workspaces').map(String));
+  if (wanted.size === 0) return { error: 'Оберіть хоча б один простір' };
+
+  const supabase = await createClient();
+  if (!(await allowed(supabase, 'users.manage'))) return NO_RIGHTS;
+  const [{ data: all }, { data: current }] = await Promise.all([
+    supabase.from('workspaces').select('id'),
+    supabase.from('workspace_members').select('workspace_id').eq('user_id', userId.data),
+  ]);
+  const valid = new Set(((all ?? []) as { id: string }[]).map((w) => w.id));
+  const have = new Set(((current ?? []) as { workspace_id: string }[]).map((m) => m.workspace_id));
+  const toAdd = [...wanted].filter((id) => valid.has(id) && !have.has(id));
+  const toRemove = [...have].filter((id) => !wanted.has(id));
+  if (toAdd.length) {
+    const { error } = await supabase.from('workspace_members').insert(toAdd.map((id) => ({ user_id: userId.data, workspace_id: id })));
+    if (error) return { error: translateError(error) };
+  }
+  if (toRemove.length) {
+    const { error } = await supabase.from('workspace_members').delete().eq('user_id', userId.data).in('workspace_id', toRemove);
+    if (error) return { error: translateError(error) };
+  }
+  revalidatePath('/settings/users');
+  return { ok: 'Доступ до просторів збережено' };
 }

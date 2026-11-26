@@ -36,7 +36,7 @@ export async function saveBankFolder(link: string): Promise<{ ok?: string; error
     const folder = await resolveFolder(session, folderId);
     const { folders, truncated } = folder.driveId ? { folders: [folder.id], truncated: false } : await collectFolders(session, folder.id);
     const value: BankConfig = { folderId: folder.id, folderName: folder.name, driveId: folder.driveId, folders, truncated, updatedAt: new Date().toISOString() };
-    const { error } = await supabase.from('app_settings').upsert({ key: 'resume_bank', value }, { onConflict: 'key' });
+    const { error } = await supabase.from('app_settings').upsert({ key: 'resume_bank', value }, { onConflict: 'workspace_id,key' });
     if (error) return { error: translateError(error) };
     revalidatePath('/settings/resume-bank');
     revalidatePath('/resume-bank');

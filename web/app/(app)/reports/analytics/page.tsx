@@ -63,7 +63,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
             <Link
               key={key}
               href={presetLink(key)}
-              className={`rounded-lg border px-3 py-1.5 text-sm ${f.preset === key ? 'border-ink bg-accent font-medium' : 'border-line bg-white hover:bg-surface'}`}
+              className={`rounded-lg border px-3 py-1.5 text-sm ${f.preset === key ? 'border-accent-strong bg-accent font-medium text-on-accent' : 'border-line bg-white hover:bg-surface'}`}
             >
               {p.label}
             </Link>
@@ -109,7 +109,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
             <span className="mb-1.5 block text-xs font-medium text-ink-soft">Юр. особа</span>
             <EntityColorPicker name="entity" entities={entityList} defaultValue={f.entity} emptyLabel="Усі" />
           </div>
-          <button type="submit" className="rounded-lg bg-accent px-4 py-2 text-sm font-medium hover:bg-accent-strong">Показати</button>
+          <button type="submit" className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-strong">Показати</button>
           <Link href="/reports/analytics" className="pb-2 text-sm text-ink-soft underline">Скинути</Link>
         </form>
       </Card>

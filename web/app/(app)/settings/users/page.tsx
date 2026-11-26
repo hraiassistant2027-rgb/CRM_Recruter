@@ -4,7 +4,8 @@ import { requirePermission } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { can } from '@/lib/permissions';
 import { Alert, Badge, Card, PageHeader } from '@/components/ui';
-import { InviteForm, UserActions } from './users-client';
+import { InviteForm, UserActions, WorkspaceAccess } from './users-client';
+import { getWorkspaces } from '@/lib/workspace-server';
 
 export const metadata: Metadata = { title: 'Користувачі' };
 
@@ -32,10 +33,16 @@ export default async function UsersPage() {
   const canRoles = can(session.permissions, 'roles.manage');
   const supabase = await createClient();
 
-  const [{ data: users, error }, { data: roles }] = await Promise.all([
+  const [{ data: users, error }, { data: roles }, { data: members }, { list: workspaces }] = await Promise.all([
     supabase.rpc('admin_list_users'),
     supabase.from('roles').select('code, name, description').order('name'),
+    supabase.from('workspace_members').select('user_id, workspace_id'),
+    getWorkspaces(),
   ]);
+  const memberOf = new Map<string, string[]>();
+  for (const m of (members ?? []) as { user_id: string; workspace_id: string }[]) {
+    memberOf.set(m.user_id, [...(memberOf.get(m.user_id) ?? []), m.workspace_id]);
+  }
   const userRows = (users ?? []) as UserRow[];
   const roleRows = (roles ?? []) as RoleRow[];
   const roleName = new Map(roleRows.map((r) => [r.code, r.name]));
@@ -78,6 +85,15 @@ export default async function UsersPage() {
               </div>
               <UserActions user={u} roles={roleRows} canRoles={canRoles} isSelf={u.id === session.userId} />
             </div>
+            {workspaces.length > 1 && (
+              <div className="mt-3 border-t border-line pt-3">
+                {u.role_codes.some((c) => c === 'super_admin' || c === 'admin') ? (
+                  <p className="text-sm text-ink-soft">Простори: усі (адміністратор перемикається кліком на логотип)</p>
+                ) : (
+                  <WorkspaceAccess userId={u.id} workspaces={workspaces} memberOf={memberOf.get(u.id) ?? []} />
+                )}
+              </div>
+            )}
           </Card>
         ))}
       </div>

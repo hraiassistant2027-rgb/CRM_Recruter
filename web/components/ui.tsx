@@ -13,7 +13,7 @@ export function Button({ variant = 'primary', className, ...props }: ButtonProps
       className={cx(
         'inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors',
         'disabled:cursor-not-allowed disabled:opacity-60',
-        variant === 'primary' && 'bg-accent text-ink hover:bg-accent-strong',
+        variant === 'primary' && 'bg-accent text-on-accent hover:bg-accent-strong',
         variant === 'secondary' && 'border border-line bg-white text-ink hover:bg-surface',
         variant === 'danger' && 'border border-danger/30 bg-white text-danger hover:bg-danger-soft',
         variant === 'ghost' && 'text-ink-soft hover:bg-surface hover:text-ink',
@@ -103,7 +103,7 @@ export function Badge({ tone = 'neutral', children }: { tone?: 'neutral' | 'ok' 
         'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
         tone === 'neutral' && 'bg-surface text-ink-soft',
         tone === 'ok' && 'bg-ok-soft text-ok',
-        tone === 'warn' && 'bg-accent-soft text-ink',
+        tone === 'warn' && 'bg-warn-soft text-warn',
         tone === 'danger' && 'bg-danger-soft text-danger',
       )}
     >

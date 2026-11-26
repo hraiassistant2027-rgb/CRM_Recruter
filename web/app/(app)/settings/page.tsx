@@ -35,7 +35,7 @@ export default async function SettingsPage() {
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-line" role="progressbar" aria-valuenow={Math.round(usage.ratio * 100)} aria-valuemin={0} aria-valuemax={100} aria-label="Зайнято місця">
             <div
-              className={`h-full rounded-full ${usage.ratio >= 0.9 ? 'bg-danger' : usage.ratio >= 0.8 ? 'bg-accent-strong' : 'bg-ok'}`}
+              className={`h-full rounded-full ${usage.ratio >= 0.9 ? 'bg-danger' : usage.ratio >= 0.8 ? 'bg-warn' : 'bg-ok'}`}
               style={{ width: `${Math.min(100, Math.max(1, usage.ratio * 100))}%` }}
             />
           </div>

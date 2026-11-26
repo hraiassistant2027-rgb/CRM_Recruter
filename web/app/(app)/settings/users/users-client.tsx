@@ -1,6 +1,6 @@
 'use client';
 import { useActionState, useState } from 'react';
-import { inviteUser, resetUserMfa, setUserActive, setUserRoles } from './actions';
+import { inviteUser, resetUserMfa, setUserActive, setUserRoles, setUserWorkspaces } from './actions';
 import { Alert, Button, Field, Input, Select } from '@/components/ui';
 import { SubmitButton } from '@/components/submit-button';
 import { initialFormState } from '@/lib/form-state';
@@ -102,5 +102,35 @@ export function UserActions({ user, roles, canRoles, isSelf }: { user: UserRow; 
         </div>
       )}
     </div>
+  );
+}
+
+// Доступ до просторів KAN Talent / HomeHub
+export function WorkspaceAccess({
+  userId,
+  workspaces,
+  memberOf,
+}: {
+  userId: string;
+  workspaces: { id: string; name: string; icon: string }[];
+  memberOf: string[];
+}) {
+  const [state, action] = useActionState(setUserWorkspaces, initialFormState);
+  return (
+    <form action={action} className="flex flex-wrap items-center gap-3 text-sm">
+      <input type="hidden" name="user_id" value={userId} />
+      <span className="text-ink-soft">Простори:</span>
+      {workspaces.map((w) => (
+        <label key={w.id} className="flex items-center gap-1.5">
+          <input type="checkbox" name="workspaces" value={w.id} defaultChecked={memberOf.includes(w.id)} className="h-4 w-4 accent-[var(--color-accent-strong)]" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={w.icon} alt="" aria-hidden="true" className="h-4 w-4 rounded-sm object-contain" />
+          {w.name}
+        </label>
+      ))}
+      <SubmitButton variant="secondary" pendingText="Зберігаємо…">Зберегти</SubmitButton>
+      {state.error && <span className="text-danger">{state.error}</span>}
+      {state.ok && <span className="text-ok">{state.ok}</span>}
+    </form>
   );
 }

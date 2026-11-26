@@ -29,7 +29,7 @@ export default async function BuilderPage({ searchParams }: { searchParams: Prom
             key={key}
             href={`/builder?entity=${key}`}
             aria-current={entity === key ? 'page' : undefined}
-            className={`rounded-lg px-3 py-1.5 text-sm font-medium ${entity === key ? 'bg-accent text-ink' : 'text-ink-soft hover:bg-white'}`}
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium ${entity === key ? 'bg-accent text-on-accent' : 'text-ink-soft hover:bg-white'}`}
           >
             {label}
           </Link>

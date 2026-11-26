@@ -1,18 +1,31 @@
 @import 'tailwindcss';
 
+/* Кольори простору KAN Talent (синій, блакитний, білий). HomeHub — нижче, [data-theme='homehub'] */
 @theme {
-  --color-accent: #f5b700;
-  --color-accent-strong: #d89f00;
-  --color-accent-soft: #fff6d6;
-  --color-ink: #2b2f36;
-  --color-ink-soft: #5b6270;
-  --color-surface: #f5f6f8;
-  --color-line: #e3e6ea;
+  --color-accent: #2563eb;
+  --color-accent-strong: #1d4ed8;
+  --color-accent-soft: #e8f1fd;
+  --color-on-accent: #ffffff;
+  --color-ink: #1f2a37;
+  --color-ink-soft: #536175;
+  --color-surface: #f3f7fc;
+  --color-line: #dde6f0;
+  --color-warn: #a35200;
+  --color-warn-soft: #fff1d6;
   --color-danger: #c62828;
   --color-danger-soft: #fdecec;
   --color-ok: #1f7a3a;
   --color-ok-soft: #e7f5ec;
   --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Простір HomeHub (управляюча компанія): зелений і салатовий */
+[data-theme='homehub'] {
+  --color-accent: #3b8013;
+  --color-accent-strong: #2f6a0d;
+  --color-accent-soft: #edf7df;
+  --color-surface: #f4f9ef;
+  --color-line: #dfe9d5;
 }
 
 html {

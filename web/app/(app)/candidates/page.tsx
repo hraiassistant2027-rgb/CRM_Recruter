@@ -8,6 +8,8 @@ import { createClient } from '@/lib/supabase/server';
 import { can } from '@/lib/permissions';
 import { Alert, Badge, Card, Input, PageHeader, Select } from '@/components/ui';
 import { MATCH_LABELS, formatDate } from '@/lib/candidates';
+import { getWorkspaces } from '@/lib/workspace-server';
+import { isWorkspaceCode, switchHref, type WorkspaceCode } from '@/lib/workspace';
 
 export const metadata: Metadata = { title: 'База кандидатів' };
 
@@ -53,7 +55,16 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
   const source = params.source && /^[0-9a-f-]{36}$/i.test(params.source) ? params.source : null;
   const review = params.review === 'unreviewed' || params.review === 'reviewed' ? params.review : null;
 
-  const supabase = await createClient();
+  // Бази для пошуку: поточний простір або кілька (перемикачі «KAN» / «HomeHub» — для тих, хто має доступ до обох)
+  const { current, list: workspaces } = await getWorkspaces();
+  const curCode: WorkspaceCode = current?.code ?? 'kan';
+  const asked = (Array.isArray(sp.base) ? sp.base : sp.base ? [sp.base] : []).filter(isWorkspaceCode);
+  const bases = (asked.length ? asked : [curCode]).filter((c) => workspaces.some((w) => w.code === c));
+  const searchBases = bases.length ? bases : [curCode];
+  const multi = searchBases.length > 1 || searchBases[0] !== curCode;
+  const wsById = new Map(workspaces.map((w) => [w.id, w]));
+
+  const supabase = await createClient({ workspace: searchBases.join(',') });
   const [{ data, error }, { data: sources }, { data: owners }] = await Promise.all([
     supabase.rpc('search_candidates', {
       p_query: params.q || null,
@@ -69,6 +80,11 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
     supabase.from('profiles').select('id, full_name'),
   ]);
   const rows = (data ?? []) as SearchRow[];
+  const rowWs = new Map<string, string>();
+  if (multi && rows.length) {
+    const { data: wr } = await supabase.from('candidates').select('id, workspace_id').in('id', rows.map((r) => r.id));
+    for (const r of (wr ?? []) as { id: string; workspace_id: string }[]) rowWs.set(r.id, r.workspace_id);
+  }
   // Власні поля, які адміністратор позначив «показувати в списку»
   const listFields = (await loadFields(supabase, 'candidates')).filter((f) => f.show_in_list).slice(0, 4);
   const customById = new Map<string, CustomValues>();
@@ -85,6 +101,7 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
   const pageHref = (p: number) => {
     const qs = new URLSearchParams();
     for (const [k, v] of Object.entries(params)) if (v && k !== 'page') qs.set(k, v);
+    if (asked.length) for (const b of searchBases) qs.append('base', b);
     if (p > 1) qs.set('page', String(p));
     const s = qs.toString();
     return `/candidates${s ? `?${s}` : ''}`;
@@ -94,7 +111,7 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
     <>
       <PageHeader
         title={trash ? 'Кошик кандидатів' : 'База кандидатів'}
-        description={trash ? 'Видалені картки. Їх можна відкрити і відновити.' : 'Єдина база для всіх вакансій'}
+        description={trash ? 'Видалені картки. Їх можна відкрити і відновити.' : `База ${current?.name ?? 'KAN Talent'} для всіх її вакансій`}
         actions={
           can(session.permissions, 'candidates.create') && !trash ? (
             <div className="flex flex-wrap gap-2">
@@ -106,7 +123,7 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
               </Link>
               <Link
                 href="/candidates/new"
-                className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-ink hover:bg-accent-strong"
+                className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-strong"
               >
                 <Plus className="h-4 w-4" aria-hidden /> Додати кандидата
               </Link>
@@ -149,11 +166,28 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
             </Select>
           </label>
           <div className="flex items-center gap-3">
-            <button type="submit" className="rounded-lg bg-accent px-4 py-2 text-sm font-medium hover:bg-accent-strong">
+            <button type="submit" className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-strong">
               Знайти
             </button>
           </div>
           <div className="flex flex-wrap items-center gap-4 text-sm md:col-span-5">
+            {workspaces.length > 1 && (
+              <fieldset className="flex flex-wrap items-center gap-2">
+                <legend className="sr-only">Шукати в базах</legend>
+                <span className="text-ink-soft">Шукати в базі:</span>
+                {workspaces.map((w) => (
+                  <label
+                    key={w.code}
+                    className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1 has-[:checked]:border-accent-strong has-[:checked]:bg-accent-soft has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent/40"
+                  >
+                    <input type="checkbox" name="base" value={w.code} defaultChecked={searchBases.includes(w.code)} className="sr-only" />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={w.icon} alt="" aria-hidden="true" className="h-4 w-4 rounded-sm object-contain" />
+                    {w.name}
+                  </label>
+                ))}
+              </fieldset>
+            )}
             <label className="flex items-center gap-2">
               <input type="checkbox" name="mine" value="1" defaultChecked={params.mine === '1'} className="accent-[var(--color-accent-strong)]" />
               Лише мої кандидати
@@ -198,9 +232,25 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
               {rows.map((r) => (
                 <tr key={r.id} className="hover:bg-surface/60">
                   <td className="px-4 py-3">
-                    <Link href={`/candidates/${r.id}`} className="font-medium hover:underline">
-                      {r.full_name}
-                    </Link>
+                    {(() => {
+                      const w = wsById.get(rowWs.get(r.id) ?? '');
+                      const other = w && w.code !== curCode;
+                      return (
+                        <span className="flex items-center gap-2">
+                          {multi && w && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={w.icon} alt={w.name} title={w.name} className="h-4 w-4 shrink-0 rounded-sm object-contain" />
+                          )}
+                          <Link
+                            href={other ? switchHref(w.code, `/candidates/${r.id}`) : `/candidates/${r.id}`}
+                            className="font-medium hover:underline"
+                            title={other ? `Відкриється в просторі ${w.name}` : undefined}
+                          >
+                            {r.full_name}
+                          </Link>
+                        </span>
+                      );
+                    })()}
                     <div className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-ink-soft">
                       {r.current_position && <span>{r.current_position}</span>}
                       {r.review_status === 'unreviewed' && <Badge tone="warn">не перевірено</Badge>}

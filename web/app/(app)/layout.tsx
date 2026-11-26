@@ -4,6 +4,9 @@ import { createClient } from '@/lib/supabase/server';
 import { visibleMenu, type MenuItemRow } from '@/lib/permissions';
 import { Sidebar } from '@/components/sidebar';
 import { SignOutButton } from '@/components/sign-out-button';
+import { redirect } from 'next/navigation';
+import { getWorkspaces } from '@/lib/workspace-server';
+import { switchHref } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,12 +19,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .order('sort_order');
 
   const menu = visibleMenu((menuRows ?? []) as MenuItemRow[], session.permissions);
+  const { current, list } = await getWorkspaces();
+  // Простір із cookie недоступний цьому користувачу — переходимо в його простір
+  if (!current && list.length) redirect(switchHref(list[0].code, '/'));
+  const ws = current ?? { code: 'kan' as const, name: 'KAN Talent', icon: '/logo-icon.png', theme: 'kan', id: '' };
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar items={menu} />
+    <div data-theme={ws.theme} className="flex min-h-screen bg-surface">
+      <Sidebar items={menu} workspace={ws} workspaces={list} />
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 items-center justify-end gap-2 border-b border-line bg-white px-4 lg:px-8">
+          <span className="mr-auto hidden items-center gap-2 rounded-full bg-accent-soft px-3 py-1 text-xs font-medium text-accent-strong sm:inline-flex">
+            <span className="h-2 w-2 rounded-full bg-accent" aria-hidden />
+            {ws.name}
+          </span>
           <Link href="/profile" className="rounded-lg px-3 py-2 text-sm text-ink hover:bg-surface">
             {session.profile.full_name}
           </Link>

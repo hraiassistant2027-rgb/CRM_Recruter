@@ -11,29 +11,24 @@ import { KIND_LABELS } from '@/lib/interviews';
 import { addDays, dateToKyiv, formatInterviewDate, formatTime, kyivToDate, todayKyiv } from '@/lib/time';
 import { HrHandoffList, type HandoffRow } from '@/components/hr-handoff';
 import { formatDate } from '@/lib/candidates';
+import { WorkspaceStats } from '@/components/workspace-stats';
+import { getWorkspaces } from '@/lib/workspace-server';
+import type { WorkspaceCode } from '@/lib/workspace';
 
 export const metadata: Metadata = { title: 'Dashboard' };
 
-async function countOf(table: string, filter?: (q: any) => any): Promise<number | null> {
-  const supabase = await createClient();
-  let query = supabase.from(table).select('id', { count: 'exact', head: true });
-  if (filter) query = filter(query);
-  const { count, error } = await query;
-  return error ? null : (count ?? 0);
-}
-
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const session = await requireSession();
   // Попередження адміністраторам, коли сховище файлів майже заповнене
   const storage = can(session.permissions, 'settings.manage') ? await loadStorageUsage(await createClient()) : null;
   const p = session.permissions;
 
-  // Реальні цифри з бази (з урахуванням прав користувача). Повний дашборд — етап 7.
-  const [candidates, openVacancies, activeApplications] = await Promise.all([
-    can(p, 'candidates.read') ? countOf('candidates', (q) => q.is('deleted_at', null)) : Promise.resolve(null),
-    can(p, 'vacancies.read') ? countOf('vacancies', (q) => q.eq('status', 'open')) : Promise.resolve(null),
-    can(p, 'applications.read') ? countOf('applications', (q) => q.is('closed_at', null)) : Promise.resolve(null),
-  ]);
+  const sp = await searchParams;
+  const { current, list: workspaces } = await getWorkspaces();
+  const curCode: WorkspaceCode = current?.code ?? 'kan';
+  // У KAN Talent адміністратор може показати під основним дашборд HomeHub
+  const homehub = curCode === 'kan' ? workspaces.find((w) => w.code === 'homehub') : undefined;
+  const showHomehub = Boolean(homehub) && sp.homehub === '1';
 
   const today = todayKyiv();
   const agenda = can(p, 'applications.read')
@@ -110,47 +105,6 @@ export default async function DashboardPage() {
     gmailReady = (account as { status: string } | null)?.status === 'active';
   }
 
-  // Кандидати в базі за джерелами (для блоку «Кандидатів у базі»)
-  let sourceStats: { name: string; color: string; count: number }[] = [];
-  if (candidates !== null) {
-    const sb = await createClient();
-    const [{ data: counts }, { data: sources }] = await Promise.all([
-      sb.rpc('candidate_source_counts'),
-      sb.from('sources').select('id, name, color, sort_order').order('sort_order'),
-    ]);
-    const byId = new Map(((counts ?? []) as { source_id: string | null; cnt: number }[]).map((c) => [c.source_id ?? 'none', Number(c.cnt)]));
-    sourceStats = ((sources ?? []) as { id: string; name: string; color: string }[])
-      .map((s) => ({ name: s.name, color: s.color, count: byId.get(s.id) ?? 0 }))
-      .filter((s) => s.count > 0)
-      .sort((a, b) => b.count - a.count);
-    const none = byId.get('none') ?? 0;
-    if (none) sourceStats.push({ name: 'Без джерела', color: '#D1D5DB', count: none });
-  }
-
-  // Відкриті вакансії з кольором юрособи, згруповані по кольорах (порядок — як у довіднику юросіб)
-  let vacancyList: { id: string; title: string; color: string }[] = [];
-  if (openVacancies !== null) {
-    const sb = await createClient();
-    const [{ data: vacs }, { data: entities }] = await Promise.all([
-      sb.from('vacancies').select('id, title, legal_entity_id').eq('status', 'open').limit(500),
-      sb.from('legal_entities').select('id, color, sort_order, name').order('sort_order').order('name'),
-    ]);
-    const order = new Map(((entities ?? []) as { id: string; color: string }[]).map((e, i) => [e.id, { i, color: e.color }]));
-    vacancyList = ((vacs ?? []) as { id: string; title: string; legal_entity_id: string | null }[])
-      .map((v) => {
-        const e = v.legal_entity_id ? order.get(v.legal_entity_id) : undefined;
-        return { id: v.id, title: v.title, color: e?.color ?? '#D1D5DB', rank: e?.i ?? Number.MAX_SAFE_INTEGER };
-      })
-      .sort((a, b) => a.rank - b.rank || a.title.localeCompare(b.title, 'uk'))
-      .map(({ id, title, color }) => ({ id, title, color }));
-  }
-
-  const stats = [
-    { label: 'Кандидатів у базі', value: candidates, href: '/candidates' },
-    { label: 'Відкритих вакансій', value: openVacancies, href: '/vacancies' },
-    { label: 'Активних відгуків у воронці', value: activeApplications, href: '/pipeline' },
-  ].filter((s) => s.value !== null);
-
   return (
     <>
       <PageHeader title={`Вітаємо, ${firstNameOf(session.profile.full_name)}!`} description="Короткий огляд рекрутингу" />
@@ -162,39 +116,7 @@ export default async function DashboardPage() {
           </Alert>
         </div>
       )}
-      {stats.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {stats.map((s) => (
-            <Link key={s.label} href={s.href}>
-              <Card className="h-full transition-colors hover:border-accent">
-                <p className="text-sm text-ink-soft">{s.label}</p>
-                <p className="mt-2 text-3xl font-semibold">{s.value}</p>
-                {s.href === '/candidates' && sourceStats.length > 0 && (
-                  <ul className="mt-3 space-y-1 text-sm">
-                    {sourceStats.map((src) => (
-                      <li key={src.name} className="flex items-center gap-2">
-                        <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: src.color }} aria-hidden />
-                        <span className="flex-1 truncate">{src.name}</span>
-                        <span className="font-medium tabular-nums">{src.count}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {s.href === '/vacancies' && vacancyList.length > 0 && (
-                  <ul className="mt-3 max-h-64 space-y-1 overflow-y-auto pr-1 text-sm">
-                    {vacancyList.map((v) => (
-                      <li key={v.id} className="flex items-center gap-2">
-                        <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: v.color }} aria-hidden />
-                        <span className="flex-1 truncate" title={v.title}>{v.title}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </Card>
-            </Link>
-          ))}
-        </div>
-      )}
+      <WorkspaceStats ws={curCode} current={curCode} permissions={p} />
       {can(p, 'applications.read') && (
         <Card className="mt-6">
           <div className="mb-1 grid max-w-4xl gap-1 px-2 md:grid-cols-[minmax(0,1fr)_18rem] md:items-end md:gap-x-6">
@@ -246,9 +168,28 @@ export default async function DashboardPage() {
           )}
         </Card>
       )}
-      <Card className="mt-6">
-        <p className="text-sm text-ink-soft">Повний дашборд із конверсією воронки, термінами закриття вакансій і ефективністю рекрутерів з'явиться на етапі 7.</p>
-      </Card>
+      {homehub && (
+        <section data-theme="homehub" className="mt-8 rounded-2xl border border-line bg-surface p-4" aria-label="Дашборд HomeHub">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={homehub.icon} alt="" aria-hidden="true" className="h-8 w-8 rounded-lg bg-white object-contain" />
+            <h2 className="font-medium">HomeHub — управляюча компанія</h2>
+            <Link
+              href={showHomehub ? '/' : '/?homehub=1'}
+              scroll={false}
+              className="ml-auto rounded-lg border border-accent-strong bg-white px-3 py-1.5 text-sm font-medium text-accent-strong hover:bg-accent-soft"
+            >
+              {showHomehub ? 'Сховати дашборд HomeHub' : 'Показати дашборд HomeHub'}
+            </Link>
+          </div>
+          {showHomehub && (
+            <div className="mt-4">
+              <WorkspaceStats ws="homehub" current={curCode} permissions={p} />
+              <p className="mt-3 text-xs text-ink-soft">Клік на картку відкриє розділ у просторі HomeHub.</p>
+            </div>
+          )}
+        </section>
+      )}
     </>
   );
 }

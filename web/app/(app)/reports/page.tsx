@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: 'Звіти та аналітика' 
 
 const CLASS_TONE: Record<string, string> = {
   A: 'bg-ok-soft text-ok',
-  B: 'bg-accent-soft text-[#8a6500]',
+  B: 'bg-warn-soft text-warn',
   C: 'bg-[#ffedd5] text-[#c2410c]',
   D: 'bg-danger-soft text-danger',
 };
@@ -41,7 +41,7 @@ function Remaining({ row }: { row: ReportRow }) {
   if (row.daysLeft == null || row.plannedDays == null) return <span className="text-xs text-ink-soft">Немає плану</span>;
   const used = Math.min(100, Math.round((row.daysInWork / row.plannedDays) * 100));
   const overdue = row.daysLeft < 0;
-  const bar = overdue ? 'bg-danger' : used >= 75 ? 'bg-accent-strong' : 'bg-ok';
+  const bar = overdue ? 'bg-danger' : used >= 75 ? 'bg-warn' : 'bg-ok';
   return (
     <div className="w-36" title={row.deadline ? `Плановий строк: ${formatDate(row.deadline)}` : undefined}>
       <div className={`mb-1 text-xs font-medium ${overdue ? 'text-danger' : 'text-ink'}`}>
@@ -146,7 +146,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             <span className="mb-1.5 block text-xs font-medium text-ink-soft">по</span>
             <input type="date" name="to" defaultValue={f.to} className="rounded-lg border border-line bg-white px-3 py-2 text-sm" />
           </label>
-          <button type="submit" className="rounded-lg bg-accent px-4 py-2 text-sm font-medium hover:bg-accent-strong">Показати</button>
+          <button type="submit" className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-strong">Показати</button>
           {qs && <Link href="/reports" className="pb-2 text-sm text-ink-soft underline">Скинути</Link>}
         </form>
       </Card>
