@@ -27,13 +27,20 @@ export async function prepareHrHandoff(applicationId: string, hrContactId: strin
   const [{ data: hr }, { data: c }, { data: v }, { data: events }, { data: me }] = await Promise.all([
     supabase.from('hr_contacts').select('name, email').eq('id', hrContactId).maybeSingle(),
     supabase.from('candidates').select('full_name, phone, email').eq('id', app.candidate_id).maybeSingle(),
-    supabase.from('vacancies').select('title, site_id').eq('id', app.vacancy_id).maybeSingle(),
+    supabase.from('vacancies').select('title, site_id, hiring_manager_id').eq('id', app.vacancy_id).maybeSingle(),
     supabase.from('interviews').select('kind, starts_at, location, status').eq('application_id', app.id).in('kind', ['offer', 'polygraph']).neq('status', 'cancelled').order('starts_at', { ascending: false }),
     supabase.from('profiles').select('full_name, phone').eq('id', auth.user.id).maybeSingle(),
   ]);
   if (!hr) return { error: 'Кадровика не знайдено' };
   if (!c || !v) return { error: 'Немає доступу до кандидата' };
-  const { data: site } = v.site_id ? await supabase.from('sites').select('name, address').eq('id', v.site_id).maybeSingle() : { data: null };
+  const [{ data: site }, { data: it }, { data: hm }] = await Promise.all([
+    v.site_id ? supabase.from('sites').select('name, address').eq('id', v.site_id).maybeSingle() : Promise.resolve({ data: null }),
+    supabase.from('it_requests').select('manager').eq('application_id', app.id).maybeSingle(),
+    v.hiring_manager_id ? supabase.from('profiles').select('full_name').eq('id', v.hiring_manager_id).maybeSingle() : Promise.resolve({ data: null }),
+  ]);
+  // Безпосередній керівник: із заявки IT, інакше — керівник вакансії
+  const manager = ((it as { manager: string | null } | null)?.manager ?? '').trim() || (hm as { full_name: string } | null)?.full_name || '[вкажіть безпосереднього керівника]';
+  const s0 = site as { name: string; address: string | null } | null;
   const list = (events ?? []) as { kind: string; starts_at: string; location: string | null; status: string }[];
   const offer = list.find((e) => e.kind === 'offer');
   const polygraph = list.find((e) => e.kind === 'polygraph');
@@ -52,8 +59,8 @@ export async function prepareHrHandoff(applicationId: string, hrContactId: strin
     '',
     `На ${offerDate} — оформлення кандидата:`,
     `${c.full_name}, ${v.title}`,
-    site ? `Об'єкт: ${site.name}${site.address ? `, ${site.address}` : ''}` : '',
     `Телефон: ${c.phone ?? '—'}${c.email ? `, email: ${c.email}` : ''}`,
+    `${s0 ? `Об'єкт: ${s0.name}${s0.address ? ` (${s0.address})` : ''}, ` : ''}безпосередній керівник: ${manager}`,
     offer?.location ? `Місце оформлення: ${offer.location}` : '',
     '',
     'Статуси:',
