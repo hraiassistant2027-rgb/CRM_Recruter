@@ -10,6 +10,7 @@ import { GoogleNotConnected, googleFetch, googleSession, type GoogleSession } fr
 import { kyivToDate, TZ } from '@/lib/time';
 import type { FormState } from '@/lib/form-state';
 import { KIND_LABELS } from '@/lib/interviews';
+import { CANDIDATE_MAIL_BLOCKED } from '@/lib/candidate-mail';
 import { ensureMeetLink, waitForMeetLink } from '@/lib/calendar-events';
 
 const CAL = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
@@ -101,7 +102,7 @@ export async function scheduleInterview(formData: FormData): Promise<FormState &
   const extra = [...new Set(v.extra_emails.split(/[\s,;]+/).map((e) => e.trim().toLowerCase()).filter((e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)))].slice(0, 20);
   const profileRows = (users ?? []) as { id: string; full_name: string; email: string }[];
   const attendees: Attendee[] = [
-    ...(v.invite_candidate && candidate.email ? [{ email: candidate.email, displayName: candidate.full_name }] : []),
+    ...(v.invite_candidate && !CANDIDATE_MAIL_BLOCKED && candidate.email ? [{ email: candidate.email, displayName: candidate.full_name }] : []),
     ...profileRows.filter((u) => u.email && u.email.toLowerCase() !== session.email.toLowerCase()).map((u) => ({ email: u.email, displayName: u.full_name })),
     ...extra.map((email) => ({ email })),
   ];
@@ -143,7 +144,7 @@ export async function scheduleInterview(formData: FormData): Promise<FormState &
   }
 
   const participants = [
-    ...(v.invite_candidate && candidate.email ? [{ interview_id: interviewId, email: candidate.email, display_name: `${candidate.full_name} (кандидат)` }] : []),
+    ...(v.invite_candidate && !CANDIDATE_MAIL_BLOCKED && candidate.email ? [{ interview_id: interviewId, email: candidate.email, display_name: `${candidate.full_name} (кандидат)` }] : []),
     { interview_id: interviewId, user_id: auth.user.id, email: session.email, display_name: 'Організатор', response_status: 'accepted' },
     ...profileRows.filter((u) => u.id !== auth.user!.id).map((u) => ({ interview_id: interviewId, user_id: u.id, email: u.email, display_name: u.full_name })),
     ...extra.map((email) => ({ interview_id: interviewId, email, display_name: email })),
@@ -167,6 +168,21 @@ async function loadInterview(id: string) {
   if (!interview) return null;
   const { data: app } = await supabase.from('applications').select('candidate_id').eq('id', interview.application_id).maybeSingle();
   return { supabase, interview, candidateId: app?.candidate_id as string | undefined };
+}
+
+// Кому Google розсилає сповіщення про зміну події. Поки листи кандидатам вимкнено,
+// а кандидат є гостем події (запрошений раніше) — не розсилаємо нікому, щоб лист не пішов кандидату.
+async function sendUpdatesFor(ctx: NonNullable<Awaited<ReturnType<typeof loadInterview>>>): Promise<'all' | 'none'> {
+  if (!CANDIDATE_MAIL_BLOCKED || !ctx.candidateId) return 'all';
+  const [{ data: cand }, { data: parts }] = await Promise.all([
+    ctx.supabase.from('candidates').select('email').eq('id', ctx.candidateId).maybeSingle(),
+    ctx.supabase.from('interview_participants').select('email, display_name').eq('interview_id', ctx.interview.id),
+  ]);
+  const email = (cand?.email ?? '').toLowerCase();
+  const invited = ((parts ?? []) as { email: string | null; display_name: string | null }[]).some(
+    (p) => (email && p.email?.toLowerCase() === email) || /\(кандидат\)/.test(p.display_name ?? ''),
+  );
+  return invited ? 'none' : 'all';
 }
 
 export async function rescheduleInterview(formData: FormData): Promise<FormState> {
@@ -194,7 +210,7 @@ export async function rescheduleInterview(formData: FormData): Promise<FormState
   if (ctx.interview.google_event_id && ctx.interview.organizer_id) {
     try {
       const session = await googleSession(ctx.interview.organizer_id);
-      await googleFetch(session, `${CAL}/${encodeURIComponent(ctx.interview.google_event_id)}?sendUpdates=all`, {
+      await googleFetch(session, `${CAL}/${encodeURIComponent(ctx.interview.google_event_id)}?sendUpdates=${await sendUpdatesFor(ctx)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -224,7 +240,7 @@ export async function cancelInterview(formData: FormData): Promise<FormState> {
   if (ctx.interview.google_event_id && ctx.interview.organizer_id) {
     try {
       const session = await googleSession(ctx.interview.organizer_id);
-      await googleFetch(session, `${CAL}/${encodeURIComponent(ctx.interview.google_event_id)}?sendUpdates=all`, { method: 'DELETE' });
+      await googleFetch(session, `${CAL}/${encodeURIComponent(ctx.interview.google_event_id)}?sendUpdates=${await sendUpdatesFor(ctx)}`, { method: 'DELETE' });
     } catch (e) {
       const msg = gErr(e);
       if (!/410|404|deleted|Not Found/i.test(msg)) {

@@ -1,4 +1,5 @@
 'use server';
+import { CANDIDATE_MAIL_BLOCKED, CANDIDATE_MAIL_BLOCKED_MSG } from '@/lib/candidate-mail';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -149,6 +150,7 @@ export async function sendEmail(input: {
   subject: string;
   body: string;
 }): Promise<FormState> {
+  if (CANDIDATE_MAIL_BLOCKED) return { error: CANDIDATE_MAIL_BLOCKED_MSG };
   if (!uuidSchema.safeParse(input.candidateId).success) return { error: 'Невірний кандидат' };
   const applicationId = input.applicationId && uuidSchema.safeParse(input.applicationId).success ? input.applicationId : null;
   const templateId = input.templateId && uuidSchema.safeParse(input.templateId).success ? input.templateId : null;

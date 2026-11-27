@@ -1,4 +1,5 @@
 'use client';
+import { CANDIDATE_MAIL_BLOCKED, CANDIDATE_MAIL_BLOCKED_MSG } from '@/lib/candidate-mail';
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { cancelInterview, rescheduleInterview, saveInterviewResult, scheduleInterview, syncInterviewResponses } from '@/app/(app)/calendar/actions';
@@ -159,10 +160,14 @@ export function ScheduleInterview({
       <Field label="Нотатка в подію календаря" htmlFor="iv-note">
         <Input id="iv-note" name="note" placeholder="Що обговорити, які документи взяти" />
       </Field>
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="invite_candidate" defaultChecked={Boolean(candidateEmail)} disabled={!candidateEmail} className="accent-[var(--color-accent-strong)]" />
-        Надіслати кандидату запрошення з календаря {candidateEmail ? `(${candidateEmail})` : '— немає email у картці'}
-      </label>
+      {CANDIDATE_MAIL_BLOCKED ? (
+        <p className="text-sm text-warn">{CANDIDATE_MAIL_BLOCKED_MSG} — кандидат запрошення не отримає.</p>
+      ) : (
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="invite_candidate" defaultChecked={Boolean(candidateEmail)} disabled={!candidateEmail} className="accent-[var(--color-accent-strong)]" />
+          Надіслати кандидату запрошення з календаря {candidateEmail ? `(${candidateEmail})` : '— немає email у картці'}
+        </label>
+      )}
       <Message m={msg} />
       <Button type="submit" disabled={busy}>
         {busy ? 'Створюємо подію…' : 'Призначити співбесіду'}

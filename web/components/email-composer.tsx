@@ -1,4 +1,5 @@
 'use client';
+import { CANDIDATE_MAIL_BLOCKED, CANDIDATE_MAIL_BLOCKED_MSG } from '@/lib/candidate-mail';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { prepareEmail, sendEmail } from '@/app/(app)/inbox/actions';
 import { Alert, Button, Field, Input, Select } from '@/components/ui';
@@ -162,10 +163,12 @@ export function EmailComposer({
           </div>
           {placeholders.length > 0 && <Alert>Лист містить незаповнені місця: {placeholders.map((p) => `[${p}]`).join(', ')}. Поверніться і виправте.</Alert>}
           {message?.error && <Alert>{message.error}</Alert>}
+          {CANDIDATE_MAIL_BLOCKED && <Alert kind="info">{CANDIDATE_MAIL_BLOCKED_MSG}. Шаблон і текст можна готувати й перевіряти, надсилання увімкнемо після тестування.</Alert>}
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
-              disabled={sending || placeholders.length > 0}
+              disabled={sending || placeholders.length > 0 || CANDIDATE_MAIL_BLOCKED}
+              title={CANDIDATE_MAIL_BLOCKED ? CANDIDATE_MAIL_BLOCKED_MSG : undefined}
               onClick={() =>
                 startSending(async () => {
                   const r = await sendEmail({ candidateId, applicationId: applicationId || null, templateId: templateId || null, subject, body });

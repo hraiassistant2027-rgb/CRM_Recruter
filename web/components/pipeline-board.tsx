@@ -1,4 +1,5 @@
 'use client';
+import { CANDIDATE_MAIL_BLOCKED, CANDIDATE_MAIL_BLOCKED_MSG } from '@/lib/candidate-mail';
 import Link from 'next/link';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { moveApplication, type ContactInput } from '@/app/(app)/vacancies/actions';
@@ -398,10 +399,14 @@ export function ContactDialog({
                 Додати в мій Google Календар
               </label>
               {(google || online) && (
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={invite} onChange={(e) => setInvite(e.target.checked)} className="accent-[var(--color-accent-strong)]" />
-                  Надіслати кандидату запрошення з календаря{online ? ' (з посиланням Google Meet)' : ''}
-                </label>
+                CANDIDATE_MAIL_BLOCKED ? (
+                  <p className="text-xs text-warn">{CANDIDATE_MAIL_BLOCKED_MSG} — подія буде лише у вашому календарі.</p>
+                ) : (
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={invite} onChange={(e) => setInvite(e.target.checked)} className="accent-[var(--color-accent-strong)]" />
+                    Надіслати кандидату запрошення з календаря{online ? ' (з посиланням Google Meet)' : ''}
+                  </label>
+                )
               )}
             </div>
           ) : (

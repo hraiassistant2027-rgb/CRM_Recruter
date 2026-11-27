@@ -1,4 +1,5 @@
 import 'server-only';
+import { CANDIDATE_MAIL_BLOCKED } from '@/lib/candidate-mail';
 import { createClient } from '@/lib/supabase/server';
 import { GoogleNotConnected, googleFetch, googleSession, type GoogleSession } from '@/lib/google';
 import { KIND_LABELS } from '@/lib/interviews';
@@ -33,7 +34,7 @@ export async function waitForMeetLink(session: GoogleSession, event: GEvent): Pr
 export async function ensureMeetLink(session: GoogleSession, eventId: string, requestId: string): Promise<string | null> {
   const current = await googleFetch<GEvent>(session, `${CAL}/${encodeURIComponent(eventId)}?conferenceDataVersion=1`);
   if (meetOf(current)) return meetOf(current);
-  const patched = await googleFetch<GEvent>(session, `${CAL}/${encodeURIComponent(eventId)}?conferenceDataVersion=1&sendUpdates=all`, {
+  const patched = await googleFetch<GEvent>(session, `${CAL}/${encodeURIComponent(eventId)}?conferenceDataVersion=1&sendUpdates=${CANDIDATE_MAIL_BLOCKED ? 'none' : 'all'}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ conferenceData: { createRequest: { requestId: `${requestId}-${Date.now()}`, conferenceSolutionKey: { type: 'hangoutsMeet' } } } }),
@@ -64,7 +65,7 @@ export async function createGoogleEvent(
 
   try {
     const session = await googleSession(userId);
-    const invite = opts.inviteCandidate && Boolean(candidate.email);
+    const invite = !CANDIDATE_MAIL_BLOCKED && opts.inviteCandidate && Boolean(candidate.email);
     const event = await googleFetch<GEvent>(session, `${CAL}?sendUpdates=${invite ? 'all' : 'none'}&conferenceDataVersion=1`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
