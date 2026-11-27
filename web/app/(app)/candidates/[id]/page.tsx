@@ -2,9 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Download, ExternalLink, Eye, Pencil, X } from 'lucide-react';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { docxToSafeHtml } from '@/lib/resume-text';
-import { ensurePreview } from '@/lib/preview';
+import { inlineResume } from '@/lib/resume-view';
 import { resumeDisplayName } from '@/lib/resume-parse';
 import { requirePermission } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -192,27 +190,10 @@ export default async function CandidatePage({
   };
   const viewId = Array.isArray(sp.view) ? sp.view[0] : sp.view;
   const viewing = docList.find((d) => d.id === viewId) ?? null;
-  const viewExt = viewing?.original_name.split('.').pop()?.toLowerCase() ?? '';
-  let docxHtml: string | null = null;
-  // Оригінальний вигляд: файл із Банку резюме — прямо з Google Диска; Word/RTF — PDF-копія
-  const { data: viewerGoogle } = viewing
-    ? await supabase.from('email_accounts').select('status, scopes').eq('user_id', session.userId).maybeSingle()
-    : { data: null };
-  const viewerScopes = ((viewerGoogle as { status: string; scopes: string[] } | null)?.status === 'active'
-    ? (viewerGoogle as { scopes: string[] }).scopes
-    : []) ?? [];
-  const driveFileId = viewing?.source_ref?.startsWith('drive:') && viewerScopes.some((sc) => sc.includes('drive')) ? viewing.source_ref.slice(6) : null;
-  let previewPath = viewing?.preview_path ?? null;
-  if (viewing && !driveFileId && !previewPath && ['doc', 'docx', 'rtf'].includes(viewExt) && viewerScopes.some((sc) => sc.endsWith('drive.file'))) {
-    previewPath = await ensurePreview(viewing, session.userId);
-  }
-  if (viewing && viewExt === 'docx' && !previewPath && !driveFileId) {
-    const { data: blob } = await createAdminClient().storage.from(viewing.storage_bucket).download(viewing.storage_path);
-    if (blob) {
-      docxHtml = await docxToSafeHtml(new Uint8Array(await blob.arrayBuffer()));
-      await supabase.rpc('log_event', { p_action: 'view_file', p_entity: 'documents', p_entity_id: viewing.id, p_details: null });
-    }
-  }
+  // Резюме показується прямо на сторінці (документ або текст) — без вбудованих вікон, які браузер може не відобразити
+  const { data: viewText } = viewing ? await supabase.from('documents').select('extracted_text').eq('id', viewing.id).maybeSingle() : { data: null };
+  const view = viewing ? await inlineResume(session.userId, { ...viewing, extracted_text: (viewText as { extracted_text: string | null } | null)?.extracted_text ?? null }) : null;
+  if (viewing) await supabase.rpc('log_event', { p_action: 'view_file', p_entity: 'documents', p_entity_id: viewing.id, p_details: null });
 
   const preview = viewing && (
     <aside className="xl:sticky xl:top-4 xl:self-start">
@@ -233,25 +214,18 @@ export default async function CandidatePage({
             </Link>
           </span>
         </div>
-        {driveFileId ? (
-          <iframe src={`https://drive.google.com/file/d/${driveFileId}/preview`} title={docName(viewing)} className="h-[80vh] w-full" allow="autoplay" />
-        ) : previewPath ? (
-          <iframe src={`/api/documents/${viewing.id}?preview=1`} title={docName(viewing)} className="h-[80vh] w-full" />
-        ) : ['pdf', 'txt'].includes(viewExt) ? (
-          <iframe src={`/api/documents/${viewing.id}`} title={docName(viewing)} className="h-[80vh] w-full" />
-        ) : ['jpg', 'jpeg', 'png'].includes(viewExt) ? (
+        {view?.kind === 'img' ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={`/api/documents/${viewing.id}`} alt={docName(viewing)} className="max-h-[80vh] w-full object-contain" />
-        ) : viewExt === 'docx' && docxHtml ? (
-          <iframe
-            sandbox=""
-            title={docName(viewing)}
-            className="h-[80vh] w-full"
-            srcDoc={`<!doctype html><html lang="uk"><head><meta charset="utf-8"><style>body{font-family:system-ui,sans-serif;font-size:14px;line-height:1.5;color:#2b2b2b;padding:24px;max-width:780px;margin:0 auto}table{border-collapse:collapse}td,th{border:1px solid #ddd;padding:4px 8px;vertical-align:top}</style></head><body>${docxHtml}</body></html>`}
+          <img src={view.src} alt={docName(viewing)} className="max-h-[80vh] w-full object-contain" />
+        ) : view?.kind === 'html' ? (
+          <div
+            className="max-h-[80vh] overflow-y-auto px-6 py-5 text-sm leading-relaxed text-ink [&_h1]:mb-2 [&_h1]:text-lg [&_h1]:font-bold [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:font-bold [&_h3]:mt-3 [&_h3]:font-semibold [&_li]:ml-5 [&_li]:list-disc [&_p]:mb-2 [&_table]:my-2 [&_td]:border [&_td]:border-line [&_td]:px-2 [&_td]:py-1 [&_td]:align-top"
+            // HTML очищено на сервері: лише базові теги без атрибутів, текст екрановано
+            dangerouslySetInnerHTML={{ __html: view.html }}
           />
         ) : (
           <div className="p-6 text-sm text-ink-soft">
-            Щоб переглядати файли .{viewExt} в оригінальному вигляді, підключіть Google у профілі (з дозволом на Google Диск). Поки що файл можна завантажити кнопкою вгорі.
+            Не вдалося прочитати вміст цього файлу. Відкрийте його кнопкою «Відкрити в новій вкладці» або завантажте.
           </div>
         )}
       </div>
