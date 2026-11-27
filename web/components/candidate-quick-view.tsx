@@ -29,11 +29,13 @@ export function CandidateQuickView({
     let alive = true;
     setData(null);
     setError(null);
-    loadCandidateQuick(candidateId).then((r) => {
-      if (!alive) return;
-      if (r.error) setError(r.error);
-      else setData(r.data ?? null);
-    });
+    loadCandidateQuick(candidateId)
+      .then((r) => {
+        if (!alive) return;
+        if (r.error) setError(r.error);
+        else setData(r.data ?? null);
+      })
+      .catch(() => alive && setError('Не вдалося завантажити дані кандидата — спробуйте ще раз'));
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', esc);
     return () => {
@@ -79,20 +81,21 @@ export function CandidateQuickView({
           </button>
         </header>
 
-        <div className="grid min-h-0 flex-1 gap-3 p-3 lg:grid-cols-[1fr_22rem]">
-          <section className="min-h-0 overflow-hidden rounded-2xl bg-white shadow-card">
+        <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto p-3 lg:grid-cols-[1fr_22rem] lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden">
+          <section className="flex h-[75vh] min-h-0 flex-col overflow-hidden rounded-2xl bg-white shadow-card lg:h-full">
             {!data && !error && <p className="p-6 text-sm text-ink-soft">Завантажуємо резюме…</p>}
+            {!data && error && <p className="p-6 text-sm text-danger">{error}</p>}
             {data && !r && <p className="p-6 text-sm text-ink-soft">У кандидата ще немає резюме.</p>}
-            {r?.kind === 'iframe' && <iframe src={r.src} title={r.name} className="h-full min-h-[60vh] w-full" />}
+            {r?.kind === 'iframe' && <iframe src={r.src} title={r.name} className="w-full flex-1" />}
             {r?.kind === 'img' && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={r.src} alt={r.name} className="h-full w-full object-contain" />
+              <img src={r.src} alt={r.name} className="min-h-0 w-full flex-1 object-contain" />
             )}
             {r?.kind === 'html' && (
               <iframe
                 sandbox=""
                 title={r.name}
-                className="h-full min-h-[60vh] w-full"
+                className="w-full flex-1"
                 srcDoc={`<!doctype html><html lang="uk"><head><meta charset="utf-8"><style>body{font-family:system-ui,sans-serif;font-size:14px;line-height:1.5;color:#2b2b2b;padding:24px;max-width:780px;margin:0 auto}table{border-collapse:collapse}td,th{border:1px solid #ddd;padding:4px 8px;vertical-align:top}</style></head><body>${r.html}</body></html>`}
               />
             )}

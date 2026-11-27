@@ -19,6 +19,16 @@ export type QuickCandidate = {
   notes: QuickNote[];
 };
 
+// Перегляд резюме не повинен ламати панель: за помилки — посилання на сам файл
+async function safeView(supabase: Awaited<ReturnType<typeof createClient>>, userId: string, doc: ResumeDoc): Promise<ResumeView> {
+  try {
+    return await resumeView(supabase, userId, doc);
+  } catch (e) {
+    console.error('quick view resume', doc.id, e);
+    return { kind: 'none', name: doc.original_name, id: doc.id, ext: doc.original_name.split('.').pop()?.toLowerCase() ?? '' };
+  }
+}
+
 // Швидкий перегляд із воронки: резюме і історія нотаток (дзвінків) без переходу в картку
 export async function loadCandidateQuick(candidateId: string): Promise<{ data?: QuickCandidate; error?: string }> {
   const session = await requireSession();
@@ -43,7 +53,7 @@ export async function loadCandidateQuick(candidateId: string): Promise<{ data?: 
   return {
     data: {
       ...(c as Omit<QuickCandidate, 'resume' | 'resumes' | 'notes'>),
-      resume: docList[0] ? await resumeView(supabase, session.userId, docList[0]) : null,
+      resume: docList[0] ? await safeView(supabase, session.userId, docList[0]) : null,
       resumes: docList.length,
       notes: noteRows.map((n) => ({ id: n.id, body: n.body, created_at: n.created_at, author: nameOf.get(n.author_id) ?? null })),
     },
