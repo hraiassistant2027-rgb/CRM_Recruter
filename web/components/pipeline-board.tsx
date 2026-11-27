@@ -37,7 +37,7 @@ export function PipelineBoard({
   const [pending, setPending] = useState<Pending>(null);
   const [showClosed, setShowClosed] = useState(false);
   const [, startTransition] = useTransition();
-  const [pending, setPending] = useState<Set<string>>(new Set());
+  const [moving, setMoving] = useState<Set<string>>(new Set());
   const boardRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
   const [scrollWidth, setScrollWidth] = useState(0);
@@ -97,10 +97,10 @@ export function PipelineBoard({
     setCards((list) =>
       list.map((c) => (c.id === card.id ? { ...c, stage_id: stage.id, stage_changed_at: new Date().toISOString() } : c)),
     );
-    setPending((p) => new Set(p).add(card.id));
+    setMoving((p) => new Set(p).add(card.id));
     startTransition(async () => {
       const result = await moveApplication({ applicationId: card.id, stageId: stage.id, reasonId, comment, contact });
-      setPending((p) => {
+      setMoving((p) => {
         const n = new Set(p);
         n.delete(card.id);
         return n;
@@ -185,7 +185,7 @@ export function PipelineBoard({
                     return (
                       <li
                         key={card.id}
-                        draggable={canMove && !pending.has(card.id)}
+                        draggable={canMove && !moving.has(card.id)}
                         onDragStart={(e) => {
                           setDragId(card.id);
                           e.dataTransfer.effectAllowed = 'move';
@@ -209,7 +209,7 @@ export function PipelineBoard({
                             <span className="sr-only">Етап</span>
                             <select
                               value={card.stage_id}
-                              disabled={pending.has(card.id)}
+                              disabled={moving.has(card.id)}
                               onChange={(e) => {
                                 const target = stages.find((s) => s.id === e.target.value);
                                 if (target) requestMove(card, target);
