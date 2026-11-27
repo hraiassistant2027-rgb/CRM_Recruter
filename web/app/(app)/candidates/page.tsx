@@ -10,6 +10,7 @@ import { Alert, Badge, Card, Input, PageHeader, Select } from '@/components/ui';
 import { MATCH_LABELS, formatDate } from '@/lib/candidates';
 import { getWorkspaces } from '@/lib/workspace-server';
 import { isWorkspaceCode, switchHref, type WorkspaceCode } from '@/lib/workspace';
+import { NavLink } from '@/components/nav-link';
 
 export const metadata: Metadata = { title: 'База кандидатів' };
 
@@ -241,13 +242,13 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={w.icon} alt={w.name} title={w.name} className="h-4 w-4 shrink-0 rounded-sm object-contain" />
                           )}
-                          <Link
+                          <NavLink
                             href={other ? switchHref(w.code, `/candidates/${r.id}`) : `/candidates/${r.id}`}
                             className="font-medium hover:underline"
                             title={other ? `Відкриється в просторі ${w.name}` : undefined}
                           >
                             {r.full_name}
-                          </Link>
+                          </NavLink>
                         </span>
                       );
                     })()}

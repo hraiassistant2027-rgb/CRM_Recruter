@@ -1,9 +1,9 @@
 // Блок показників простору на дашборді: кандидати за джерелами, відкриті вакансії за юрособами, активні відгуки.
 // Використовується для поточного простору і (у KAN) для дашборду HomeHub під основним.
-import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { can, type Permissions } from '@/lib/permissions';
 import { switchHref, type WorkspaceCode } from '@/lib/workspace';
+import { NavLink } from '@/components/nav-link';
 
 type Supa = Awaited<ReturnType<typeof createClient>>;
 
@@ -86,7 +86,7 @@ export async function WorkspaceStats({
       <h2 className={`text-center font-semibold tracking-tight text-ink-soft ${compact ? 'py-2 text-base' : 'py-3 text-lg'}`}>{title}</h2>
       <div className={`grid gap-2 ${compact ? 'sm:grid-cols-3' : 'sm:grid-cols-2 xl:grid-cols-3'}`}>
         {stats.map((s, i) => (
-          <Link
+          <NavLink
             key={s.label}
             href={href(s.path)}
             className={`group flex h-[15.5rem] min-w-0 flex-col overflow-hidden rounded-3xl transition-shadow hover:shadow-card ${compact ? 'p-4' : 'p-6'} ${i === 1 ? 'bg-soft' : 'bg-white'}`}
@@ -120,7 +120,7 @@ export async function WorkspaceStats({
                 ))}
               </ul>
             )}
-          </Link>
+          </NavLink>
         ))}
       </div>
     </section>

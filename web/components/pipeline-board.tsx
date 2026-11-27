@@ -1,6 +1,5 @@
 'use client';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { moveApplication, type ContactInput } from '@/app/(app)/vacancies/actions';
 import { INVITE_BY_DEFAULT, KIND_LABELS } from '@/lib/interviews';
@@ -30,7 +29,6 @@ export function PipelineBoard({
   sites?: Site[];
   defaultSiteId?: string | null;
 }) {
-  const router = useRouter();
   const [cards, setCards] = useState(initialCards);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -38,7 +36,8 @@ export function PipelineBoard({
   const [overStage, setOverStage] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending>(null);
   const [showClosed, setShowClosed] = useState(false);
-  const [busy, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
+  const [pending, setPending] = useState<Set<string>>(new Set());
   const boardRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
   const [scrollWidth, setScrollWidth] = useState(0);
@@ -98,15 +97,21 @@ export function PipelineBoard({
     setCards((list) =>
       list.map((c) => (c.id === card.id ? { ...c, stage_id: stage.id, stage_changed_at: new Date().toISOString() } : c)),
     );
+    setPending((p) => new Set(p).add(card.id));
     startTransition(async () => {
       const result = await moveApplication({ applicationId: card.id, stageId: stage.id, reasonId, comment, contact });
+      setPending((p) => {
+        const n = new Set(p);
+        n.delete(card.id);
+        return n;
+      });
       if (result.error) {
         setCards(before);
         setError(`${card.full_name}: ${result.error}`);
       } else {
         if (result.ok && result.ok !== 'Етап змінено.') setError(null);
+        // Свіжі дані сторінки сервер повертає разом із відповіддю дії (revalidatePath) — окреме оновлення не потрібне
         setNotice(result.ok && result.ok !== 'Етап змінено.' ? `${card.full_name}: ${result.ok}` : null);
-        router.refresh();
       }
     });
   }
@@ -180,7 +185,7 @@ export function PipelineBoard({
                     return (
                       <li
                         key={card.id}
-                        draggable={canMove && !busy}
+                        draggable={canMove && !pending.has(card.id)}
                         onDragStart={(e) => {
                           setDragId(card.id);
                           e.dataTransfer.effectAllowed = 'move';
@@ -204,7 +209,7 @@ export function PipelineBoard({
                             <span className="sr-only">Етап</span>
                             <select
                               value={card.stage_id}
-                              disabled={busy}
+                              disabled={pending.has(card.id)}
                               onChange={(e) => {
                                 const target = stages.find((s) => s.id === e.target.value);
                                 if (target) requestMove(card, target);

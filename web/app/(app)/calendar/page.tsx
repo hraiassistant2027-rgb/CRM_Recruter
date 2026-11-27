@@ -7,6 +7,7 @@ import { loadAgenda, type AgendaItem } from '@/lib/interviews-load';
 import { KIND_COLORS, KIND_LABELS, STATUS_LABELS } from '@/lib/interviews';
 import { addDays, dateToKyiv, formatTime, kyivToDate, todayKyiv, weekStart } from '@/lib/time';
 import { DayListButton, type DayList } from '@/components/day-list';
+import { CalendarEvent } from '@/components/calendar-event';
 
 export const metadata: Metadata = { title: 'Календар' };
 
@@ -173,62 +174,33 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
                   ))}
                   {placed.map(({ item, start, end, lane, lanes }) => {
                     const top = ((start - gridStart) / SLOT_MIN) * SLOT_PX;
-                    const h = Math.max(((end - start) / SLOT_MIN) * SLOT_PX, 58);
+                    const h = Math.max(((end - start) / SLOT_MIN) * SLOT_PX, 40);
                     const st = STATUS_LABELS[item.status];
                     const recruiter = item.recruiter_id ? nameOf.get(item.recruiter_id) : null;
                     return (
-                      <div
+                      <CalendarEvent
                         key={item.id}
-                        className={`group absolute overflow-hidden rounded-md border border-line bg-white text-[11px] leading-tight shadow-sm hover:z-10 hover:shadow-md ${item.status === 'done' || item.status === 'no_show' ? 'opacity-60' : ''}`}
-                        style={{
+                        box={{
                           top: top + 1,
                           height: h - 2,
                           left: `calc(${(lane / lanes) * 100}% + 2px)`,
                           width: `calc(${100 / lanes}% - 4px)`,
-                          borderLeft: `4px solid ${KIND_COLORS[item.kind] ?? KIND_COLORS.other}`,
                         }}
-                      >
-                        {/* Онлайн-зустріч: натискання відкриває Google Meet; картка кандидата — окремою кнопкою */}
-                        <a
-                          href={item.meet_link ?? (item.candidate_id ? `/candidates/${item.candidate_id}` : '#')}
-                          {...(item.meet_link ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                          title={item.meet_link ? 'Приєднатися до Google Meet' : `${KIND_LABELS[item.kind] ?? ''} · ${item.candidate_name}`}
-                          className="block h-full px-1.5 py-1"
-                        >
-                          <div className="truncate text-ink-soft">
-                            {formatTime(item.starts_at)} · {KIND_LABELS[item.kind] ?? item.kind}
-                            {st && item.status !== 'scheduled' ? ` · ${st.label}` : ''}
-                          </div>
-                          {item.meet_link && (
-                            <div className="my-0.5 inline-flex items-center gap-1 rounded bg-[#1A73E8] px-1.5 py-0.5 font-semibold text-white">▶ Google Meet</div>
-                          )}
-                          <div className="truncate font-semibold" style={{ color: C.candidate }}>
-                            {item.candidate_name}
-                          </div>
-                          <div className="truncate font-medium" style={{ color: C.position }}>
-                            {item.vacancy_title}
-                          </div>
-                          {item.candidate_phone && (
-                            <div className="truncate font-medium" style={{ color: C.phone }}>
-                              {item.candidate_phone}
-                            </div>
-                          )}
-                          {recruiter && (
-                            <div className="truncate font-medium" style={{ color: C.recruiter }}>
-                              {recruiter}
-                            </div>
-                          )}
-                        </a>
-                        {item.meet_link && item.candidate_id && (
-                          <Link
-                            href={`/candidates/${item.candidate_id}`}
-                            title="Картка кандидата"
-                            className="absolute right-1 top-1 rounded border border-line bg-white px-1 text-[10px] text-ink-soft hover:text-ink"
-                          >
-                            картка
-                          </Link>
-                        )}
-                      </div>
+                        e={{
+                          id: item.id,
+                          time: formatTime(item.starts_at),
+                          kindLabel: KIND_LABELS[item.kind] ?? item.kind,
+                          kindColor: KIND_COLORS[item.kind] ?? KIND_COLORS.other,
+                          statusLabel: st && item.status !== 'scheduled' ? st.label : null,
+                          faded: item.status === 'done' || item.status === 'no_show',
+                          candidateId: item.candidate_id,
+                          candidateName: item.candidate_name,
+                          position: item.vacancy_title,
+                          phone: item.candidate_phone,
+                          recruiter: recruiter ?? null,
+                          meetLink: item.meet_link,
+                        }}
+                      />
                     );
                   })}
                 </div>

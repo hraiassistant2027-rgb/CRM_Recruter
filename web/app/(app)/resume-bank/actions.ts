@@ -64,6 +64,16 @@ export async function searchResumeBank(filters: BankFilters, pageToken?: string 
   try {
     const session = await googleSession(auth.user.id);
     const { files, nextPageToken } = await searchBank(session, cfg, filters, pageToken ?? undefined);
+    // Нічого не знайшлося — перевіряємо, чи взагалі відкрита папка архіву для Google цього користувача
+    if (!files.length && !pageToken) {
+      try {
+        await resolveFolder(session, cfg.folderId);
+      } catch {
+        return {
+          error: `Папка архіву «${cfg.folderName}» не відкрита для вашого Google-акаунта ${session.email}. Попросіть власника папки на Google Диску надати цій пошті доступ «Читач», або підключіть у «Профілі» ту пошту, якій папку вже відкрито.`,
+        };
+      }
+    }
     // Які файли вже додано в базу кандидатів
     const refs = files.map((f) => `drive:${f.id}`);
     const { data: docs } = refs.length

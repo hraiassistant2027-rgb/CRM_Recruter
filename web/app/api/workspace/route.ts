@@ -10,6 +10,11 @@ export async function GET(request: NextRequest) {
   const next = nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : '/';
   // Адреса сайту — з налаштувань (за проксі Render request.nextUrl містить внутрішній localhost)
   if (!isWorkspaceCode(to)) return NextResponse.redirect(new URL('/', appUrl()));
+  // Попереднє завантаження посилань (prefetch) не повинно перемикати простір — лише явний клік
+  const h = request.headers;
+  if (h.get('next-router-prefetch') || /prefetch/i.test(h.get('purpose') ?? h.get('sec-purpose') ?? '')) {
+    return new NextResponse(null, { status: 204 });
+  }
   const supabase = await createClient({ workspace: to });
   const { data } = await supabase.rpc('my_workspaces');
   const allowed = ((data ?? []) as { code: string }[]).some((w) => w.code === to);
