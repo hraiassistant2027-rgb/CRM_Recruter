@@ -100,11 +100,10 @@ export function CandidateQuickView({
               <img src={r.src} alt={r.name} className="min-h-0 w-full flex-1 object-contain" />
             )}
             {r?.kind === 'html' && (
-              <iframe
-                sandbox=""
-                title={r.name}
-                className="w-full flex-1"
-                srcDoc={`<!doctype html><html lang="uk"><head><meta charset="utf-8"><style>body{font-family:system-ui,sans-serif;font-size:14px;line-height:1.5;color:#2b2b2b;padding:24px;max-width:780px;margin:0 auto}table{border-collapse:collapse}td,th{border:1px solid #ddd;padding:4px 8px;vertical-align:top}</style></head><body>${r.html}</body></html>`}
+              <div
+                className="min-h-0 flex-1 overflow-y-auto px-6 py-5 text-sm leading-relaxed text-ink [&_h1]:mb-2 [&_h1]:text-lg [&_h1]:font-bold [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:font-bold [&_h3]:mt-3 [&_h3]:font-semibold [&_li]:ml-5 [&_li]:list-disc [&_p]:mb-2 [&_table]:my-2 [&_td]:border [&_td]:border-line [&_td]:px-2 [&_td]:py-1 [&_td]:align-top"
+                // HTML очищено на сервері: лише базові теги без атрибутів, текст екрановано
+                dangerouslySetInnerHTML={{ __html: r.html }}
               />
             )}
             {r?.kind === 'none' && (

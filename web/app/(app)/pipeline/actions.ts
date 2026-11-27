@@ -4,7 +4,10 @@ import { requireSession } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { noteSchema, uuidSchema } from '@/lib/validation';
 import { translateError } from '@/lib/errors';
-import { resumeView, type ResumeDoc, type ResumeView } from '@/lib/resume-view';
+import { type ResumeDoc, type ResumeView } from '@/lib/resume-view';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { docxToSafeHtml, extractResumeText } from '@/lib/resume-text';
+import { convertForUser } from '@/lib/google-convert';
 
 export type QuickNote = { id: string; body: string; created_at: string; author: string | null };
 export type QuickCandidate = {
@@ -19,28 +22,36 @@ export type QuickCandidate = {
   notes: QuickNote[];
 };
 
-// Перегляд резюме не повинен ламати панель: за помилки — посилання на сам файл
 const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const textToHtml = (t: string) =>
+  t
+    .replace(/\r/g, '')
+    .split(/\n{2,}/)
+    .map((p) => `<p>${esc(p.trim()).replace(/\n/g, '<br>')}</p>`)
+    .join('');
 
-// У швидкому перегляді резюме завжди показується на сторінці (а не завантажується):
-// Word — як документ, решта — розпізнаний текст резюме; оригінал відкривається окремою кнопкою.
-async function safeView(supabase: Awaited<ReturnType<typeof createClient>>, userId: string, doc: ResumeDoc & { extracted_text?: string | null }): Promise<ResumeView> {
+// У швидкому перегляді резюме завжди показується на самій сторінці (без вбудованих вікон і завантажень):
+// Word — як документ, решта — текст резюме; оригінал відкривається окремою кнопкою.
+async function safeView(userId: string, doc: ResumeDoc & { extracted_text?: string | null }): Promise<ResumeView> {
+  const base = { name: doc.original_name, id: doc.id };
+  const ext = doc.original_name.split('.').pop()?.toLowerCase() ?? '';
   try {
-    const ext = doc.original_name.split('.').pop()?.toLowerCase() ?? '';
-    if (['jpg', 'jpeg', 'png'].includes(ext)) return { kind: 'img', src: `/api/documents/${doc.id}`, name: doc.original_name, id: doc.id };
-    if (ext !== 'docx' && doc.extracted_text && doc.extracted_text.trim().length > 30) {
-      const html = doc.extracted_text
-        .replace(/\r/g, '')
-        .split(/\n{2,}/)
-        .map((p) => `<p>${esc(p.trim()).replace(/\n/g, '<br>')}</p>`)
-        .join('');
-      return { kind: 'html', html, name: doc.original_name, id: doc.id };
+    if (['jpg', 'jpeg', 'png'].includes(ext)) return { kind: 'img', src: `/api/documents/${doc.id}`, ...base };
+    if (ext !== 'docx' && doc.extracted_text && doc.extracted_text.trim().length > 30) return { kind: 'html', html: textToHtml(doc.extracted_text), ...base };
+    const { data: blob } = await createAdminClient().storage.from(doc.storage_bucket).download(doc.storage_path);
+    if (!blob) return { kind: 'none', ext, ...base };
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    if (ext === 'docx') {
+      const html = await docxToSafeHtml(bytes);
+      if (html && html.replace(/<[^>]+>/g, '').trim().length > 30) return { kind: 'html', html, ...base };
     }
-    return await resumeView(supabase, userId, doc);
+    let text = await extractResumeText(bytes, ext);
+    if (!text) text = (await convertForUser(userId, bytes, ext, { text: true, pdf: false })).text;
+    if (text && text.trim().length > 30) return { kind: 'html', html: textToHtml(text), ...base };
   } catch (e) {
     console.error('quick view resume', doc.id, e);
-    return { kind: 'none', name: doc.original_name, id: doc.id, ext: doc.original_name.split('.').pop()?.toLowerCase() ?? '' };
   }
+  return { kind: 'none', ext, ...base };
 }
 
 // Швидкий перегляд із воронки: резюме і історія нотаток (дзвінків) без переходу в картку
@@ -67,7 +78,7 @@ export async function loadCandidateQuick(candidateId: string): Promise<{ data?: 
   return {
     data: {
       ...(c as Omit<QuickCandidate, 'resume' | 'resumes' | 'notes'>),
-      resume: docList[0] ? await safeView(supabase, session.userId, docList[0]) : null,
+      resume: docList[0] ? await safeView(session.userId, docList[0]) : null,
       resumes: docList.length,
       notes: noteRows.map((n) => ({ id: n.id, body: n.body, created_at: n.created_at, author: nameOf.get(n.author_id) ?? null })),
     },
