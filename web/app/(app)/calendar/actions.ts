@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { uuidSchema } from '@/lib/validation';
+import { noteSchema, uuidSchema } from '@/lib/validation';
 import { translateError } from '@/lib/errors';
 import { GoogleNotConnected, googleFetch, googleSession, type GoogleSession } from '@/lib/google';
 import { kyivToDate, TZ } from '@/lib/time';
@@ -288,4 +288,21 @@ export async function syncInterviewResponses(id: string): Promise<FormState> {
   } catch (e) {
     return { error: gErr(e) };
   }
+}
+
+// Нотатка до зустрічі (з календаря). Зберігається в нотатках кандидата з позначкою зустрічі.
+export async function addInterviewNote(interviewId: string, body: string): Promise<FormState & { note?: { id: string; body: string; created_at: string } }> {
+  if (!uuidSchema.safeParse(interviewId).success) return { error: 'Невірна зустріч' };
+  const parsed = noteSchema.safeParse({ body });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Перевірте текст' };
+  const ctx = await loadInterview(interviewId);
+  if (!ctx?.candidateId) return { error: 'Зустріч не знайдено' };
+  const { data, error } = await ctx.supabase
+    .from('notes')
+    .insert({ candidate_id: ctx.candidateId, application_id: ctx.interview.application_id, interview_id: interviewId, body: parsed.data.body })
+    .select('id, body, created_at')
+    .single();
+  if (error) return { error: translateError(error) };
+  revalidateAll(ctx.candidateId);
+  return { ok: 'Нотатку збережено', note: data as { id: string; body: string; created_at: string } };
 }

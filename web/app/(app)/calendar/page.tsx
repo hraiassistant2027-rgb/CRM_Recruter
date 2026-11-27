@@ -7,7 +7,8 @@ import { loadAgenda, type AgendaItem } from '@/lib/interviews-load';
 import { KIND_COLORS, KIND_LABELS, STATUS_LABELS } from '@/lib/interviews';
 import { addDays, dateToKyiv, formatTime, kyivToDate, todayKyiv, weekStart } from '@/lib/time';
 import { DayListButton, type DayList } from '@/components/day-list';
-import { CalendarEvent } from '@/components/calendar-event';
+import { CalendarEvent, type CalendarNote } from '@/components/calendar-event';
+import { CalendarDay } from '@/components/calendar-day';
 
 export const metadata: Metadata = { title: 'Календар' };
 
@@ -64,6 +65,20 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const items = await loadAgenda(supabase, from.toISOString(), to.toISOString(), all ? undefined : session.userId);
   const { data: users } = await supabase.from('profiles').select('id, full_name');
   const nameOf = new Map(((users ?? []) as { id: string; full_name: string }[]).map((u) => [u.id, u.full_name]));
+  // Нотатки до зустрічей тижня
+  const notesBy = new Map<string, CalendarNote[]>();
+  if (items.length) {
+    const { data: noteRows } = await supabase
+      .from('notes')
+      .select('id, body, created_at, author_id, interview_id')
+      .in('interview_id', items.map((i) => i.id))
+      .order('created_at', { ascending: false });
+    for (const n of (noteRows ?? []) as { id: string; body: string; created_at: string; author_id: string; interview_id: string }[]) {
+      const list = notesBy.get(n.interview_id) ?? [];
+      list.push({ id: n.id, body: n.body, created_at: n.created_at, author: nameOf.get(n.author_id) ?? null });
+      notesBy.set(n.interview_id, list);
+    }
+  }
   const allDays = Array.from({ length: 7 }, (_, i) => addDays(week, i));
   // Субота і неділя показуються лише тоді, коли на них є зустрічі
   const days = allDays.filter((d, i) => i < 5 || items.some((it) => dateToKyiv(it.starts_at).date === d));
@@ -168,7 +183,14 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
             {days.map((d) => {
               const placed = layout(items.filter((i) => dateToKyiv(i.starts_at).date === d));
               return (
-                <div key={d} className={`relative border-l border-line ${d === today ? 'bg-accent-soft/20' : ''}`}>
+                <CalendarDay
+                  key={d}
+                  date={d}
+                  gridStart={gridStart}
+                  slotMin={SLOT_MIN}
+                  slotPx={SLOT_PX}
+                  className={`relative border-l border-line ${d === today ? 'bg-accent-soft/20' : ''}`}
+                >
                   {slots.map((m, i) => (
                     <div key={m} className={`absolute inset-x-0 border-t ${m % 60 === 0 ? 'border-line' : 'border-dashed border-line/60'}`} style={{ top: i * SLOT_PX }} />
                   ))}
@@ -188,7 +210,11 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
                         }}
                         e={{
                           id: item.id,
+                          date: dateToKyiv(item.starts_at).date,
                           time: formatTime(item.starts_at),
+                          duration: Math.max(10, Math.round((new Date(item.ends_at).getTime() - new Date(item.starts_at).getTime()) / 60000)),
+                          canMove: item.organizer_id === session.userId && ['scheduled', 'rescheduled'].includes(item.status),
+                          notes: notesBy.get(item.id) ?? [],
                           kindLabel: KIND_LABELS[item.kind] ?? item.kind,
                           kindColor: KIND_COLORS[item.kind] ?? KIND_COLORS.other,
                           statusLabel: st && item.status !== 'scheduled' ? st.label : null,
@@ -203,7 +229,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
                       />
                     );
                   })}
-                </div>
+                </CalendarDay>
               );
             })}
           </div>
