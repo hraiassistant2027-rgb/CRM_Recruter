@@ -51,18 +51,59 @@ async function call<T>(url: string, init: RequestInit): Promise<T> {
   }
 }
 
+function findToken(data: unknown, depth = 0): string | null {
+  if (typeof data === 'string') {
+    const t = data.trim().replace(/^"|"$/g, '');
+    return /^[\w-]+\.[\w-]+\.[\w-]+$/.test(t) || (t.length >= 20 && !/\s/.test(t) && !t.startsWith('<')) ? t : null;
+  }
+  if (!data || typeof data !== 'object' || depth > 2) return null;
+  const o = data as Record<string, unknown>;
+  for (const k of ['token', 'access_token', 'accessToken', 'jwt', 'Token']) {
+    if (typeof o[k] === 'string') return findToken(o[k], depth + 1);
+  }
+  for (const k of ['data', 'result']) {
+    const t = findToken(o[k], depth + 1);
+    if (t) return t;
+  }
+  return null;
+}
+
 export async function robotaLogin(login: string, password: string): Promise<string> {
-  const data = await call<unknown>(`${AUTH_URL}/Login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: login, password, remember: true }),
-  });
-  const token =
-    typeof data === 'string'
-      ? data.replace(/^"|"$/g, '')
-      : ((data as { token?: string; access_token?: string } | null)?.token ?? (data as { access_token?: string } | null)?.access_token);
-  if (!token || token.length < 20 || /\s/.test(token)) throw new RobotaError('robota.ua не прийняв вхід — перевірте логін і пароль кабінету', true);
-  return token;
+  let res: Response;
+  try {
+    res = await fetch(`${AUTH_URL}/Login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/plain, */*' },
+      body: JSON.stringify({ username: login, password, remember: true }),
+      signal: AbortSignal.timeout(TIMEOUT),
+      cache: 'no-store',
+    });
+  } catch {
+    throw new RobotaError('robota.ua не відповідає — спробуйте за хвилину');
+  }
+  const text = await res.text();
+  let data: unknown = text;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    /* відповідь не JSON */
+  }
+  const token = res.ok ? findToken(data) : null;
+  if (token) return token;
+
+  // Діагностика в журнал сервера (без пароля і без токена)
+  const shape = data && typeof data === 'object' ? `keys: ${Object.keys(data as object).join(',')}` : `text: ${text.slice(0, 120)}`;
+  console.error('robota.ua login failed', res.status, shape);
+  const serverMsg =
+    data && typeof data === 'object'
+      ? String((data as Record<string, unknown>).message ?? (data as Record<string, unknown>).error ?? (data as Record<string, unknown>).title ?? '').slice(0, 150)
+      : '';
+  if (res.status === 400 || res.status === 401)
+    throw new RobotaError(`robota.ua не прийняв логін або пароль (код ${res.status}${serverMsg ? `: ${serverMsg}` : ''})`, true);
+  if (res.status === 403 || res.status === 429)
+    throw new RobotaError(`robota.ua заблокував запит із сервера CRM (код ${res.status}) — потрібен доступ до API від robota.ua`);
+  if (!res.ok) throw new RobotaError(`robota.ua відповів помилкою (код ${res.status}${serverMsg ? `: ${serverMsg}` : ''})`);
+  throw new RobotaError(`robota.ua відповів, але без ключа доступу (${shape.slice(0, 120)}). Надішліть цей текст розробнику`, true);
 }
 
 const auth = (token: string) => ({ Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' });
