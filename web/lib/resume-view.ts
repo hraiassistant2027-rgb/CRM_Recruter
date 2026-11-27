@@ -20,7 +20,6 @@ export async function resumeView(supabase: Supa, userId: string, doc: ResumeDoc)
   const { data: g } = await supabase.from('email_accounts').select('status, scopes').eq('user_id', userId).maybeSingle();
   const scopes = (g as { status: string; scopes: string[] } | null)?.status === 'active' ? ((g as { scopes: string[] }).scopes ?? []) : [];
   const driveId = doc.source_ref?.startsWith('drive:') && scopes.some((s) => s.includes('drive')) ? doc.source_ref.slice(6) : null;
-  if (driveId) return { kind: 'iframe', src: `https://drive.google.com/file/d/${driveId}/preview`, ...base };
   let previewPath = doc.preview_path;
   if (!previewPath && ['doc', 'docx', 'rtf'].includes(ext) && scopes.some((s) => s.endsWith('drive.file'))) {
     previewPath = await ensurePreview(doc, userId);
@@ -36,5 +35,6 @@ export async function resumeView(supabase: Supa, userId: string, doc: ResumeDoc)
       if (html) return { kind: 'html', html, ...base };
     }
   }
+  if (driveId) return { kind: 'iframe', src: `https://drive.google.com/file/d/${driveId}/preview`, ...base };
   return { kind: 'none', ext, ...base };
 }

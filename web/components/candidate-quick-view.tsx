@@ -83,6 +83,14 @@ export function CandidateQuickView({
 
         <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto p-3 lg:grid-cols-[1fr_22rem] lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden">
           <section className="flex h-[75vh] min-h-0 flex-col overflow-hidden rounded-2xl bg-white shadow-card lg:h-full">
+            {r && (
+              <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-2 text-xs text-ink-soft">
+                <span className="truncate">Резюме{data && data.resumes > 1 ? ` (останнє з ${data.resumes})` : ''}</span>
+                <a href={`/api/documents/${r.id}`} target="_blank" rel="noopener" className="shrink-0 underline hover:text-ink">
+                  Оригінал файлу ↗
+                </a>
+              </div>
+            )}
             {!data && !error && <p className="p-6 text-sm text-ink-soft">Завантажуємо резюме…</p>}
             {!data && error && <p className="p-6 text-sm text-danger">{error}</p>}
             {data && !r && <p className="p-6 text-sm text-ink-soft">У кандидата ще немає резюме.</p>}

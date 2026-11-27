@@ -20,8 +20,22 @@ export type QuickCandidate = {
 };
 
 // Перегляд резюме не повинен ламати панель: за помилки — посилання на сам файл
-async function safeView(supabase: Awaited<ReturnType<typeof createClient>>, userId: string, doc: ResumeDoc): Promise<ResumeView> {
+const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+// У швидкому перегляді резюме завжди показується на сторінці (а не завантажується):
+// Word — як документ, решта — розпізнаний текст резюме; оригінал відкривається окремою кнопкою.
+async function safeView(supabase: Awaited<ReturnType<typeof createClient>>, userId: string, doc: ResumeDoc & { extracted_text?: string | null }): Promise<ResumeView> {
   try {
+    const ext = doc.original_name.split('.').pop()?.toLowerCase() ?? '';
+    if (['jpg', 'jpeg', 'png'].includes(ext)) return { kind: 'img', src: `/api/documents/${doc.id}`, name: doc.original_name, id: doc.id };
+    if (ext !== 'docx' && doc.extracted_text && doc.extracted_text.trim().length > 30) {
+      const html = doc.extracted_text
+        .replace(/\r/g, '')
+        .split(/\n{2,}/)
+        .map((p) => `<p>${esc(p.trim()).replace(/\n/g, '<br>')}</p>`)
+        .join('');
+      return { kind: 'html', html, name: doc.original_name, id: doc.id };
+    }
     return await resumeView(supabase, userId, doc);
   } catch (e) {
     console.error('quick view resume', doc.id, e);
@@ -38,7 +52,7 @@ export async function loadCandidateQuick(candidateId: string): Promise<{ data?: 
     supabase.from('candidates').select('id, full_name, phone, email, city, current_position').eq('id', candidateId).maybeSingle(),
     supabase
       .from('documents')
-      .select('id, storage_bucket, storage_path, preview_path, source_ref, original_name')
+      .select('id, storage_bucket, storage_path, preview_path, source_ref, original_name, extracted_text')
       .eq('candidate_id', candidateId)
       .is('deleted_at', null)
       .order('created_at', { ascending: false }),
@@ -49,7 +63,7 @@ export async function loadCandidateQuick(candidateId: string): Promise<{ data?: 
   const authorIds = [...new Set(noteRows.map((n) => n.author_id))];
   const { data: authors } = authorIds.length ? await supabase.from('profiles').select('id, full_name').in('id', authorIds) : { data: [] };
   const nameOf = new Map(((authors ?? []) as { id: string; full_name: string }[]).map((a) => [a.id, a.full_name]));
-  const docList = (docs ?? []) as ResumeDoc[];
+  const docList = (docs ?? []) as (ResumeDoc & { extracted_text: string | null })[];
   return {
     data: {
       ...(c as Omit<QuickCandidate, 'resume' | 'resumes' | 'notes'>),
