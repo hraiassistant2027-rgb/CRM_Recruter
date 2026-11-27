@@ -33,7 +33,7 @@ export async function resumeView(supabase: Supa, userId: string, doc: ResumeDoc)
     if (blob) {
       const html = await docxToSafeHtml(new Uint8Array(await blob.arrayBuffer()));
       await supabase.rpc('log_event', { p_action: 'view_file', p_entity: 'documents', p_entity_id: doc.id, p_details: null });
-      return { kind: 'html', html, ...base };
+      if (html) return { kind: 'html', html, ...base };
     }
   }
   return { kind: 'none', ext, ...base };
