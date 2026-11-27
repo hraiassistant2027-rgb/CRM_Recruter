@@ -1,7 +1,9 @@
 'use client';
 import { CANDIDATE_MAIL_BLOCKED, CANDIDATE_MAIL_BLOCKED_MSG } from '@/lib/candidate-mail';
 import Link from 'next/link';
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
+import { FileText } from 'lucide-react';
+import { CandidateQuickView } from '@/components/candidate-quick-view';
 import { moveApplication, type ContactInput } from '@/app/(app)/vacancies/actions';
 import { INVITE_BY_DEFAULT, KIND_LABELS } from '@/lib/interviews';
 import { LocationPicker, type LocationValue, type Site } from '@/components/location-picker';
@@ -12,6 +14,7 @@ export type Reason = { id: string; name: string; side: 'company' | 'candidate' }
 type Pending = { card: BoardCard; stage: Stage; mode: 'reject' | 'contact' } | null;
 
 const CLOSED = ['rejected', 'withdrawn'];
+const NOTE_WHEN = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' });
 
 export function PipelineBoard({
   stages,
@@ -39,6 +42,8 @@ export function PipelineBoard({
   const [showClosed, setShowClosed] = useState(false);
   const [, startTransition] = useTransition();
   const [moving, setMoving] = useState<Set<string>>(new Set());
+  const [quick, setQuick] = useState<{ candidateId: string; applicationId: string } | null>(null);
+  const closeQuick = useCallback(() => setQuick(null), []);
   const boardRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
   const [scrollWidth, setScrollWidth] = useState(0);
@@ -119,6 +124,20 @@ export function PipelineBoard({
 
   return (
     <div className="space-y-3">
+      {quick && (
+        <CandidateQuickView
+          candidateId={quick.candidateId}
+          applicationId={quick.applicationId}
+          onClose={closeQuick}
+          onNote={(n) =>
+            setCards((list) =>
+              list.map((c) =>
+                c.candidate_id === quick.candidateId ? { ...c, last_note: n.body, last_note_at: n.created_at, notes_count: c.notes_count + 1 } : c,
+              ),
+            )
+          }
+        />
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
         <p className="text-ink-soft">
           {canMove ? 'Перетягніть картку на інший етап або скористайтеся списком «Етап» на картці.' : 'Перегляд воронки (без права змінювати етапи).'}
@@ -201,6 +220,20 @@ export function PipelineBoard({
                           <div className="mt-0.5 truncate text-xs text-ink-soft">{[card.current_position, card.city].filter(Boolean).join(' · ')}</div>
                         )}
                         {card.rejection_reason && <div className="mt-1 text-xs text-danger">{card.rejection_reason}</div>}
+                        <button
+                          type="button"
+                          onClick={() => setQuick({ candidateId: card.candidate_id, applicationId: card.id })}
+                          className="mt-2 flex w-full items-center gap-1.5 rounded-md bg-accent-soft px-2 py-1 text-left text-xs font-medium text-accent-strong hover:bg-accent hover:text-on-accent"
+                        >
+                          <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                          Резюме і нотатки{card.notes_count ? ` (${card.notes_count})` : ''}
+                        </button>
+                        {card.last_note && (
+                          <div className="mt-1 rounded-md bg-panel px-2 py-1 text-xs" title={card.last_note}>
+                            <span className="line-clamp-2 break-words">{card.last_note}</span>
+                            <span className="text-[10px] text-ink-soft">{NOTE_WHEN.format(new Date(card.last_note_at!))}</span>
+                          </div>
+                        )}
                         <div className={`mt-2 text-xs ${overdue ? 'font-medium text-danger' : 'text-ink-soft'}`}>
                           {days === 0 ? 'сьогодні' : `${days} дн. на етапі`}
                           {overdue ? ` (норма ${stage.sla_days})` : ''}

@@ -22,6 +22,17 @@ export async function loadBoard(supabase: Supa, vacancyId: string, pipelineId: s
     supabase.from('rejection_reasons').select('id, name, side').eq('is_active', true).order('sort_order'),
     supabase.from('sites').select('id, name, address').eq('is_active', true).order('name'),
   ]);
+  // Остання нотатка (історія дзвінків) для кожного кандидата на дошці
+  const candIds = [...new Set(((apps ?? []) as { candidate_id: string }[]).map((a) => a.candidate_id))];
+  const { data: noteRows } = candIds.length
+    ? await supabase.from('notes').select('candidate_id, body, created_at').in('candidate_id', candIds).order('created_at', { ascending: false }).limit(2000)
+    : { data: [] };
+  const lastNote = new Map<string, { body: string; at: string; count: number }>();
+  for (const n of (noteRows ?? []) as { candidate_id: string; body: string; created_at: string }[]) {
+    const cur = lastNote.get(n.candidate_id);
+    if (cur) cur.count++;
+    else lastNote.set(n.candidate_id, { body: n.body, at: n.created_at, count: 1 });
+  }
   const reasonName = new Map(((reasons ?? []) as { id: string; name: string }[]).map((r) => [r.id, r.name]));
 
   type AppRow = {
@@ -43,6 +54,9 @@ export async function loadBoard(supabase: Supa, vacancyId: string, pipelineId: s
       stage_id: a.stage_id,
       stage_changed_at: a.stage_changed_at,
       rejection_reason: a.rejection_reason_id ? reasonName.get(a.rejection_reason_id) ?? null : null,
+      last_note: lastNote.get(a.candidate_id)?.body ?? null,
+      last_note_at: lastNote.get(a.candidate_id)?.at ?? null,
+      notes_count: lastNote.get(a.candidate_id)?.count ?? 0,
     };
   });
   return {

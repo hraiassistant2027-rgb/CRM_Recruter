@@ -215,9 +215,9 @@ export function CandidateForm({
         <Field label="Поточна або бажана посада" htmlFor="current_position" error={fe.current_position}>
           <Input id="current_position" name="current_position" defaultValue={c?.current_position ?? ''} />
         </Field>
-        <Field label="Джерело" htmlFor="source_id" error={fe.source_id}>
-          <Select id="source_id" name="source_id" defaultValue={c?.source_id ?? ''}>
-            <option value="">— не вказано —</option>
+        <Field label="Джерело *" htmlFor="source_id" error={fe.source_id}>
+          <Select id="source_id" name="source_id" defaultValue={c?.source_id ?? ''} required>
+            <option value="">— оберіть джерело —</option>
             {sources.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}

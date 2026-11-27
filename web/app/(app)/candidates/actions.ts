@@ -235,6 +235,7 @@ export async function extractResumeFields(
 export async function createCandidate(_prev: CandidateFormState, formData: FormData): Promise<CandidateFormState> {
   const parsed = readCandidate(formData);
   if (!parsed.success) return { error: 'Перевірте виділені поля', fieldErrors: fieldErrorsOf(parsed.error.issues) };
+  if (!parsed.data.source_id) return { error: 'Оберіть джерело кандидата', fieldErrors: { source_id: 'Оберіть, звідки кандидат (джерело) — це обов’язкове поле' } };
 
   const consent = consentSchema.safeParse({
     legal_basis: formData.get('legal_basis'),
@@ -299,6 +300,7 @@ export async function updateCandidate(_prev: CandidateFormState, formData: FormD
   if (!id.success) return { error: 'Невірний кандидат' };
   const parsed = readCandidate(formData);
   if (!parsed.success) return { error: 'Перевірте виділені поля', fieldErrors: fieldErrorsOf(parsed.error.issues) };
+  if (!parsed.data.source_id) return { error: 'Оберіть джерело кандидата', fieldErrors: { source_id: 'Оберіть, звідки кандидат (джерело) — це обов’язкове поле' } };
 
   const supabase = await createClient();
   const { data: current } = await supabase.from('candidates').select('custom').eq('id', id.data).maybeSingle();
@@ -345,6 +347,8 @@ export async function markReviewed(_prev: FormState, formData: FormData): Promis
   const id = uuidSchema.safeParse(formData.get('id'));
   if (!id.success) return { error: 'Невірний кандидат' };
   const supabase = await createClient();
+  const { data: cur } = await supabase.from('candidates').select('source_id').eq('id', id.data).maybeSingle();
+  if (cur && !cur.source_id) return { error: 'Спершу вкажіть джерело кандидата: «Редагувати» → поле «Джерело»' };
   const { data, error } = await supabase.from('candidates').update({ review_status: 'reviewed' }).eq('id', id.data).select('id');
   if (error) return { error: translateError(error) };
   if (!data?.length) return { error: 'Немає права на цю дію' };

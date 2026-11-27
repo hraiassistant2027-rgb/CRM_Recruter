@@ -78,6 +78,9 @@ export type BoardCard = {
   stage_id: string;
   stage_changed_at: string;
   rejection_reason: string | null;
+  last_note: string | null;
+  last_note_at: string | null;
+  notes_count: number;
 };
 
 export function salaryRange(min: number | null, max: number | null, currency: string): string {
