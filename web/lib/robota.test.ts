@@ -18,7 +18,7 @@ describe('robota.ua', () => {
 
   it('невірний пароль — зрозуміла помилка', async () => {
     vi.stubGlobal('fetch', reply({ message: 'bad' }, 401));
-    await expect(robotaLogin('hr@kan.ua', 'x')).rejects.toThrow(/логін і пароль/);
+    await expect(robotaLogin('hr@kan.ua', 'x')).rejects.toThrow(/логін або пароль/);
   });
 
   it('список вакансій і відгуків', async () => {
