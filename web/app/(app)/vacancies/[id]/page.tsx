@@ -14,6 +14,7 @@ import { Alert, Badge, Card, PageHeader } from '@/components/ui';
 import { CustomFieldValues } from '@/components/custom-field-inputs';
 import { loadFields } from '@/lib/custom-fields-load';
 import { PipelineBoard } from '@/components/pipeline-board';
+import { VacancyStages } from '@/components/vacancy-stages';
 import { AddCandidate } from './add-candidate';
 import { loadBoard } from '../load';
 
@@ -187,6 +188,7 @@ export default async function VacancyPage({
       {board && (
         <>
           <h2 className="mb-3 text-lg font-bold tracking-tight">Воронка</h2>
+          {canEdit && <VacancyStages vacancyId={v.id} stages={board.allStages.filter((st) => !['rejected', 'withdrawn'].includes(st.kind))} hidden={board.hidden} />}
           <PipelineBoard stages={board.stages} cards={board.cards} reasons={board.reasons} canMove={canMove} googleReady={googleReady} sites={board.sites} defaultSiteId={v.site_id} />
         </>
       )}

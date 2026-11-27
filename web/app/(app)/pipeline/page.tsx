@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { can, canOn } from '@/lib/permissions';
 import { Card, PageHeader, Select } from '@/components/ui';
 import { PipelineBoard } from '@/components/pipeline-board';
+import { VacancyStages } from '@/components/vacancy-stages';
 import { loadBoard } from '../vacancies/load';
 
 export const metadata: Metadata = { title: 'Воронка рекрутингу' };
@@ -62,6 +63,14 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
               )}
             </form>
           </Card>
+          {board && current && canOn(session.permissions, 'vacancies.manage', current.recruiter_id === session.userId || current.hiring_manager_id === session.userId) && (
+            <VacancyStages
+              key={current.id}
+              vacancyId={current.id}
+              stages={board.allStages.filter((st) => !['rejected', 'withdrawn'].includes(st.kind))}
+              hidden={board.hidden}
+            />
+          )}
           {board && (
             <PipelineBoard
               stages={board.stages}

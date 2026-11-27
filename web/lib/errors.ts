@@ -29,6 +29,8 @@ export function translateError(err: ErrorLike): string {
   // Повний текст — лише в журнал сервера (Render → Logs); користувачу — короткий код для діагностики
   console.error('[crm-error]', { code: err.code, status: err.status, name: err.name, message: err.message });
   if (known) return known;
+  // Пояснення з перевірок самої бази (написані українською) показуємо як є
+  if (['23514', 'p0001', 'p0002', '22023', '02000'].includes(code) && /[а-яіїєґ]/i.test(err.message ?? '')) return err.message!;
   const ref = [err.status, err.code || err.name].filter(Boolean).join(' / ');
   return `Сталася помилка. Спробуйте ще раз або зверніться до адміністратора${ref ? ` (код: ${ref})` : ''}`;
 }

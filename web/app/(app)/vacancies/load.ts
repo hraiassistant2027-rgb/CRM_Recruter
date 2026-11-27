@@ -7,7 +7,7 @@ type Supa = Awaited<ReturnType<typeof createClient>>;
 
 // Дані для канбан-дошки однієї вакансії
 export async function loadBoard(supabase: Supa, vacancyId: string, pipelineId: string) {
-  const [{ data: stages }, { data: apps }, { data: reasons }, { data: sites }] = await Promise.all([
+  const [{ data: stages }, { data: apps }, { data: reasons }, { data: sites }, { data: hiddenRows }] = await Promise.all([
     supabase
       .from('pipeline_stages')
       .select('id, code, name, color, sort_order, kind, sla_days, contact_kind')
@@ -21,7 +21,9 @@ export async function loadBoard(supabase: Supa, vacancyId: string, pipelineId: s
       .order('stage_changed_at', { ascending: false }),
     supabase.from('rejection_reasons').select('id, name, side').eq('is_active', true).order('sort_order'),
     supabase.from('sites').select('id, name, address').eq('is_active', true).order('name'),
+    supabase.from('vacancy_hidden_stages').select('stage_id').eq('vacancy_id', vacancyId),
   ]);
+  const hidden = new Set(((hiddenRows ?? []) as { stage_id: string }[]).map((h) => h.stage_id));
   // Остання нотатка (історія дзвінків) для кожного кандидата на дошці
   const candIds = [...new Set(((apps ?? []) as { candidate_id: string }[]).map((a) => a.candidate_id))];
   const { data: noteRows } = candIds.length
@@ -60,7 +62,10 @@ export async function loadBoard(supabase: Supa, vacancyId: string, pipelineId: s
     };
   });
   return {
-    stages: (stages ?? []) as Stage[],
+    // Етапи, вимкнені для цієї вакансії, не показуються (якщо на них ще є кандидати — показуються)
+    stages: ((stages ?? []) as Stage[]).filter((st) => !hidden.has(st.id) || cards.some((c) => c.stage_id === st.id)),
+    allStages: (stages ?? []) as Stage[],
+    hidden: [...hidden],
     cards,
     reasons: (reasons ?? []) as { id: string; name: string; side: 'company' | 'candidate' }[],
     sites: (sites ?? []) as { id: string; name: string; address: string | null }[],

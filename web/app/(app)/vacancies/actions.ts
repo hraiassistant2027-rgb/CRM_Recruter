@@ -177,3 +177,16 @@ export async function findCandidates(query: string): Promise<{ id: string; full_
     current_position: r.current_position,
   }));
 }
+
+// Етап воронки увімкнено/вимкнено для конкретної вакансії
+export async function setVacancyStage(vacancyId: string, stageId: string, enabled: boolean): Promise<FormState> {
+  if (!uuidSchema.safeParse(vacancyId).success || !uuidSchema.safeParse(stageId).success) return { error: 'Невірні дані' };
+  const supabase = await createClient();
+  const { error } = enabled
+    ? await supabase.from('vacancy_hidden_stages').delete().eq('vacancy_id', vacancyId).eq('stage_id', stageId)
+    : await supabase.from('vacancy_hidden_stages').upsert({ vacancy_id: vacancyId, stage_id: stageId }, { onConflict: 'vacancy_id,stage_id', ignoreDuplicates: true });
+  if (error) return { error: translateError(error) };
+  revalidatePath(`/vacancies/${vacancyId}`);
+  revalidatePath('/pipeline');
+  return { ok: 'Збережено' };
+}
